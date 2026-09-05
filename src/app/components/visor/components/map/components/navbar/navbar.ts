@@ -51,7 +51,7 @@ export class Navbar {
     return valor.toString();
   }
 
-    onLoginClick(): void {
+  onLoginClick(): void {
     if (this.isAuthenticated()) {
       this.showLogoutModal.set(true);
     } else {

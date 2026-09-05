@@ -19,7 +19,7 @@ const INFRAESTRUCTURA_LAYERS: WmsLayerConfig[] = [
 ];
 
 const NUMERACION_LAYERS: WmsLayerConfig[] = [
-  { id: 'num_municipal_2024', layerName: `${wp}vw_numeracion_campo_2024`, zIndex: 3, title: 'Numeración de campo 2024' },  
+  { id: 'num_municipal_2024', layerName: `${wp}vw_numeracion_campo_2024`, zIndex: 3, title: 'Numeración de campo 2024' },
   { id: 'num_municipal_2022', layerName: `${wp}vw_numeracion_campo_2022`, zIndex: 3, title: 'Numeración de campo 2022' },
   { id: 'puertas2024', layerName: `${wp}vw_tg_puertas`, zIndex: 3, title: 'Puertas 2024' },
 ];
@@ -29,6 +29,7 @@ const AMBIENTAL_LAYERS: WmsLayerConfig[] = [
   { id: 'arbolado_urbano_2015', layerName: `${wp}vw_arboles_2015`, zIndex: 1, title: 'Árboles 2015' },
   { id: 'cactus_yucca_2015', layerName: `${wp}vw_arboles_2015_cactus`, zIndex: 1, title: 'Cactus - Yucca 2015' },
   { id: 'arearecreativa', layerName: `${wp}gc_area_verde`, zIndex: 1, title: 'Área Recreativa' },
+  { id: 'nom_area_verde', layerName: `${wp}areas_verdes_de_san_isidro`, zIndex: 1, title: 'Área verde de San Isidro' },
 ];
 
 const CATASTRALES_LAYERS: WmsLayerConfig[] = [
@@ -53,8 +54,9 @@ const VUELOS_LAYERS: WmsLayerConfig[] = [
 
 const NORMATIVA_LAYERS: WmsLayerConfig[] = [
   { id: 'etiq_zonificacion', layerName: `${wp}vw_nor_zonificacion_poligono_puntos`, zIndex: 2, title: 'Etiqueta Zonificación' },
-  { id: 'zonificacion', layerName: `${wp}gcZonificacion`, zIndex: 1, title: 'Zonificación' },
+  { id: 'zonificacion', layerName: `${wp}gcZonificacion`, zIndex: 2, title: 'Zonificación' },
   { id: 'amUrbHomogeneo', layerName: `${wp}vw_nor_ambitos_urbanos_homogeneos`, zIndex: 1, title: 'Ámbito Urbano Homogéneo' },
+  { id: 'norm_alt_edific', layerName: `${wp}nor_altura_edificacion`, zIndex: 2, title: 'Alturas maximas de edificacion normativa' },
   { id: 'tusne', layerName: `${wp}vw_tg_tusne`, zIndex: 1, title: 'Levantamiento Topográfico' },
 ];
 
@@ -95,12 +97,11 @@ const TEMATICA: WmsLayerConfig[] = [
   { id: 'tem_view_lote_rrpp', layerName: `${wp}view_lote_rrpp`, zIndex: 3, title: 'view_lote_rrpp' },
 
 ];
-/**
- * Configuración de capas WMS de mobiliario urbano.
- */
-const MOVILIARIO_URBANO: WmsLayerConfig[] = [
-  { id: 'mu_bancas_2016', layerName: `${wp}bancas_2016`, zIndex: 3, title: 'Bancas 2016' },
-];
+
+const MOVILIARIO_RBANO: WmsLayerConfig[] = [
+  { id: 'mu_bancas_2016', layerName: `${wp}bancas_2016`, zIndex: 1, title: 'Bancas 2016' },
+  { id: 'mu_estac_bicis_2016', layerName: `${wp}estacionamientos_bicicletas_2016`, zIndex: 1, title: 'Estacionamiento de bicicletas 2016' },
+]
 /**
  * Configuración centralizada para las capas WMS que se cargarán inicialmente en el mapa.
  * Mover esta configuración a un archivo dedicado facilita el mantenimiento y la adición
@@ -115,8 +116,8 @@ export const INITIAL_WMS_LAYERS: WmsLayerConfig[] = [
   ...SECTORES_LAYERS,
   ...VUELOS_LAYERS,
   ...NORMATIVA_LAYERS,
-  ...MOVILIARIO_URBANO,
   ...ACCESIBILIDAD,
-  ...TEMATICA
+  ...TEMATICA,
+  ...MOVILIARIO_RBANO,
 ];
 
