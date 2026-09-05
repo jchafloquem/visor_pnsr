@@ -135,7 +135,7 @@ const PANEL_BASE: Section[] = [
         capa('', 'Minigimnasios 2016', { visible: false, showInLegend: true }),
         capa('', 'Postes de Iluminación Ornamentales 2016', { visible: false, showInLegend: true }),
         capa('', 'Estacionamientos de motos', { visible: false, showInLegend: true }),
-        capa('', 'Bancas 2016', { visible: false, showInLegend: true }),
+        capa('mu_bancas_2016', 'Bancas 2016', { visible: false, showInLegend: true }),
         capa('', 'Bebederos 2016', { visible: false, showInLegend: true }),
         capa('', 'Papeleras 2016', { visible: false, showInLegend: true }),
         capa('', 'Parklets 2017', { visible: false, showInLegend: true }),

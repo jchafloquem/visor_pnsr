@@ -96,6 +96,12 @@ const TEMATICA: WmsLayerConfig[] = [
 
 ];
 /**
+ * Configuración de capas WMS de mobiliario urbano.
+ */
+const MOVILIARIO_URBANO: WmsLayerConfig[] = [
+  { id: 'mu_bancas_2016', layerName: `${wp}bancas_2016`, zIndex: 3, title: 'Bancas 2016' },
+];
+/**
  * Configuración centralizada para las capas WMS que se cargarán inicialmente en el mapa.
  * Mover esta configuración a un archivo dedicado facilita el mantenimiento y la adición
  * de nuevas capas WMS sin modificar la lógica del `MapService`.
@@ -109,6 +115,7 @@ export const INITIAL_WMS_LAYERS: WmsLayerConfig[] = [
   ...SECTORES_LAYERS,
   ...VUELOS_LAYERS,
   ...NORMATIVA_LAYERS,
+  ...MOVILIARIO_URBANO,
   ...ACCESIBILIDAD,
   ...TEMATICA
 ];
