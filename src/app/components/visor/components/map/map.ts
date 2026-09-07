@@ -148,6 +148,21 @@ export class MapComponent {
     if (this.mapService.areaVerdeUrl()) {
       this.closeAreaVerdeModal();
     }
+    if (this.mapService.hidrante2016Url()) {
+      this.closeHidrante2016Modal();
+    }
+    if (this.mapService.juegoNinos2016Url()) {
+      this.closeJuegoNinos2016Modal();
+    }
+    if (this.mapService.miniGimnasiosUrl()) {
+      this.closeMiniGimnasiosModal();
+    }
+    if (this.mapService.monumentos2021Url()) {
+      this.closeMonumentos2021Modal();
+    }
+    if (this.mapService.esculturas2016Url()) {
+      this.closeEsculturas2016Modal();
+    }
     if (this.mapService.showTermsModal()) {
       this.mapService.closeTermsModal();
     }
@@ -295,6 +310,41 @@ export class MapComponent {
    */
   closeAreaVerdeModal(): void {
     this.mapService.clearAreaVerdeUrl();
+  }
+
+  /**
+   * Cierra el modal del hidrante 2016.
+   */
+  closeHidrante2016Modal(): void {
+    this.mapService.clearHidrante2016Url();
+  }
+
+  /**
+   * Cierra el modal de juegos para niños 2016.
+   */
+  closeJuegoNinos2016Modal(): void {
+    this.mapService.clearJuegoNinos2016Url();
+  }
+
+  /**
+   * Cierra el modal de minigimnasios 2016.
+   */
+  closeMiniGimnasiosModal(): void {
+    this.mapService.clearMiniGimnasiosUrl();
+  }
+
+  /**
+   * Cierra el modal de monumentos, bustos y totem 2021.
+   */
+  closeMonumentos2021Modal(): void {
+    this.mapService.clearMonumentos2021Url();
+  }
+
+  /**
+   * Cierra el modal de monumentos o esculturas 2016.
+   */
+  closeEsculturas2016Modal(): void {
+    this.mapService.clearEsculturas2016Url();
   }
 
   /**

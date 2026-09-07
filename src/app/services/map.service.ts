@@ -265,6 +265,16 @@ export class MapService {
   estacBicis2016Url = signal<string | null>(null);
   /** URL del PDF de un área verde de San Isidro para mostrar en un modal. */
   areaVerdeUrl = signal<string | null>(null);
+  /** URL con la información de un hidrante (2016) para mostrar en un modal. */
+  hidrante2016Url = signal<string | null>(null);
+  /** URL con la información de un juego de niños (2016) para mostrar en un modal. */
+  juegoNinos2016Url = signal<string | null>(null);
+  /** URL con la información de un minigimnasio (2016) para mostrar en un modal. */
+  miniGimnasiosUrl = signal<string | null>(null);
+  /** URL con la información de un monumento, busto o totem (2021) para mostrar en un modal. */
+  monumentos2021Url = signal<string | null>(null);
+  /** URL con la información de un monumento o escultura (2016) para mostrar en un modal. */
+  esculturas2016Url = signal<string | null>(null);
   /** Parámetros comunes para las consultas GetFeatureInfo. */
   private static readonly FEATURE_INFO_PARAMS = {
     'INFO_FORMAT': 'application/json',
@@ -299,6 +309,16 @@ export class MapService {
     this.infoLayerConfig('mu_estac_bicis_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.estacBicis2016Url),
     // Áreas verdes de San Isidro (PDF de ficha por id_lote)
     this.infoLayerConfig('nom_area_verde', p => p['id_lote'], id => `${environment.dataGis.areasVerdesUrlBase}/${id}.pdf`, this.areaVerdeUrl),
+    // Hidrantes 2016
+    this.infoLayerConfig('mu_hidrante_2016', p => p['codigo'], id => `${environment.dataGis.hidrante2016Url}?codigo_i=${id}`, this.hidrante2016Url),
+    // Juegos para niños 2016
+    this.infoLayerConfig('mu_juego_ninos_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.juegoNinos2016Url),
+    // Minigimnasios 2016
+    this.infoLayerConfig('mu_mini_gimnasios', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.miniGimnasiosUrl),
+    // Monumentos, Bustos y Tótem 2021
+    this.infoLayerConfig('mu_monu_bustos_toten_2021', p => p['CODCOMPCAT'] ?? p['codcompcat'], id => `${environment.dataGis.monumentos2021Url}?codigo_i=${id}`, this.monumentos2021Url),
+    // Monumentos o esculturas 2016
+    this.infoLayerConfig('mu_monu_esculturas_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.esculturas2016Url}?codigo_i=${id}`, this.esculturas2016Url),
   ];
   /**
    * Construye la configuración de una capa que, al recibir un clic sobre uno
@@ -1006,6 +1026,36 @@ export class MapService {
    */
   clearAreaVerdeUrl(): void {
     this.areaVerdeUrl.set(null);
+  }
+  /**
+   * Limpia la URL del hidrante (2016), para cerrar el modal.
+   */
+  clearHidrante2016Url(): void {
+    this.hidrante2016Url.set(null);
+  }
+  /**
+   * Limpia la URL del juego de niños (2016), para cerrar el modal.
+   */
+  clearJuegoNinos2016Url(): void {
+    this.juegoNinos2016Url.set(null);
+  }
+  /**
+   * Limpia la URL del minigimnasio (2016), para cerrar el modal.
+   */
+  clearMiniGimnasiosUrl(): void {
+    this.miniGimnasiosUrl.set(null);
+  }
+  /**
+   * Limpia la URL del monumento, busto o totem (2021), para cerrar el modal.
+   */
+  clearMonumentos2021Url(): void {
+    this.monumentos2021Url.set(null);
+  }
+  /**
+   * Limpia la URL del monumento o escultura (2016), para cerrar el modal.
+   */
+  clearEsculturas2016Url(): void {
+    this.esculturas2016Url.set(null);
   }
   /**
    * Dibuja un marcador en el mapa en la ubicación de la geometría proporcionada.
