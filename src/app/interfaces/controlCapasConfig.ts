@@ -206,8 +206,8 @@ const PANEL_BASE: Section[] = [
       subseccion('agua_alcantarillado', 'AGUA Y ALCANTARILLADO', [
         capa('mu_hidrante_2016', 'Hidrante 2024', { visible: false, showInLegend: true }),
         capa('mu_hidrante_2024', 'Hidrante 2016', { visible: false, showInLegend: true }),
-        capa('', 'Señaletica San Isidro 2026', { visible: false, showInLegend: true }),
-        capa('', 'Intersecciones Semaforizadas', { visible: false, showInLegend: true }),
+        capa('senaletica_limite', 'Señaletica San Isidro 2026', { visible: false, showInLegend: true }),
+        capa('red_semaforizada', 'Intersecciones Semaforizadas', { visible: false, showInLegend: true }),
       ]),
     ],
   },

@@ -17,6 +17,8 @@ const INFRAESTRUCTURA_LAYERS: WmsLayerConfig[] = [
   { id: 'vias', layerName: `${wp}vw_tg_via`, zIndex: 1, title: 'Vías' },
   { id: 'seccion_vial', layerName: `${wp}gc_seccion_vial`, zIndex: 1, title: 'Sección de Vías' },
   { id: 'num_cuadra', layerName: `${wp}vw_tg_cuadra`, zIndex: 1, title: 'Número de Cuadras' },
+  { id: 'red_semaforizada', layerName: `${wp}red_semaforica`, zIndex: 3, title: 'Intersecciones Semaforizadas' },
+  { id: 'senaletica_limite', layerName: `${wp}senaletica_limite`, zIndex: 3, title: 'Señaletica San Isidro 2026' },
 ];
 
 const NUMERACION_LAYERS: WmsLayerConfig[] = [
