@@ -20,6 +20,9 @@ export { default as Graticule } from 'ol/layer/Graticule';
 export { default as Overlay } from 'ol/Overlay';
 export type { Positioning as OverlayPositioning } from 'ol/Overlay';
 export { default as XYZ } from 'ol/source/XYZ';
+export { default as ImageTile } from 'ol/ImageTile';
+export { default as OlTile } from 'ol/Tile';
+export { default as TileState } from 'ol/TileState';
 export { default as VectorSource } from 'ol/source/Vector';
 export { defaults as defaultControls, OverviewMap, ScaleLine, FullScreen, ZoomSlider } from 'ol/control';
 export { fromLonLat, transform, transformExtent } from 'ol/proj';
@@ -30,7 +33,7 @@ export { default as TileWMS } from 'ol/source/TileWMS';
 export { default as GeoJSON } from 'ol/format/GeoJSON';
 export { default as ImageWMS } from 'ol/source/ImageWMS';
 export { default as WKT } from 'ol/format/WKT';
-export { getCenter } from 'ol/extent';
+export { getCenter, extend, isEmpty } from 'ol/extent';
 export { getDistance } from 'ol/sphere';
 export { createXYZ } from 'ol/tilegrid';
 

@@ -75,27 +75,18 @@ const PANEL_BASE: Section[] = [
     id: 'catastral',
     title: 'INFORMACION CATASTRAL',
     expanded: false,
-    items: [
-      /*Capas de la base grafica*/
-      subseccion('base_grafica', 'BASE GRÁFICA', [
-        capa('num_cuadra', 'Cuadra', { visible: true, showInLegend: false }),
-        capa('construcciones', 'Construcciones', { visible: true, showInLegend: false }),
-        capa('lote', 'Lote', { visible: true, showInLegend: false }),
-        capa('manzana', 'Manzana', { visible: true, showInLegend: false }),
-        capa('veredas', 'Veredas', { visible: true, showInLegend: false }),
-        capa('arearecreativa', 'Área Recreativa', { visible: true, showInLegend: false }),
-      ]),
+    items: [     
       /*Capas de Sectores*/
       subseccion('sectorizacion', 'CAPAS SECTORIZACION', [
-        capa('sec_catastrales', 'Sectores Catastrales', { visible: false, showInLegend: true }),
-        capa('sec_vecinal', 'Sectores Vecinales', { visible: false, showInLegend: false }),
-        capa('hab_urbana', 'Urbanizaciones', { visible: false, showInLegend: false }),
-        capa('sec_subvecinal', 'Sub Sectores - Junta Vecinales', { visible: false, showInLegend: false }),
+        capa('sector-catastral', 'Sectores Catastrales', { visible: false, showInLegend: true }),
+        capa('sector-vecinal', 'Sectores Vecinales', { visible: false, showInLegend: true }),
+        capa('urbanizaciones', 'Urbanizaciones', { visible: false, showInLegend: true }),
+        capa('sub-sector-vecinal', 'Sub Sectores - Junta Vecinales', { visible: false, showInLegend: true }),
       ]),
       /*Etiquetas Sectorización*/
-      subseccion('lotizacion', 'LOTIZACIÓN', [
-        capa('lote_urbano', 'Lote Urbano', { visible: false, showInLegend: false }),
-        capa('etiquetas_catastrales', 'Código Catastral', { visible: false, showInLegend: false }),
+      subseccion('lotizacion', 'ETIQUETAS', [
+        capa('manzana-lote-urbano', 'Manzana y Lote Urbano', { visible: false, showInLegend: false }),
+        capa('manzana-lote-catastral', 'Manzana y Lote Catastral', { visible: false, showInLegend: false }),
         capa('denominacion_predio', 'Denominación del Predio (DESARROLLO)', { visible: false, showInLegend: false, disabled: true }),
       ]),
       /*Puntos Geodesicos*/
@@ -104,14 +95,13 @@ const PANEL_BASE: Section[] = [
       ], false, { requiresAuth: true }),
       /*Vias*/
       subseccion('vias', 'VIAS', [
-        capa('vias', 'Nomenclatura de Vías', { visible: true, showInLegend: false }),
-        capa('seccion_vial', 'Sección vias (Inf. referencial de campo)', { visible: false, showInLegend: false }),
+        capa('nombre-vias', 'Nomenclatura de Vías', { visible: true, showInLegend: false }),
+        capa('seccion-vial', 'Sección vias (Inf. referencial de campo)', { visible: false, showInLegend: false }),
       ]),
       /*Numeracion de campo*/
       subseccion('num_municipal', 'NÚMERACION DE CAMPO', [
-        capa('num_municipal_2024', 'Numeración de campo 2024', { visible: false, showInLegend: false }),
-        capa('num_municipal_2022', 'Numeración de campo 2022', { visible: false, showInLegend: false }),
-        capa('', 'Numeración Municipal Oficial (Desarrollo)', { visible: false, showInLegend: false }),
+        capa('num_municipal_2024', 'Numeración de campo 2024', { visible: false, showInLegend: true }),
+        capa('num_municipal_2022', 'Numeración de campo 2022', { visible: false, showInLegend: true }),        
         capa('puertas2024', 'Puertas 2024', { visible: false, showInLegend: true }),
       ]),
       /*Arbolado Urbano*/
@@ -123,25 +113,14 @@ const PANEL_BASE: Section[] = [
       ]),
       /*Mobiliario Urbano*/
       subseccion('moviliario_urbano', 'MOBILIARIO URBANO', [
-        // capa('', 'Subsectores vecinales 1-3 y 2-1 (2025)', { visible: false, showInLegend: true }),
-        // capa('', 'Peticiones de gracia 2024', { visible: false, showInLegend: true }),
-        // capa('', 'Comercio en vía pública 2022', { visible: false, showInLegend: true }),
-        // capa('', 'Comercio en vía pública 2021', { visible: false, showInLegend: true }),
-        // capa('', 'Comercio en vía pública 2017', { visible: false, showInLegend: true }),
-        // capa('', 'Comercio en vía pública 2015', { visible: false, showInLegend: true }),
-        // capa('', 'Comercio en vía pública 2012', { visible: false, showInLegend: true }),
+        capa('mu_sub_sectores_vecinales_2025', 'Subsectores vecinales 1-3 y 2-1 (2025)', { visible: false, showInLegend: true }),        
         capa('mu_estac_bicis_2016', 'Estacionamientos de bicicletas 2016', { visible: false, showInLegend: true }),
         capa('mu_juego_ninos_2016', 'Juegos para niños 2016', { visible: false, showInLegend: true }),
         capa('mu_mini_gimnasios', 'Minigimnasios 2016', { visible: false, showInLegend: true }),
-        capa('mu_postes_iluminacion', 'Postes de Iluminación Ornamentales', { visible: false, showInLegend: true }),
-        // capa('', 'Estacionamientos de motos', { visible: false, showInLegend: true }),
-        capa('mu_bancas_2016', 'Bancas 2016', { visible: false, showInLegend: true }),
-        // capa('', 'Bebederos 2016', { visible: false, showInLegend: true }),
+        capa('mu_postes_iluminacion', 'Postes de Iluminación Ornamentales', { visible: false, showInLegend: true }),        
+        capa('mu_bancas_2016', 'Bancas 2016', { visible: false, showInLegend: true }),        
         capa('mu_papelera_2016', 'Papeleras 2016', { visible: false, showInLegend: true }),
-        // capa('', 'Parklets 2017', { visible: false, showInLegend: true }),
-        // capa('', 'Parklets 2016', { visible: false, showInLegend: true }),
-        // capa('', 'Piletas 2016', { visible: false, showInLegend: true }),
-        // capa('', 'Intersección Semaforizada (2012)', { visible: false, showInLegend: true }),
+        capa('mu_parklet', 'Parklets', { visible: false, showInLegend: true }),        
         capa('mu_paneles_publicitarios_2018', 'Paneles Publicitarios 2018', { visible: false, showInLegend: true }),
         capa('mu_monu_bustos_toten_2021', 'Monumentos, Bustos y Toten 2021', { visible: false, showInLegend: true }),
         capa('mu_monu_esculturas_2016', 'Monumentos o esculturas 2016', { visible: false, showInLegend: true }),
@@ -152,16 +131,17 @@ const PANEL_BASE: Section[] = [
     id: 'imaAereas',
     title: 'IMÁGENES AEREAS',
     expanded: false,
-    items: [
-      // Capas generadas dinámicamente a partir de la configuración de años.
-      // La regla "solo una ortofoto visible" vive en MapService.toggleLayerVisibility.
-      subseccion('ortofotos_historicas', 'Ortofotos Históricas', [
+    items: [      
+      // Superposición de lotes catastrales (WMS, zIndex 15) pensada para verse
+      // sobre la ortofoto activa; no interviene en la regla de radio de ortofotos.
+      capa('lote-ortofoto', 'Lote Catastral', { visible: false, showInLegend: true }),
+      subseccion('ortofotos_historicas', 'Ortofotos Históricas', [      
         ...ORTOFOTO_YEARS.map(year => capa(`ortofoto_${year}`, `${year}`)),
       ], false, { requiresAuth: false }),
       subseccion('fotos_sin_procesar', 'Fotos sin Procesar', [
         capa('fotos_sin_2018', 'Fotos sin Procesar - 2018', { visible: false, showInLegend: false }),
         capa('fotos_sin_2024', 'Fotos sin Procesar - 2024', { visible: false, showInLegend: false }),
-      ], false, { requiresAuth: true }),
+      ], false, { requiresAuth: true }),      
     ],
   },
   {
@@ -170,19 +150,19 @@ const PANEL_BASE: Section[] = [
     expanded: false,
     items: [
       subseccion('normaUrbana', 'NORMATIVA URBANA', [
-        capa('etiq_zonificacion', 'Etiqueta Zonificación', { visible: false, showInLegend: false }),
+        // Una sola entrada agrupa el polígono de usos del suelo y sus límites
+        // normativos (capa compuesta declarada en capasWMS.config.ts): un único
+        // interruptor, un único control de opacidad y una única leyenda.
         capa('zonificacion', 'Zonificación usos del suelo', { visible: false, showInLegend: true }),
         capa('amUrbHomogeneo', 'Ambitos Urbanos Homogéneos', { visible: false, showInLegend: false, requiresAuth: true }),
-        capa('norm_alt_edific', 'Alturas Maximas de Edificacion', { visible: false, showInLegend: true }),
-        capa('', 'Ambitos para promover la sostenibilidad de las zonas residenciales (Desarrollo)', { visible: false, showInLegend: false, requiresAuth: true }),
-        capa('', 'Modulos Comercio en via pública - Puntos aprobados (Desarrollo)', { visible: false, showInLegend: false, requiresAuth: true }),
+        capa('norm_alt_edific', 'Alturas Maximas de Edificacion', { visible: false, showInLegend: true }),        
       ]),
       subseccion('sistema_vial', 'SISTEMA VIAL', [
-        capa('', 'SISTEMA VIAL METROPOLITANO (ORD. N 341-MML)', { visible: false, showInLegend: true }),
-        capa('', 'Seccion de vias Normativas Locales', { visible: false, showInLegend: true, requiresAuth: true }),
-        capa('', 'Sección de Vias Normativas Metropolitanas', { visible: false, showInLegend: true }),
+        capa('sist-vial-metro', 'SISTEMA VIAL METROPOLITANO (ORD. N 341-MML)', { visible: false, showInLegend: true }),
+        capa('secc-vial-norma', 'Seccion de vias Normativas Locales', { visible: false, showInLegend: false, requiresAuth: false }),
+        capa('secc-vial-metro', 'Sección de Vias Normativas Metropolitanas', { visible: false, showInLegend: false }),
       ]),
-    ]
+    ]    
   },
   {
     id: 'infraestructuraUrbana',
@@ -203,83 +183,46 @@ const PANEL_BASE: Section[] = [
         capa('manzanas_cruces_accesibilidad_4', 'Sector Vecinal 04', { visible: false, showInLegend: true }),
         capa('manzanas_cruces_accesibilidad_5', 'Sector Vecinal 05', { visible: false, showInLegend: true }),
       ]),
-      subseccion('agua_alcantarillado', 'AGUA Y ALCANTARILLADO', [
-        capa('mu_hidrante_2016', 'Hidrante 2024', { visible: false, showInLegend: true }),
-        capa('mu_hidrante_2024', 'Hidrante 2016', { visible: false, showInLegend: true }),
-        capa('senaletica_limite', 'Señaletica San Isidro 2026', { visible: false, showInLegend: true }),
-        capa('red_semaforizada', 'Intersecciones Semaforizadas', { visible: false, showInLegend: true }),
+      subseccion('agua_alcantarillado', 'AGUA Y ALCANTARILLADO', [        
+        capa('mu_hidrante_2024', 'Hidrante', { visible: false, showInLegend: true }),
       ]),
+      subseccion('vial', 'VIAL', [
+        capa('red_semaforizada', 'Intersecciones Semaforizadas', { visible: false, showInLegend: true }),
+        capa('senaletica_limite', 'Señaletica San Isidro 2026', { visible: false, showInLegend: true }),
+      ])
     ],
   },
   {
     id: 'info_tematica',
     title: 'INFORMACIÓN TEMÁTICA',
     expanded: false,
-    items: [
-      subseccion('zonaLimites', 'ZONA DE LIMITES', [
-        capa('', 'Emisión de Cuponeras 2026', { visible: false, showInLegend: true }),
-        capa('', 'Emisión de Cuponeras 2025', { visible: false, showInLegend: true }),
-        capa('', 'Procesos Judiciales 2025', { visible: false, showInLegend: true }),
-        capa('', 'Predios Recuperados', { visible: false, showInLegend: true }),
-        capa('', 'Informe Técnico Favorable (ITF) 2026', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('vivVis', 'VIVIENDA DE INTERES SOCIAL (VIS)', [
-        capa('', 'VIS 2026 Proyectos-Anteproyectos', { visible: false, showInLegend: true }),
-        capa('', 'VIS 2025 con Proceso Judicial', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('salud', 'SALUD', [
-        capa('', 'Centros de Salud 2024 (RENIPRESS)', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('educacion', 'EDUCACION', [
-        capa('', 'Educación superior 2024 (ESCALE-MINEDU)', { visible: false, showInLegend: true }),
-        capa('', 'Instituciones Educativas (ESCALE-MINEDU)', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('edifiExistentes', 'EDIFICACIONES EXISTENTES', [
-        capa('', 'Usos predominantes (Año 2021)', { visible: false, showInLegend: true }),
-        capa('', 'Usos Predominantes (Histórico)', { visible: false, showInLegend: true }),
-        capa('', 'Alturas de edificación existente (Histórico)', { visible: false, showInLegend: true }),
-        capa('', 'Año de Construcción', { visible: false, showInLegend: true }),
-        capa('', 'Obras privadas en Ejecución', { visible: false, showInLegend: true }),
+    items: [      
+      subseccion('edifiExistentes', 'EDIFICACIONES EXISTENTES', [        
         capa('tem_view_lote_rrpp', 'Inmuebles con Informacion Registral', { visible: false, showInLegend: true }),
-        capa('tem_view_lote_concarga', 'Cargas', { visible: false, showInLegend: true }),
+        capa('tem_view_lote_concargaRegistral', 'Carga Registral', { visible: false, showInLegend: true }),
         capa('tem_view_lote_ley27157a', 'Declatatoria de Fabrica - ley 27157 A', { visible: false, showInLegend: true }),
         capa('tem_view_lote_ley27157b', 'Declatatoria de Fabrica - ley 27157 B', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('comInternacional', 'COMUNIDAD INTERNACIONAL', [
-        capa('', 'Embajadas', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('localesMunicipales', 'LOCALES MUNICIPALES', [
-        capa('', 'Sedes administrativas', { visible: false, showInLegend: true }),
-        capa('', 'Centros de Encuentro Vecinal', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('segCiudadana', 'SEGURIDAD CIUDADANA', [
-        capa('', 'Seguridad 2023', { visible: false, showInLegend: true }),
-        capa('', 'Centros de Seguridad', { visible: false, showInLegend: true }),
-      ]),
-      subseccion('grd', 'GESTION DE RIESGOS DE DESASTRE (GRD)', [
-        capa('', 'Almacenes', { visible: false, showInLegend: true }),
-      ]),
-    ],
-  },
-  {
-    id: 'capas_tematica',
-    title: 'CAPAS TEMÁTICO',
-    expanded: false,
-    items: [
-      subseccion('', 'TRAMITES ATENDIDOS', [
+        capa('uso_predo_2021', 'Uso predominante 2021', { visible: false, showInLegend: true }),
+        
+      ]),      
+      subseccion('tramites_atendidos', 'TRAMITES ATENDIDOS', [
         capa('tem_parametros', 'Parametros urbanisticos y Edificatorios', { visible: false, showInLegend: true }),
         capa('tem_li_edifica', 'Licencia de edificación', { visible: false, showInLegend: true }),
         capa('tem_conforobra', 'Conformidad de Obra', { visible: false, showInLegend: true }),
         capa('tem_li_funcion', 'Licencia de funcionamiento', { visible: false, showInLegend: true }),
         capa('tem_li_anuncio', 'Licencia de Anuncio', { visible: false, showInLegend: true }),
         capa('tem_view_lote_cnmu', 'Certificados de Numeración municipal', { visible: false, showInLegend: true }),
-        capa('tem_view_lote8', 'Visación de Plano', { visible: false, showInLegend: true }),
-        capa('tem_view_lote6', 'Planos Catastrales', { visible: false, showInLegend: true }),
-        capa('', 'Verificación Catastral a Solicitud', { visible: false, showInLegend: true }),
-        capa('', 'Cargas registrales', { visible: false, showInLegend: true }),
+        capa('tem_view_lote8', 'Visación de Planos', { visible: false, showInLegend: true }),
+        capa('tem_view_lote6', 'Planos Catastrales', { visible: false, showInLegend: true }),        
         capa('tem_view_lote_rrpp', 'Informacion registral', { visible: false, showInLegend: true }),
+      ]),
+      subseccion('limites','LIMITES',[
+        capa('cuponeras_2026', 'Emisión de Cuponeras 2026', { visible: false, showInLegend: true }),
+        capa('cuponeras_2025', 'Emisión de Cuponeras 2025', { visible: false, showInLegend: true }),
+        capa('procesos_2025', 'Procesos Judiciales 2025', { visible: false, showInLegend: true }),
+        capa('predios_recuperados', 'Predios recuperados', { visible: false, showInLegend: true }),
       ])
-    ]
+    ],
   },
   {
     id: 'tusne',
@@ -298,3 +241,4 @@ const PANEL_BASE: Section[] = [
  * su mantenimiento y modificación sin alterar la lógica del `MapService`.
  */
 export const LAYER_PANEL_SECTIONS: Section[] = aplicarPoliticaAcceso(PANEL_BASE);
+

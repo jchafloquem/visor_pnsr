@@ -45,10 +45,33 @@ export interface LayerItem {
   opacity: number;
   olLayer?: TileLayer | ImageLayer<ImageWMS>;
   legendUrl?: string; // Añadimos la propiedad legendUrl
+  /**
+   * Leyendas de la capa: una imagen por cada capa WMS que compone el servicio
+   * (ver `WmsLayerConfig.legendLayerName`). Se generan al cargar la capa en el
+   * mapa y el panel de leyenda muestra todas; `legendUrl` conserva la primera
+   * por compatibilidad.
+   */
+  legendUrls?: string[];
 }
 export interface WmsLayerConfig {
   id: string;
+  /**
+   * Capa del servicio WMS que se va a publicar.
+   *
+   * Admite varias capas separadas por comas (`WEB_GIS:capa_a,WEB_GIS:capa_b`)
+   * para declarar una capa COMPUESTA: se dibuja con una sola petición GetMap
+   * (en el orden indicado, la primera queda debajo) y el panel de capas la
+   * controla con un único interruptor, opacidad y leyenda.
+   */
   layerName: string;
+  /**
+   * Capa (o capas separadas por comas) de las que se genera la leyenda
+   * (`GetLegendGraphic`). Si se indican varias, se pide UNA imagen de leyenda por
+   * capa —así no se depende del soporte de leyendas multi-capa del GeoServer— y el
+   * panel de leyenda las muestra todas bajo el mismo título. Solo hace falta
+   * cuando `layerName` es una capa compuesta; por defecto se usa `layerName`.
+   */
+  legendLayerName?: string;
   zIndex: number;
   title: string;
   url?: string;
@@ -78,6 +101,71 @@ export interface Section {
   items: (LayerItem | SubSection)[];
 }
 
+/* ------------------------------------------------------------------------- */
+/*  Utilidades de simbología (panel de leyenda)                               */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Capas (`LayerItem`) que contiene una sección, incluidas las que viven dentro
+ * de sus subsecciones. Útil para recorrer el panel sin duplicar el doble
+ * tratamiento `SubSection` / `LayerItem` en cada consumo.
+ */
+export function capasDeSeccion(seccion: Section): LayerItem[] {
+  return seccion.items.flatMap(item =>
+    'layers' in item ? item.layers : item.type === 'layer' ? [item] : []
+  );
+}
+
+/**
+ * Indica si una capa debe aportar su simbología al panel de leyenda: está
+ * encendida, no se excluyó de la leyenda (`showInLegend: false`) y tiene al
+ * menos una imagen generada (`legendUrls` en las capas compuestas, `legendUrl`
+ * en el resto).
+ */
+export function capaAportaSimbologia(capa: LayerItem): boolean {
+  if (!capa.visible || capa.showInLegend === false) return false;
+  return (capa.legendUrls?.length ?? 0) > 0 || Boolean(capa.legendUrl);
+}
+
+/**
+ * Capas cuya simbología debe mostrarse en la leyenda, en el orden en que
+ * aparecen en el panel. Fuente única de verdad para el contenido de la ventana
+ * flotante y para decidir si debe abrirse u ocultarse automáticamente.
+ */
+export function capasConSimbologiaVisible(secciones: Section[]): LayerItem[] {
+  return secciones.flatMap(capasDeSeccion).filter(capaAportaSimbologia);
+}
+
+/** Qué debe hacer el visor con la ventana flotante de la leyenda tras un cambio de visibilidad. */
+export type SincroniaLeyenda = 'abrir' | 'cerrar' | 'ninguna';
+
+/**
+ * Regla que mantiene la ventana de la leyenda alineada con el panel de capas:
+ *  - `abrir`: se encendió simbología nueva; si el usuario activa una capa con
+ *    leyenda, la ventana no debería seguir escondida tras el menú.
+ *  - `cerrar`: ya no queda ninguna simbología visible y la ventana se había
+ *    abierto sola, para no dejar un panel vacío sobre el mapa.
+ *  - `ninguna`: en cualquier otro caso. Si la ventana se abrió a mano desde el
+ *    menú se respeta la decisión del usuario, aunque apague todas las capas.
+ * @param simbologiaAntes Capas con simbología visible antes del cambio.
+ * @param simbologiaAhora Capas con simbología visible después del cambio.
+ * @param abiertaAutomaticamente `true` si la ventana está abierta porque el
+ *                              visor la abrió, no porque la pidiera el usuario.
+ */
+export function sincroniaLeyenda(
+  simbologiaAntes: number,
+  simbologiaAhora: number,
+  abiertaAutomaticamente: boolean
+): SincroniaLeyenda {
+  if (simbologiaAhora > simbologiaAntes) return 'abrir';
+  if (simbologiaAhora === 0 && abiertaAutomaticamente) return 'cerrar';
+  return 'ninguna';
+}
+
+/* ------------------------------------------------------------------------- */
+/*  Resultados de las consultas/APIs del Geovisor                             */
+/* ------------------------------------------------------------------------- */
+
 /** Interfaz para los resultados de búsqueda de predios */
 export interface SearchResult {
   codigoCatastral: string;
@@ -90,4 +178,160 @@ export interface SearchResult {
   materialPredominante?: string;
   estadoConservacion?: string;
   geometry?: GeoJSONGeometry;
+}
+
+/** Coincidencia de titular catastral devuelta por el API del Geovisor. */
+export interface TitularCatastral {
+  txttitular: string;
+  codlote: string;
+  /** Datos de la vía asociada al lote (según respuesta del API) */
+  tipvia?: string;
+  nomvia?: string;
+  numero?: string;
+}
+
+/** Registro de búsqueda por denominación de predio devuelto por el API del Geovisor (`busqueda-denominacion-lote`). */
+export interface DenominacionLoteResultado {
+  codlote: string;
+  txtcuc: string;
+  txtdenominacion: string;
+  txtmzaurbano: string;
+  txtloteurbano: string;
+  lotecodcatant: string;
+  codlotecatastral: string;
+  txtdirecprincipal: string;
+}
+
+/** Registro de numeración de vía devuelto por el API del Geovisor. */
+export interface ViaNumero {
+  numero: string;
+  codlote: string;
+  codlotenumero: string;
+}
+
+/** Registro de búsqueda por CUC devuelto por el API del Geovisor (`busqueda-cuc`). */
+export interface CucResultado {
+  txtcuc: string;
+  txtpropietario: string;
+  codlote: string;
+  codvia: string;
+  tipvia: string;
+  nomvia: string;
+  via: string;
+  numero: string;
+  txttipint: string;
+  codtipint: string;
+  numeroint: string;
+}
+
+/** Registro de búsqueda por Código Predial devuelto por el API del Geovisor (`busqueda-codpredial`). */
+export interface CodPredialResultado {
+  txtcodipredrent: string;
+  txtcuc: string;
+  txttitular: string;
+  codlote: string;
+  codvia: string;
+  tipvia: string;
+  nomvia: string;
+  via: string;
+  numero: string;
+  txttipint: string;
+  codtipint: string;
+  numeroint: string;
+}
+
+/** Sugerencia de vía con su código, para el flujo de numeraciones. */
+export interface ViaSugerencia {
+  etiqueta: string;
+  codVia: string;
+}
+
+/**
+ * Vía devuelta por el API `listar-vias` del Geovisor municipal, que es la
+ * fuente de verdad de los nombres de vías (el WFS `vw_tg_via` solo trae las
+ * vías que tienen geometría dibujada, y no todas las del distrito).
+ *
+ * - `codviaequ` (ej. 'L271170') es el código de vía con el que se emparejan los
+ *   segmentos del WFS `vw_tg_via` (`codi_via`) para poder resaltarla.
+ * - `txtnomviA_ANT` conserva el nombre anterior de la vía, por lo que el API
+ *   también encuentra vías con su denominación antigua.
+ */
+export interface ViaApi {
+  codvia: string;
+  txtnomvia: string;
+  txttipoviaabrev: string;
+  codviaequ: string;
+  codtipovia: string;
+  txttipovia: string;
+  txtnomviA_ANT?: string;
+}
+
+/* ------------------------------------------------------------------------- */
+/*  Estado del visor                                                          */
+/* ------------------------------------------------------------------------- */
+
+/** Tipos de mapa base disponibles en el visor. */
+export type TipoMapaBase = 'satellite' | 'streets' | 'topo' | 'blanco';
+
+/**
+ * Datos resumidos de un lote devueltos por el API listar-datos-lote del
+ * Geovisor municipal. Se muestran en el popup al pasar el mouse sobre el lote.
+ */
+export interface LoteDatosHover {
+  codlote: string;
+  txtcuc: string;
+  txtmzaurbano: string;
+  txtloteurbano: string;
+  lotecodcatant: string;
+  codlotecatastral: string;
+  txtdirecprincipal: string;
+}
+
+/**
+ * Ventana flotante con la información de un lote.
+ * Varias pueden estar abiertas simultáneamente sin bloquear el mapa.
+ */
+export interface LoteInfoWindow {
+  /** Código catastral del lote (identificador único de la ventana) */
+  id: string;
+  /** URL de la ficha del lote */
+  url: string;
+  /** Posición horizontal (px) respecto al viewport */
+  x: number;
+  /** Posición vertical (px) respecto al viewport */
+  y: number;
+  /** Título de la ventana. Si no se define, usa "Información del Lote". */
+  title?: string;
+  /** Ancho de la ventana en px. Por defecto 700. */
+  width?: number;
+  /** Alto de la ventana en px. Por defecto 520. */
+  heightPx?: number;
+  /** Prioridad (z-index) de la ventana. Por defecto 1040. */
+  zIndex?: number;
+}
+
+/**
+ * Lámina PDF asociada a una vía de la capa "Sección de Vías Normativas
+ * Metropolitanas" (ORD. N° 2343-MML), que se muestra en un modal al hacer clic
+ * sobre su eje.
+ */
+export interface LaminaSeccionVialMetro {
+  /** Valor del campo llave `refname` del eje consultado (p. ej. `E16`). */
+  refname: string;
+  /** Tipo de vía informado por la capa (p. ej. `CORTES EXPRESAS`). */
+  tipo: string;
+  /** Nombre del PDF en el servidor (p. ej. `E-16.pdf`). */
+  archivo: string;
+  /** URL de la lámina para el visor; `null` cuando la lámina no está publicada. */
+  url: string | null;
+}
+
+/** Configuración de una capa consultable al hacer clic sobre el mapa. */
+export interface ClickableLayerConfig {
+  /** Identificador de la capa en el panel de capas. */
+  layerId: string;
+  /** Obtiene la capa de OpenLayers asociada. */
+  getLayer: () => ImageLayer<ImageWMS> | undefined;
+  /** Lógica a ejecutar cuando el clic acierta sobre un feature de esta capa. */
+  handler: (feature: GeoJSONFeature) => void;
 }

@@ -2,9 +2,11 @@ import { Component, ElementRef, ViewChild, afterNextRender, inject, ChangeDetect
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 // Servicios y módulos
-import { LoteInfoWindow, MapService } from '../../../../services/map.service';
+import { LoteInfoWindow } from '../../../../interfaces/geoLayers';
+import { MapService } from '../../../../services/map.service';
 import { DriverService } from '../../../../services/driver.service';
 import { DrawMeasureService } from '../../../../services/draw.service';
+import { AuthService } from '../../../../services/auth.service';
 // Componentes relacionados
 import { Navbar } from './components/navbar/navbar';
 import { Sidebar } from './components/sidebar/sidebar';
@@ -62,6 +64,11 @@ export class MapComponent {
   private readonly loteWindowsLoaded = signal<Set<string>>(new Set());
 
     public readonly mapService = inject(MapService);
+  /**
+   * Estado de la sesión, expuesto a la plantilla para la notificación de
+   * caducidad (aviso previo y aviso de sesión finalizada).
+   */
+  public readonly authService = inject(AuthService);
   private readonly driverService = inject(DriverService);
   /** Estado del tour activo (proyectado al navbar para el resaltado del botón). */
   isTourActive = this.driverService.tourActivo;
@@ -179,6 +186,9 @@ export class MapComponent {
     }
     if (this.mapService.senaleticaUrl()) {
       this.closeSenaleticaModal();
+    }
+    if (this.mapService.laminaSeccionVialMetro()) {
+      this.closeLaminaSeccionVialMetroModal();
     }
     if (this.mapService.showTermsModal()) {
       this.mapService.closeTermsModal();
@@ -400,6 +410,14 @@ export class MapComponent {
   }
 
   /**
+   * Cierra el modal de la lámina de sección vial normativa metropolitana
+   * (ORD. N° 2343-MML).
+   */
+  closeLaminaSeccionVialMetroModal(): void {
+    this.mapService.clearLaminaSeccionVialMetro();
+  }
+
+  /**
    * Verifica si una URL tuvo error de carga en el iframe.
    */
   hasIframeError(url: string): boolean {
@@ -570,14 +588,14 @@ export class MapComponent {
   }
 
   /**
-   * Maneja el evento de apertura/cierre del sidebar para desplazar el mapa.
+   * Maneja el evento de apertura/cierre del sidebar.
+   * El panel es flotante (superpuesto), así que el mapa NO se desplaza:
+   * conserva su centro y su navegación. Solo se refleja el estado para que
+   * el CSS desplace la barra de escala fuera del área del panel.
    * @param isOpen El estado de apertura del sidebar.
    */
   handleSidebarToggle(isOpen: boolean): void {
-    // Reflejamos el estado para que el CSS desplace la barra de escala
     this.sidebarAbierto = isOpen;
-    // El ancho del sidebar es de 400px según su CSS.
-    this.mapService.panMapForSidebar(isOpen, 400);
   }
 }
 

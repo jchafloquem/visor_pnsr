@@ -1,24 +1,16 @@
 import { Injectable, signal, computed, inject, NgZone, effect, untracked, WritableSignal } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
+import { ApisService } from './apis.service';
+import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
+import { SIN_AUDITORIA } from '../interceptor/auditoria.interceptor';
 import { environment } from '../../environments/environment';
 import { easeOut } from 'ol/easing';
 import type { Coordinate } from 'ol/coordinate';
-import { Observable, map, of, catchError, throwError } from 'rxjs';
+import type Geometry from 'ol/geom/Geometry';
+import { Observable, map, take, switchMap, catchError, of } from 'rxjs';
 
-/** Registro de numeración de vía devuelto por el API del Geovisor. */
-export interface ViaNumero {
-  numero: string;
-  codlote: string;
-  codlotenumero: string;
-}
-
-/** Sugerencia de vía con su código, para el flujo de numeraciones. */
-export interface ViaSugerencia {
-  etiqueta: string;
-  codVia: string;
-}
 import { ORTOFOTO_YEARS } from '../interfaces/ortofotos';
 import { LAYER_PANEL_SECTIONS } from '../interfaces/controlCapasConfig';
 import {
@@ -27,16 +19,37 @@ import {
   GeoJSONFeature,
   LayerItem,
   WfsResponse,
-  GeoJSONGeometry
+  GeoJSONGeometry,
+  TitularCatastral,
+  DenominacionLoteResultado,
+  ViaNumero,
+  CucResultado,
+  CodPredialResultado,
+  ViaSugerencia,
+  ViaApi,
+  TipoMapaBase,
+  LoteDatosHover,
+  LoteInfoWindow,
+  ClickableLayerConfig,
+  LaminaSeccionVialMetro,
+  capasConSimbologiaVisible,
+  sincroniaLeyenda,
 } from '../interfaces/geoLayers';
 import { INITIAL_WMS_LAYERS } from '../interfaces/capasWMS.config';
 import {
+  laminaSeccionVialMetroPublicada,
+  nombreLaminaSeccionVialMetro,
+} from '../interfaces/laminasSeccionVialMetro.config';
+import {
   INITIAL_CENTER,
   INITIAL_ZOOM,
+  MAP_MAX_ZOOM,
   GOOGLE_SATELLITE_URL,
   OSM_URL,
   TRAMA_WMS_URL,
   ANIMATION_DURATION,
+  ZOOM_MAX_PARQUE,
+  ZOOM_MAX_PARQUE_CENTROIDE,
   SAN_ISIDRO_CENTER,
   SAN_ISIDRO_ZOOM,
   SAN_ISIDRO_EXTENT,
@@ -44,17 +57,22 @@ import {
 } from '../interfaces/mapas.config';
 import {
   BaseLayer,
+  Circle,
+  extend,
   Feature,
   Fill,
   fromLonLat,
   GeoJSON,
   getCenter,
   getDistance,
+  isEmpty,
   ImageLayer,
   ImageWMS,
+  ImageTile,
   Layer,
   LineString,
   OlMap,
+  OlTile,
   Overlay,
   Point,
   ScaleLine,
@@ -62,6 +80,7 @@ import {
   Style,
   Text,
   TileLayer,
+  TileState,
   transform,
   transformExtent,
   VectorLayer,
@@ -72,44 +91,11 @@ import {
   defaultControls,
 } from '@app/modules/openlayers.module';
 
-export type TipoMapaBase = 'satellite' | 'streets' | 'topo' | 'blanco';
-/**
- * Ventana flotante con la información de un lote.
- * Varias pueden estar abiertas simultáneamente sin bloquear el mapa.
- */
-export interface LoteInfoWindow {
-  /** Código catastral del lote (identificador único de la ventana) */
-  id: string;
-  /** URL de la ficha del lote */
-  url: string;
-  /** Posición horizontal (px) respecto al viewport */
-  x: number;
-  /** Posición vertical (px) respecto al viewport */
-  y: number;
-  /** Título de la ventana. Si no se define, usa "Información del Lote". */
-  title?: string;
-  /** Ancho de la ventana en px. Por defecto 700. */
-  width?: number;
-  /** Alto de la ventana en px. Por defecto 520. */
-  heightPx?: number;
-  /** Prioridad (z-index) de la ventana. Por defecto 1040. */
-  zIndex?: number;
-}
-/** Configuración de una capa consultable al hacer clic sobre el mapa. */
-interface ClickableLayerConfig {
-  /** Identificador de la capa en el panel de capas. */
-  layerId: string;
-  /** Obtiene la capa de OpenLayers asociada. */
-  getLayer: () => ImageLayer<ImageWMS> | undefined;
-  /** Lógica a ejecutar cuando el clic acierta sobre un feature de esta capa. */
-  handler: (feature: GeoJSONFeature) => void;
-}
 /**
  * Servicio de Angular para la gestión del mapa OpenLayers.
  * Encapsula toda la lógica relacionada con la inicialización, manipulación
  * y gestión de elementos del mapa, como capas, controles y overlays.
  */
-
 @Injectable({
   providedIn: 'root'
 })
@@ -118,6 +104,10 @@ export class MapService {
   private readonly zone = inject(NgZone);
   private readonly drawMeasureService = inject(DrawMeasureService);
   private readonly authService = inject(AuthService);
+  /** API del Geovisor municipal (endpoints WSGEOVISOR centralizados). */
+  private readonly apisService = inject(ApisService);
+  /** Registro de auditoría del uso de los servicios cartográficos (WMS). */
+  private readonly auditoria = inject(AuditoriaService);
   baseLayerType = signal<TipoMapaBase>('streets');
   /** Instancia del mapa OpenLayers */
   private readonly _map = signal<OlMap | undefined>(undefined);
@@ -215,18 +205,86 @@ export class MapService {
    * `activeSidebarTools`: la navegación del sidebar gestiona una herramienta
    * de panel a la vez y nunca debe cerrar ni borrar la leyenda. Solo su
    * propio botón de cierre (X) o pulsar de nuevo "Leyenda" la ocultan.
+   * Arranca apagada para no cubrir el mapa al cargar, pero el visor la abre
+   * automáticamente en cuanto se enciende una capa con simbología y la vuelve
+   * a ocultar cuando se apaga la última: ver `sincronizarLeyendaConCapas`.
    */
   leyendaVisible = signal(false);
+  /**
+   * `true` mientras la leyenda está abierta porque el visor la abrió solo.
+   * Permite volver a cerrarla automáticamente cuando se apaga la última capa
+   * con simbología, sin quitarle la ventana a quien la abrió a mano desde el
+   * menú (en ese caso se respeta su decisión).
+   */
+  private leyendaAbiertaAutomaticamente = false;
   /** Alterna la ventana flotante de la leyenda (botón "Leyenda" del sidebar). */
   toggleLeyenda(): void {
+    // Es una acción manual: la ventana deja de considerarse "abierta sola".
+    this.leyendaAbiertaAutomaticamente = false;
     this.leyendaVisible.update(v => !v);
   }
   /** Cierra la ventana flotante de la leyenda (botón X de la propia ventana). */
   closeLeyenda(): void {
+    this.leyendaAbiertaAutomaticamente = false;
     this.leyendaVisible.set(false);
+  }
+  /**
+   * Sincroniza la ventana flotante de la leyenda con el panel de capas: aparece
+   * sola cuando el usuario enciende una capa con simbología (para que no tenga
+   * que buscar el botón "Leyenda" del menú) y se oculta cuando se apaga la
+   * última, para no dejar un panel vacío sobre el mapa. Debe invocarse justo
+   * después de aplicar el cambio de visibilidad sobre `sections`.
+   * @param simbologiaAntes Capas con simbología visible antes del cambio.
+   */
+  private sincronizarLeyendaConCapas(simbologiaAntes: number): void {
+    const simbologiaAhora = capasConSimbologiaVisible(this.panelSections()).length;
+    switch (sincroniaLeyenda(simbologiaAntes, simbologiaAhora, this.leyendaAbiertaAutomaticamente)) {
+      case 'abrir':
+        this.leyendaVisible.set(true);
+        this.leyendaAbiertaAutomaticamente = true;
+        break;
+      case 'cerrar':
+        this.closeLeyenda();
+        break;
+    }
   }
   /** Ventanas flotantes con la información de lotes (varias abiertas, sin bloquear el mapa) */
   loteInfoWindows = signal<LoteInfoWindow[]>([]);
+  /** Datos del lote bajo el cursor (popup hover); `null` cuando no hay lote cargado. */
+  loteHoverDatos = signal<LoteDatosHover | null>(null);
+  /** Indica si la consulta de datos del lote bajo el cursor está en curso. */
+  loteHoverCargando = signal(false);
+  /** Posición (px) del popup hover; `null` lo oculta. */
+  loteHoverPosicion = signal<{ x: number; y: number } | null>(null);
+  /** Cache de datos de lote ya consultados (evita repetir llamadas al API). */
+  private readonly loteDatosCache = new Map<string, LoteDatosHover>();
+  /**
+   * Cache de geometrías de lote (en la proyección de la vista) indexadas por
+   * código catastral. Permite hacer "hit test" local: mientras el cursor siga
+   * dentro de un lote ya consultado NO se vuelve a llamar al servicio
+   * GetFeatureInfo; el popup solo cambia al entrar en otro lote.
+   */
+  private readonly hoverGeometriasCache = new Map<string, Geometry>();
+  /** Código del lote actualmente bajo el cursor. */
+  private hoverCodActual: string | null = null;
+  /** Identificador de la última consulta hover; descarta respuestas obsoletas. */
+  private hoverRequestId = 0;
+  /** Consultas GetFeatureInfo del hover actualmente en curso (máx. 1). */
+  private hoverInfoEnCurso = 0;
+  /** Última posición pendiente de resolver al terminar la consulta en curso. */
+  private hoverInfoPendiente: { coordinate: Coordinate; pixel: number[] } | null = null;
+  /** Última coordenada consultada por red (para descartar micro-movimientos). */
+  private hoverUltimaConsulta: { coordinate: Coordinate; resolution: number } | null = null;
+  /** Último evento de movimiento pendiente de procesar (throttle). */
+  private hoverPendingEvt: { coordinate: Coordinate; pixel: number[] } | null = null;
+  /** Temporizador del throttle del pointermove. */
+  private hoverMoveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Retardo del throttle del hover: agrupa el movimiento en una sola consulta. */
+  private static readonly HOVER_DEBOUNCE_MS = 110;
+  /** Desplazamiento mínimo (en píxeles de pantalla) para repetir una consulta. */
+  private static readonly HOVER_MIN_PIXELES = 6;
+  /** Máximo de geometrías de lote guardadas para el hit test local. */
+  private static readonly HOVER_MAX_GEOMETRIAS = 400;
   /** Modo selección: el próximo clic sobre la capa "Lote Catastral" lo asigna al módulo de impresión */
   pickLoteActivo = signal(false);
   /** Código catastral (id_lote) seleccionado en el mapa para imprimir */
@@ -286,6 +344,13 @@ export class MapService {
   subsectorVecinalUrl = signal<string | null>(null);
   /** URL con la fotografía de un componente de señaletica (2026) para mostrar en un modal. */
   senaleticaUrl = signal<string | null>(null);
+  /**
+   * Lámina PDF de la capa "Sección de Vías Normativas Metropolitanas"
+   * (ORD. N° 2343-MML) que se está mostrando en el modal; `null` cuando el modal
+   * está cerrado. Incluye los datos de la vía consultada (`refname` y `tipo`) y
+   * `url: null` cuando la lámina todavía no está publicada en el servidor.
+   */
+  laminaSeccionVialMetro = signal<LaminaSeccionVialMetro | null>(null);
   /** Parámetros comunes para las consultas GetFeatureInfo. */
   private static readonly FEATURE_INFO_PARAMS = {
     'INFO_FORMAT': 'application/json',
@@ -350,6 +415,13 @@ export class MapService {
       const ruta = nombre.includes('/') ? nombre : `DCIM/${nombre}`;
       return `${environment.dataGis.senaleticaFotosUrl}/${ruta}`;
     }, this.senaleticaUrl),
+    // Sección de Vías Normativas Metropolitanas (ORD. N° 2343-MML) — lámina PDF
+    // por vía: el archivo se resuelve con el campo llave `refname` de la capa.
+    {
+      layerId: 'secc-vial-metro',
+      getLayer: () => this.getLayerById('secc-vial-metro'),
+      handler: (feature) => this.abrirLaminaSeccionVialMetro(feature.properties),
+    },
   ];
   /**
    * Construye la configuración de una capa que, al recibir un clic sobre uno
@@ -375,6 +447,28 @@ export class MapService {
         }
       }
     };
+  }
+  /**
+   * Abre la lámina PDF de una vía de la capa "Sección de Vías Normativas
+   * Metropolitanas" (ORD. N° 2343-MML) a partir del feature consultado.
+   *
+   * El archivo se resuelve con el campo llave `refname` (ver
+   * `nombreLaminaSeccionVialMetro`). Si la lámina aún no está publicada, el
+   * modal lo indica en lugar de intentar cargar un PDF inexistente.
+   *
+   * @param properties Propiedades del feature devuelto por GeoServer.
+   */
+  private abrirLaminaSeccionVialMetro(properties: Record<string, any>): void {
+    const refname = String(properties['refname'] ?? properties['REFNAME'] ?? '').trim().toUpperCase();
+    if (!refname) return;
+    const archivo = nombreLaminaSeccionVialMetro(refname);
+    const publicada = laminaSeccionVialMetroPublicada(refname);
+    this.laminaSeccionVialMetro.set({
+      refname,
+      tipo: String(properties['tipo'] ?? properties['TIPO'] ?? '').trim(),
+      archivo,
+      url: publicada && archivo ? `${environment.dataGis.seccionVialMetroLaminasUrlBase}/${archivo}` : null,
+    });
   }
   /** Controla la visibilidad del modal global de Términos y Condiciones */
   showTermsModal = signal(false);
@@ -460,7 +554,7 @@ export class MapService {
         center: fromLonLat(INITIAL_CENTER),
         zoom: INITIAL_ZOOM,
         minZoom: 4,
-        maxZoom: 22,
+        maxZoom: MAP_MAX_ZOOM,
       })
     });
     this._map.set(olMap);
@@ -515,6 +609,95 @@ export class MapService {
     });
   }
   /**
+   * Función de carga de tiles validada: descarga el tile con `fetch`, verifica
+   * que la respuesta sea realmente una imagen decodificable y solo entonces la
+   * asigna al `<img>` del tile. Si el servidor responde con un error HTTP, HTML
+   * o un cuerpo corrupto, el tile se marca en estado ERROR de forma controlada.
+   * Esto evita el rechazo no manejado "EncodingError: The source image cannot
+   * be decoded" que el navegador registraba al cargar el visor.
+   */
+  private readonly tileLoadFunction = (tile: OlTile, src: string): void => {
+    const imageTile = tile as ImageTile;
+    const img = imageTile.getImage() as HTMLImageElement;
+    fetch(src, { mode: 'cors' })
+      .then(async (respuesta) => {
+        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+        const blob = await respuesta.blob();
+        // Si el servidor declara un tipo que no es imagen, fallamos de una vez.
+        if (blob.type && !blob.type.startsWith('image/')) {
+          throw new Error(`Tipo de respuesta no soportado: ${blob.type}`);
+        }
+        // Validación definitiva: intentamos decodificar nosotros (capturando
+        // cualquier EncodingError dentro de nuestra promesa, no en la de OL).
+        await createImageBitmap(blob);
+        const url = URL.createObjectURL(blob);
+        img.onload = () => URL.revokeObjectURL(url);
+        img.src = url;
+      })
+      .catch(() => {
+        // Cancelamos cualquier decodificación pendiente y marcamos el tile
+        // como error: OL mostrará un hueco y lo reintentará si hace falta.
+        // IMPORTANTE: usamos removeAttribute y NO `src = ''`, porque asignar
+        // una cadena vacía dispara el evento `error` del <img> y OL lo registra
+        // como "Error: Image load error" en consola.
+        img.removeAttribute('src');
+        // ImageTile admite setState; el envoltorio de ImageWMS transiciona a
+        // ERROR por su cuenta al fallar la carga de la imagen.
+        if (typeof (imageTile as { setState?: (s: number) => void }).setState === 'function') {
+          imageTile.setState(TileState.ERROR);
+        }
+      });
+  };
+  /** Píxel PNG transparente de 1x1: sustituto seguro cuando el WMS no devuelve una imagen. */
+  private static readonly TRANSPARENT_PIXEL =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  /**
+   * Función de carga validada para capas ImageWMS: descarga la imagen GetMap
+   * con `fetch` y solo la asigna al `<img>` si es una imagen decodificable.
+   * Si el servidor responde con un error HTTP o con un XML de ServiceException
+   * (p. ej. capa inexistente), se asigna un píxel transparente en su lugar, de
+   * modo que el `decode()` interno de OpenLayers resuelve sin lanzar el
+   * `EncodingError: The source image cannot be decoded` que ensuciaba la
+   * consola al cargar el visor (Image.js hace `console.error` de ese rechazo).
+   * Si el `fetch` falla por CORS/red (TypeError), se delega a la vía normal
+   * (`img.src = src`), ya que el `<img>` sí puede mostrar la imagen aunque el
+   * `fetch` esté bloqueado.
+   */
+  private readonly wmsImageLoadFunction = (image: any, src: string): void => {
+    const img = (image?.getImage?.() ?? image) as HTMLImageElement;
+    if (!src) {
+      img.src = MapService.TRANSPARENT_PIXEL;
+      return;
+    }
+    fetch(src, { mode: 'cors' })
+      .then(async (respuesta) => {
+        if (!respuesta.ok) throw new Error(`WMS HTTP ${respuesta.status}`);
+        const blob = await respuesta.blob();
+        // GeoServer responde los errores (capa inexistente, BBOX inválido,
+        // etc.) como XML: si no es imagen, no intentamos decodificarlo.
+        if (blob.type && !blob.type.startsWith('image/')) {
+          throw new Error(`WMS no imagen: ${blob.type || 'sin tipo'}`);
+        }
+        if (typeof createImageBitmap === 'function') {
+          await createImageBitmap(blob);
+        }
+        const url = URL.createObjectURL(blob);
+        img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+        img.src = url;
+      })
+      .catch((error: unknown) => {
+        if (error instanceof TypeError) {
+          // Probable bloqueo CORS o fallo de red: el <img> puede cargar la
+          // imagen aunque el fetch no (la carga de imágenes no exige CORS).
+          img.src = src;
+        } else {
+          // El servidor respondió algo que no es imagen decodificable:
+          // píxel transparente para que decode() resuelva sin EncodingError.
+          img.src = MapService.TRANSPARENT_PIXEL;
+        }
+      });
+  };
+  /**
    * Configura las capas base de Google y OSM.
    */
   private setupBaseLayers(): void {
@@ -524,7 +707,8 @@ export class MapService {
       transition: 1000,
       interpolate: true, // Evita que se vean cuadrados pixelados al hacer zoom
       maxZoom: 19,
-      wrapX: true
+      wrapX: true,
+      tileLoadFunction: this.tileLoadFunction
     });
     const streetsSource = new XYZ({
       url: OSM_URL,
@@ -533,6 +717,7 @@ export class MapService {
       interpolate: true,
       maxZoom: 19,
       wrapX: true,
+      tileLoadFunction: this.tileLoadFunction,
       tileUrlFunction: (tileCoord) => {
         if (!tileCoord) {
           return undefined;
@@ -562,7 +747,7 @@ export class MapService {
     this.addWmsLayer({
       id: 'tg_departamentos',
       url: TRAMA_WMS_URL,
-      layerName: 'SIDES_GIS:tg_departamentos',
+      layerName: 'WEB_GIS:tg_departamentos',
       version: '1.1.0',
       zIndex: 5, // zIndex para posicionarse sobre el mapa base
       title: 'Departamento del Perú',
@@ -634,7 +819,8 @@ export class MapService {
           'TRANSPARENT': true
         },
         crossOrigin: 'anonymous',
-        serverType: 'geoserver'
+        serverType: 'geoserver',
+        imageLoadFunction: this.wmsImageLoadFunction
       }),
       className: options.className ?? options.id, // Aplicamos la clase CSS a la capa
       zIndex: options.zIndex,
@@ -643,10 +829,30 @@ export class MapService {
       properties: { id: options.id, title: options.title }
     });
     map.addLayer(layer);
-    // Generamos la URL de la leyenda para servicios WMS (estándar GetLegendGraphic)
-    const legendUrl = `${url}${url.includes('?') ? '&' : '?'}` +
-      `SERVICE=WMS&VERSION=${version}&REQUEST=GetLegendGraphic&FORMAT=image/png&LAYER=${options.layerName}&TRANSPARENT=true`;
-    this.updateLayerProperties(options.id, { olLayer: layer, legendUrl });
+    // Generamos la URL de la leyenda para servicios WMS (estándar GetLegendGraphic).
+    // En capas compuestas `layerName` agrupa varias capas: se pide UNA leyenda por
+    // cada capa indicada en `legendLayerName` (o en `layerName` si no se informa),
+    // de modo que no se depende del soporte de leyendas multi-capa del GeoServer.
+    const capasLeyenda = (options.legendLayerName ?? options.layerName)
+      .split(',')
+      .map(nombre => nombre.trim())
+      .filter(nombre => nombre.length > 0);
+    const legendUrls = capasLeyenda.map(capaLeyenda =>
+      `${url}${separator}` +
+      `SERVICE=WMS&VERSION=${version}&REQUEST=GetLegendGraphic&FORMAT=image/png&LAYER=${capaLeyenda}&TRANSPARENT=true`);
+    this.updateLayerProperties(options.id, { olLayer: layer, legendUrl: legendUrls[0], legendUrls });
+
+    // Auditoría del consumo del servicio cartográfico.
+    //
+    // No puede interceptarse aquí con el interceptor de `HttpClient`: las capas
+    // WMS las pide OpenLayers (`ImageWMS`), que usa el `Image` del navegador y
+    // NO pasa por el cliente HTTP de Angular. Por eso se registra aquí, en el
+    // punto donde el visor abre la conexión con la capa.
+    this.auditoria.accion(
+      AUDITORIA_OPCIONES.CONSULTA_GEOSERVER,
+      `WMS carga la capa "${options.layerName}"`,
+      { conexionNombre: 'GEOSERVER' }
+    );
   }
   /**
    * Método para agregar capas XYZ al mapa.
@@ -659,7 +865,8 @@ export class MapService {
       url: options.url,
       crossOrigin: 'anonymous',
       maxZoom: options.maxZoom,
-      interpolate: true
+      interpolate: true,
+      tileLoadFunction: this.tileLoadFunction
     });
     const layer = new TileLayer({
       source: xyzSource,
@@ -721,7 +928,254 @@ export class MapService {
   private setupMapClickHandler(olMap: OlMap): void {
     this.setupSingleClickHandler(olMap);
     this.setupDoubleClickHandler(olMap);
+    this.setupLoteHoverHandler(olMap);
   }
+
+  /**
+   * Consulta los datos resumidos del lote indicado en el API del Geovisor
+   * (`listar-datos-lote`). Delegado en `ApisService`, que centraliza los
+   * endpoints y la estrategia de reintentos del Geovisor.
+   * @param codlote Código catastral del lote (id_lote / codlote).
+   * @returns Observable con los datos del lote o `null` si no se encontró.
+   */  
+  listarDatosLote(codlote: string): Observable<LoteDatosHover | null> {
+    return this.apisService.listarDatosLote(codlote);
+  }
+
+  /**
+   * Registra el evento `pointermove` del mapa: al pasar sobre la capa de lote
+   * muestra un popup flotante junto al cursor.
+   *
+   * Optimización de llamadas: antes de consultar el servicio se hace un
+   * "hit test" local contra las geometrías de lotes ya conocidas
+   * (`hoverGeometriasCache`), de modo que:
+   *  - mientras el cursor permanece dentro del MISMO lote no se llama nada;
+   *  - al entrar en OTRO lote ya consultado el popup cambia al instante y
+   *    tampoco se llama al servicio;
+   *  - solo se llama (GetFeatureInfo, 1 vez por lote nuevo) cuando el cursor
+   *    entra en un lote desconocido, con throttle de 110 ms y un único
+   *    requerimiento simultáneo.
+   * @param olMap Instancia del mapa de OpenLayers.
+   */
+  private setupLoteHoverHandler(olMap: OlMap): void {
+    this.zone.runOutsideAngular(() => {
+      olMap.on('pointermove', (evt) => {
+        const coordinate: Coordinate = [...evt.coordinate];
+        const pixel: number[] = evt.pixel ? [...evt.pixel] : [0, 0];
+        // 1) ¿El cursor está sobre un lote ya conocido? Se resuelve en memoria.
+        const codigoCacheado = this.buscarLoteEnCacheHover(coordinate);
+        if (codigoCacheado) {
+          // Nada que resolver: descartamos la posición pendiente y las
+          // respuestas en vuelo (ya no son la posición actual del cursor).
+          this.hoverInfoPendiente = null;
+          this.hoverRequestId++;
+          this.zone.run(() => this.mostrarHoverDeLote(codigoCacheado, pixel[0], pixel[1]));
+          return;
+        }
+        // 2) Salió de un lote conocido: ocultamos el popup mientras se resuelve
+        //    el nuevo lote (evita mostrar datos del lote anterior).
+        if (this.hoverCodActual !== null) {
+          this.zone.run(() => this.ocultarHover());
+        }
+        // 3) Guardamos solo el último evento; el throttle procesa el más reciente.
+        this.hoverPendingEvt = { coordinate, pixel };
+        if (this.hoverMoveTimer !== null) return;
+        this.hoverMoveTimer = setTimeout(() => {
+          this.hoverMoveTimer = null;
+          const pendiente = this.hoverPendingEvt;
+          this.hoverPendingEvt = null;
+          if (pendiente) this.procesarHover(pendiente.coordinate, pendiente.pixel);
+        }, MapService.HOVER_DEBOUNCE_MS);
+      });
+      // Ocultamos el popup al salir del lienzo del mapa
+      olMap.getViewport().addEventListener('mouseleave', () => {
+        if (this.hoverMoveTimer !== null) { clearTimeout(this.hoverMoveTimer); this.hoverMoveTimer = null; }
+        this.hoverPendingEvt = null;
+        this.zone.run(() => this.limpiarHover());
+      });
+    });
+  }
+
+  /**
+   * Procesa un movimiento pendiente: si el lote bajo el cursor todavía no se
+   * conoce, lo identifica con un GetFeatureInfo sobre la capa 'lote'.
+   *
+   * Reglas para no repetir llamadas:
+   *  - solo se permite un GetFeatureInfo simultáneo (el resto de posiciones
+   *    quedan en `hoverInfoPendiente` y se resuelven al recibir la respuesta);
+   *  - se descarta el requerimiento si el cursor no se desplazó al menos
+   *    `HOVER_MIN_PIXELES` desde la última consulta (ruido del puntero);
+   *  - la geometría devuelta se guarda en `hoverGeometriasCache`, así que en
+   *    adelante ese lote se resuelve localmente (sin llamar al servicio).
+   */
+  private procesarHover(coordinate: Coordinate, pixel: number[]): void {
+    const pixelX = pixel[0], pixelY = pixel[1];
+    if (this.drawMeasureService.isDrawing()) { this.zone.run(() => this.limpiarHover()); return; }
+    // Identificamos el lote bajo el cursor (mismo patrón del doble clic)
+    const layer = this.getLayerById('lote');
+    if (!layer?.getVisible()) { this.zone.run(() => this.limpiarHover()); return; }
+    const view = this._map()?.getView();
+    const source = layer.getSource();
+    if (!view || !source) { this.zone.run(() => this.limpiarHover()); return; }
+    const resolution = view.getResolution();
+    if (!resolution) { this.zone.run(() => this.limpiarHover()); return; }
+    // Una sola consulta simultánea: guardamos la última posición y salimos.
+    if (this.hoverInfoEnCurso > 0) {
+      this.hoverInfoPendiente = { coordinate: [...coordinate], pixel: [pixelX, pixelY] };
+      return;
+    }
+    // Micro-movimiento sobre una zona ya consultada: no repetimos la llamada.
+    if (this.esMovimientoInsignificante(coordinate, resolution)) return;
+    const url = source.getFeatureInfoUrl(coordinate, resolution, view.getProjection(), MapService.FEATURE_INFO_PARAMS);
+    if (!url) { this.zone.run(() => this.ocultarHover()); return; }
+    this.hoverUltimaConsulta = { coordinate: [...coordinate], resolution };
+    const requestId = ++this.hoverRequestId;
+    this.hoverInfoEnCurso++;
+    this.http.get<WfsResponse>(url).pipe(take(1)).subscribe({
+      next: response => {
+        this.hoverInfoEnCurso = Math.max(0, this.hoverInfoEnCurso - 1);
+        const feature = response?.features?.[0];
+        const props = feature?.properties ?? {};
+        const codigo = String(props['id_lote'] ?? props['codlote'] ?? props['codigo_lote'] ?? '').trim();
+        // Guardamos la geometría incluso si la respuesta ya es obsoleta: sirve
+        // para resolver por hit test local las próximas posiciones.
+        if (codigo && codigo !== 'undefined') {
+          this.cachearGeometriaHover(codigo, feature, view.getProjection()?.getCode());
+        }
+        this.zone.run(() => {
+          if (requestId === this.hoverRequestId) {
+            if (codigo && codigo !== 'undefined') {
+              this.mostrarHoverDeLote(codigo, pixelX, pixelY);
+            } else {
+              this.ocultarHover(); // Sin lote bajo el cursor
+            }
+          }
+          this.procesarHoverPendiente(); // Resolvemos la última posición conocida
+        });
+      },
+      error: () => {
+        this.hoverInfoEnCurso = Math.max(0, this.hoverInfoEnCurso - 1);
+        // silencioso: el hover no debe molestar con errores de red
+        this.zone.run(() => this.procesarHoverPendiente());
+      }
+    });
+  }
+
+  /**
+   * Procesa la posición que quedó pendiente mientras había una consulta en
+   * curso. Si esa posición cae dentro de un lote ya cacheado no habrá llamada.
+   */
+  private procesarHoverPendiente(): void {
+    const pendiente = this.hoverInfoPendiente;
+    this.hoverInfoPendiente = null;
+    if (pendiente) this.procesarHover(pendiente.coordinate, pendiente.pixel);
+  }
+
+  /**
+   * Busca en `hoverGeometriasCache` el lote que contiene la coordenada dada
+   * (se comprueba primero el lote actual, que es el caso más frecuente).
+   * @param coordinate Coordenada en la proyección de la vista.
+   * @returns Código del lote encontrado o `null` si el cursor está fuera de
+   * todos los lotes ya consultados.
+   */
+  private buscarLoteEnCacheHover(coordinate: Coordinate): string | null {
+    const actual = this.hoverCodActual;
+    if (actual) {
+      const geometriaActual = this.hoverGeometriasCache.get(actual);
+      if (geometriaActual?.intersectsCoordinate(coordinate)) return actual;
+    }
+    for (const [codigo, geometria] of this.hoverGeometriasCache) {
+      if (codigo === actual) continue;
+      if (geometria.intersectsCoordinate(coordinate)) return codigo;
+    }
+    return null;
+  }
+
+  /**
+   * Guarda la geometría del lote (en la proyección de la vista) para el hit
+   * test local. La caché es FIFO y limitada (`HOVER_MAX_GEOMETRIAS`) para no
+   * crecer sin control al recorrer todo el distrito.
+   */
+  private cachearGeometriaHover(codigo: string, feature: GeoJSONFeature | undefined, srsVista?: string): void {
+    if (!feature?.geometry) return;
+    try {
+      const geometria = new GeoJSON().readGeometry(feature.geometry, {
+        dataProjection: srsVista,
+        featureProjection: srsVista
+      });
+      if (!geometria) return;
+      this.hoverGeometriasCache.set(codigo, geometria);
+      if (this.hoverGeometriasCache.size > MapService.HOVER_MAX_GEOMETRIAS) {
+        const masAntigua = this.hoverGeometriasCache.keys().next().value;
+        if (masAntigua !== undefined) this.hoverGeometriasCache.delete(masAntigua);
+      }
+    } catch {
+      // Geometría no interpretable: ese lote se seguirá resolviendo por red
+    }
+  }
+
+  /**
+   * Muestra (o actualiza) el popup del lote indicado: mueve la posición junto
+   * al cursor y consulta los datos del API solo la primera vez por lote
+   * (`loteDatosCache` evita repetir la llamada a listar-datos-lote).
+   */
+  private mostrarHoverDeLote(codigo: string, x: number, y: number): void {
+    // Evitamos re-renderizar cuando no cambió ni el lote ni la posición exacta
+    const posicionActual = this.loteHoverPosicion();
+    if (codigo === this.hoverCodActual && posicionActual?.x === x && posicionActual?.y === y) return;
+    this.loteHoverPosicion.set({ x, y });
+    if (codigo === this.hoverCodActual) return; // Mismo lote: solo movemos el popup
+    this.hoverCodActual = codigo;
+    const cacheado = this.loteDatosCache.get(codigo);
+    if (cacheado) {
+      this.loteHoverDatos.set(cacheado);
+      this.loteHoverCargando.set(false);
+      return;
+    }
+    this.loteHoverDatos.set(null);
+    this.loteHoverCargando.set(true);
+    this.listarDatosLote(codigo).pipe(take(1)).subscribe(datos => {
+      if (datos) this.loteDatosCache.set(codigo, datos);
+      // Si el cursor ya se movió a otro lote, descartamos la respuesta tardía
+      if (this.hoverCodActual === codigo) {
+        this.loteHoverDatos.set(datos);
+        this.loteHoverCargando.set(false);
+      }
+    });
+  }
+
+  /**
+   * Indica si la coordenada está tan cerca de la última consulta que no merece
+   * una nueva llamada al servicio (evita repetir la petición con el temblor
+   * natural del puntero). Se compara en unidades de mapa usando la resolución
+   * actual, es decir, en píxeles de pantalla.
+   */
+  private esMovimientoInsignificante(coordinate: Coordinate, resolution: number): boolean {
+    const ultima = this.hoverUltimaConsulta;
+    if (!ultima) return false;
+    if (ultima.resolution !== resolution) return false; // Cambió el zoom: consultamos
+    const dx = coordinate[0] - ultima.coordinate[0];
+    const dy = coordinate[1] - ultima.coordinate[1];
+    const minimo = resolution * MapService.HOVER_MIN_PIXELES;
+    return Math.sqrt(dx * dx + dy * dy) < minimo;
+  }
+
+  /** Oculta el popup hover sin invalidar las consultas en curso. */
+  private ocultarHover(): void {
+    this.hoverCodActual = null;
+    this.loteHoverDatos.set(null);
+    this.loteHoverCargando.set(false);
+    this.loteHoverPosicion.set(null);
+  }
+
+  /** Oculta el popup hover y resetea el estado de las consultas del hover. */
+  private limpiarHover(): void {
+    this.hoverRequestId++;
+    this.hoverInfoPendiente = null;
+    this.hoverUltimaConsulta = null;
+    this.ocultarHover();
+  }
+
 
   /**
    * Registra el evento de clic simple. Si se está usando una herramienta de
@@ -1137,6 +1591,13 @@ export class MapService {
     this.senaleticaImgLoaded.set(false);
     this.senaleticaImgError.set(false);
   }
+  /**
+   * Cierra el modal de la lámina de sección vial normativa metropolitana
+   * (ORD. N° 2343-MML).
+   */
+  clearLaminaSeccionVialMetro(): void {
+    this.laminaSeccionVialMetro.set(null);
+  }
   /** Señal que indica si la fotografía de la señaletica (2026) se cargó correctamente. */
   senaleticaImgLoaded = signal<boolean>(false);
   /** Señal que indica si la fotografía de la señaletica (2026) no pudo cargarse. */
@@ -1158,10 +1619,7 @@ export class MapService {
    */
   drawSearchMarker(geometry: GeoJSONGeometry, text?: string): void {
     const map = this._map();
-    if (!map || !this.searchMarkerElement) {
-      console.warn('El marcador de búsqueda no se puede dibujar porque el elemento no ha sido registrado en MapService.');
-      return;
-    }
+    if (!map || !geometry) return;
     const view = map.getView();
     const format = new GeoJSON();
     // Le indicamos a OL que la data viene en 32718 y la transforme a la proyección del mapa
@@ -1169,8 +1627,52 @@ export class MapService {
       dataProjection: 'EPSG:32718',
       featureProjection: view.getProjection()
     });
-    const center = getCenter(olGeometry.getExtent());
-
+    if (!olGeometry) return;
+    this.colocarMarcadorBusqueda(getCenter(olGeometry.getExtent()), text);
+  }
+  /**
+   * Coloca el marcador de búsqueda (pin) en el centro del área encontrada a
+   * partir de la extensión unida de TODAS las geometrías que la componen (por
+   * ejemplo los polígonos de un parque). Replica el comportamiento de la
+   * búsqueda de lotes, donde el pin queda en el centro del predio encontrado.
+   * @param geometrias Geometrías GeoJSON (EPSG:32718) que componen el área.
+   * @param text Texto opcional para mostrar en el marcador.
+   */
+  drawSearchMarkerForParque(geometrias: GeoJSONGeometry[], text?: string): void {
+    const map = this._map();
+    // Solo consideramos geometrías válidas: con 'coordinates' (simples) o
+    // 'geometries' (colecciones).
+    const validas = (geometrias ?? []).filter(g => !!g && (!!g.coordinates || !!g.geometries));
+    if (!map || validas.length === 0) return;
+    const view = map.getView();
+    const format = new GeoJSON();
+    let extent: number[] | undefined;
+    for (const geometria of validas) {
+      const geometryOl = format.readGeometry(geometria, {
+        dataProjection: 'EPSG:32718',
+        featureProjection: view.getProjection()
+      });
+      if (!geometryOl) continue;
+      // Unimos la extensión de cada polígono para centrar el pin en el área
+      // completa del parque, no en uno solo de sus polígonos.
+      extent = extent ? extend(extent, geometryOl.getExtent()) : geometryOl.getExtent();
+    }
+    if (!extent || isEmpty(extent)) return;
+    this.colocarMarcadorBusqueda(getCenter(extent), text);
+  }
+  /**
+   * Ubica el pin del marcador de búsqueda en la coordenada indicada, creando
+   * el overlay la primera vez. Centraliza la lógica compartida por la búsqueda
+   * de lotes (una geometría) y la de parques (varias geometrías).
+   * @param center Coordenada (proyección de la vista) donde ubicar el pin.
+   * @param text Texto opcional del marcador.
+   */
+  private colocarMarcadorBusqueda(center: Coordinate, text?: string): void {
+    const map = this._map();
+    if (!map || !this.searchMarkerElement) {
+      console.warn('El marcador de búsqueda no se puede dibujar porque el elemento no ha sido registrado en MapService.');
+      return;
+    }
     if (!this.searchMarkerOverlay) {
       this.searchMarkerOverlay = new Overlay({
         element: this.searchMarkerElement,
@@ -1262,6 +1764,10 @@ export class MapService {
   /**
    * Desplaza un punto (lon, lat) en metros en coordenadas proyectadas (EPSG:3857)
    * dx: desplazamiento en metros hacia el este (+), dy: hacia el norte (+)
+   *
+   * OJO: devuelve [lon, lat] en grados (EPSG:4326). NO sirve para
+   * `Overlay.setPosition`, que exige la proyección de la vista; para eso usar
+   * `fromLonLat([lon, lat], map.getView().getProjection())`.
    */
   offsetLonLat(lon: number, lat: number, dx = 0, dy = 0): [number, number] {
     // Transformar a EPSG:3857, aplicar desplazamiento en metros y volver a EPSG:4326
@@ -1364,6 +1870,9 @@ export class MapService {
    * @param layerId ID de la capa a cambiar (ej: 'ortofoto_2024').
    */
   toggleLayerVisibility(sectionId: string, layerId: string) {
+    // Se guarda cuántas simbologías había activas para saber si esta acción
+    // acaba de encender leyenda y mostrar la ventana automáticamente.
+    const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
     // Lógica especial para ortofotos: solo una puede estar activa a la vez.
     if (layerId.startsWith('ortofoto_')) {
       this.sections.update(currentSections => {
@@ -1396,9 +1905,14 @@ export class MapService {
       // Lógica original para el resto de las capas.
       this.updateLayerProperties(layerId, (layer) => ({ visible: !layer.visible }));
     }
+    // La leyenda aparece sola al encender una capa con simbología (y se oculta
+    // al apagar la última): ver `sincronizarLeyendaConCapas`.
+    this.sincronizarLeyendaConCapas(simbologiaAntes);
   }
   setLayerVisibility(sectionId: string, layerId: string, visible: boolean) {
+    const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
     this.updateLayerProperties(layerId, { visible });
+    this.sincronizarLeyendaConCapas(simbologiaAntes);
   }
   setLayerOpacity(sectionId: string, layerId: string, opacity: number) {
     this.updateLayerProperties(layerId, { opacity });
@@ -1453,6 +1967,7 @@ export class MapService {
    * `requiresAuth`: en modo público esas capas permanecen apagadas.
    */
   toggleAllLayersInSection(sectionId: string, visible: boolean) {
+    const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
     const isAuthed = this.authService.isAuthenticated();
     this.sections.update(s => s.map(sec => {
       if (sec.id !== sectionId) return sec;
@@ -1475,6 +1990,7 @@ export class MapService {
         }),
       };
     }));
+    this.sincronizarLeyendaConCapas(simbologiaAntes);
   }
 
   /**
@@ -1552,6 +2068,78 @@ export class MapService {
 
   }
   /**
+   * Encuadra en el mapa TODA la extensión de un área encontrada (por ejemplo un
+   * parque o área recreacional compuesto por uno o varios polígonos) y resalta
+   * cada uno de sus polígonos.
+   *
+   * Se usa en lugar de `fitToGeometry` cuando la búsqueda devuelve varias
+   * geometrías de un mismo elemento porque:
+   *  - une la extensión de TODAS ellas, de modo que el zoom resultante abarca el
+   *    área completa y no solo uno de sus polígonos,
+   *  - añade un margen del 8 % por lado, para que el perímetro completo del área
+   *    quede visible y no pegado a los bordes de la vista,
+   *  - limita el acercamiento con `maxZoom`, para no perder el contexto del
+   *    entorno cuando el área es pequeña,
+   *  - reserva espacio superior para el navbar y dibuja cada polígono como
+   *    feature independiente en la capa de resaltado de búsquedas.
+   * @param geometrias Geometrías GeoJSON (EPSG:32718) que componen el área.
+   * @param maxZoom Tope de acercamiento del ajuste de vista (por defecto `ZOOM_MAX_PARQUE`).
+   */
+  fitToParque(geometrias: GeoJSONGeometry[], maxZoom = ZOOM_MAX_PARQUE): void {
+    const map = this._map();
+    // Solo consideramos geometrías válidas: con 'coordinates' (simples) o
+    // 'geometries' (colecciones).
+    const validas = (geometrias ?? []).filter(g => !!g && (!!g.coordinates || !!g.geometries));
+    if (!map || validas.length === 0) return;
+
+    // Limpiamos cualquier resaltado anterior para evitar confusiones
+    this.clearHighlightLayer();
+
+    const format = new GeoJSON();
+    const view = map.getView();
+    const source = this.highlightLayer?.getSource();
+    let extent: number[] | undefined;
+
+    for (const geometria of validas) {
+      const geometryOl = format.readGeometry(geometria, {
+        dataProjection: 'EPSG:32718',
+        featureProjection: view.getProjection()
+      });
+      if (!geometryOl) continue;
+      // Resaltamos el polígono del área en la capa de resaltado de búsquedas
+      source?.addFeature(new Feature({ geometry: geometryOl }));
+      // Unimos la extensión de cada polígono para encuadrar el área completa:
+      // así el zoom comprende todo lo que abarca el parque encontrado.
+      extent = extent ? extend(extent, geometryOl.getExtent()) : geometryOl.getExtent();
+    }
+    if (!extent || isEmpty(extent)) return;
+
+    // Cuando el buscador solo aporta el centroide del área (Point) la extensión
+    // no tiene tamaño; un zoom máximo dejaría el parque sin contexto, así que lo
+    // limitamos para que se aprecie el entorno de la ubicación encontrada.
+    const soloCentroides = validas.every(geometria => geometria.type === 'Point');
+    const topeZoom = soloCentroides ? Math.min(maxZoom, ZOOM_MAX_PARQUE_CENTROIDE) : maxZoom;
+
+    // Margen proporcional (8 % del lado mayor) alrededor del área, para que su
+    // perímetro quede holgado dentro de la ventana del mapa.
+    const margen = Math.max(extent[2] - extent[0], extent[3] - extent[1]) * 0.08;
+    const extentConMargen: number[] = [
+      extent[0] - margen,
+      extent[1] - margen,
+      extent[2] + margen,
+      extent[3] + margen
+    ];
+
+    view.fit(extentConMargen, {
+      duration: ANIMATION_DURATION,
+      // El panel de consultas se cierra al ubicar el parque, por lo que el
+      // margen es simétrico (no se reserva espacio lateral para el sidebar);
+      // el superior es mayor para no quedar bajo el navbar.
+      padding: [110, 90, 90, 90],
+      maxZoom: topeZoom
+    });
+  }
+  /**
    * Busca un lote por su código catastral (id_lote) consultando el servicio WFS de GeoServer.
    * @param codigo Código catastral en formato XX-XXX-XXX
    * @returns Observable con el feature encontrado o null
@@ -1619,7 +2207,7 @@ export class MapService {
    * @param partialName El nombre parcial de la habilitación.
    * @returns Un Observable con un array de nombres de habilitaciones únicos.
    */
-  searchHabilitaciones(partialName: string): Observable<GeoJSONFeature[] | null> {
+  searchHabilitaciones(partialName: string, esSugerencia = false): Observable<GeoJSONFeature[] | null> {
     const url = environment.geoserver.owsUrl;
     const workspacePrefix = environment.geoserver.workspacePrefix;
     const params = new HttpParams()
@@ -1631,7 +2219,12 @@ export class MapService {
       .set('srsName', 'EPSG:32718')
       .set('cql_filter', `urbanizaci ILIKE '%${partialName.trim().toUpperCase()}%'`);
 
-    return this.http.get<WfsResponse>(url, { params }).pipe(
+    // `esSugerencia` marca el autocompletado (texto que se va tecleando): esas
+    // consultas no son una búsqueda del usuario y no se auditan.
+    const opciones = esSugerencia
+      ? { context: new HttpContext().set(SIN_AUDITORIA, true) }
+      : undefined;
+    return this.http.get<WfsResponse>(url, { params, ...opciones }).pipe(
       map(response => {
         if (response?.features?.length > 0) {
           // Para evitar duplicados, creamos un mapa de habilitaciones únicas
@@ -1716,13 +2309,22 @@ export class MapService {
     );
   }
   /**
-   * Busca un parque por su nombre consultando el servicio WFS de GeoServer.
-   * @param nombre_parque Nombre del parque a buscar.
+   * Busca áreas recreacionales (parques) por su denominación consultando el
+   * servicio WFS de GeoServer.
+   * @param denominacion Denominación del parque a buscar.
+   * @param exactMatch Si es `true`, exige coincidencia exacta (sin distinguir
+   *   mayúsculas/minúsculas) y devuelve solo los polígonos que componen el
+   *   parque solicitado, lo que permite encuadrarlo con un zoom ajustado. Con
+   *   `false` (por defecto) busca coincidencias parciales, comportamiento que
+   *   alimenta el autocompletado del campo "Nombre del Parque".
    * @returns Un Observable con un array de features encontrados o null.
    */
-  searchParquesByDenominacion(denominacion: string): Observable<GeoJSONFeature[] | null> {
+  searchParquesByDenominacion(denominacion: string, exactMatch = false, esSugerencia = false): Observable<GeoJSONFeature[] | null> {
     const url = environment.geoserver.owsUrl;
     const workspacePrefix = environment.geoserver.workspacePrefix;
+    // Normalizamos a mayúsculas (el API compara así) y escapamos las comillas
+    // simples para no romper el cql_filter (p. ej. "PARQUE O'HIGGINS").
+    const nombre = denominacion.trim().toUpperCase().replace(/'/g, "''");
     const params = new HttpParams()
       .set('service', 'WFS')
       .set('version', '1.1.0')
@@ -1730,8 +2332,17 @@ export class MapService {
       .set('typeName', `${workspacePrefix}vw_tg_area_rec_nombres`)
       .set('outputFormat', 'application/json')
       .set('srsName', 'EPSG:32718')
-      .set('cql_filter', `denominaci ILIKE '%${denominacion.trim().toUpperCase()}%'`);
-    return this.http.get<WfsResponse>(url, { params }).pipe(
+      // ILIKE sin comodines equivale a una igualdad que ignora mayúsculas y
+      // minúsculas: trae únicamente los polígonos del parque buscado.
+      .set('cql_filter', exactMatch
+        ? `denominaci ILIKE '${nombre}'`
+        : `denominaci ILIKE '%${nombre}%'`);
+    // `esSugerencia` marca el autocompletado: esas consultas son el texto que se
+    // va tecleando, no una búsqueda del usuario, y no se auditan (ver SIN_AUDITORIA).
+    const opciones = esSugerencia
+      ? { context: new HttpContext().set(SIN_AUDITORIA, true) }
+      : undefined;
+    return this.http.get<WfsResponse>(url, { params, ...opciones }).pipe(
       map((response) => {
         if (response?.features?.length > 0) {
           return response.features;
@@ -1741,29 +2352,122 @@ export class MapService {
     );
   }
   /**
-   * Busca un lote por su Código Único Catastral (CUC) consultando el servicio WFS de GeoServer.
-   * @param cuc Código Único Catastral
-   * @returns Observable con el feature encontrado o null
+   * Busca el área recreativa (parque) que CONTIENE un punto del mapa.
+   *
+   * La capa que alimenta el buscador de parques (`vw_tg_area_rec_nombres`) solo
+   * guarda el centroide de cada área como geometría `Point`, por lo que no sirve
+   * para resaltar el parque (un `Point` no se dibuja con estilos de polígono).
+   * Esta consulta localiza por INTERSECCIÓN ESPACIAL el polígono de
+   * `vw_tg_area_rec` que engloba ese centroide. Se intersecciona (en lugar de
+   * comparar nombres) porque los nombres de ambas capas no coinciden
+   * literalmente: el buscador ofrece "Bosque El Olivar" y los polígonos usan
+   * "EL OLIVAR", de modo que la intersección funciona con cualquier parque y no
+   * depende de cómo esté escrito su nombre.
+   *
+   * @param punto Coordenada del centroide del parque en EPSG:32718.
+   * @returns Observable con la denominación del área encontrada, o `null`.
    */
-  searchLoteByCuc(cuc: string): Observable<GeoJSONFeature | null> {
+  searchAreaRecreativaEnPunto(punto: Coordinate): Observable<string | null> {
+    const x = Number(punto?.[0]);
+    const y = Number(punto?.[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return of(null);
     const url = environment.geoserver.owsUrl;
-    const cucLimpio = cuc.trim();
+    const workspacePrefix = environment.geoserver.workspacePrefix;
     const params = new HttpParams()
       .set('service', 'WFS')
       .set('version', '1.1.0')
       .set('request', 'GetFeature')
-      .set('typeName', 'mdsibde2026:vw_tg_lote')
+      .set('typeName', `${workspacePrefix}vw_tg_area_rec`)
       .set('outputFormat', 'application/json')
       .set('srsName', 'EPSG:32718')
-      .set('cql_filter', `cuc = '${cucLimpio}'`);
+      // Solo necesitamos el nombre del área: la respuesta es mínima.
+      .set('propertyName', 'denominaci')
+      .set('maxFeatures', '1')
+      // El filtro espacial exige declarar el SRID del punto buscado.
+      .set('cql_filter', `INTERSECTS(geom,SRID=32718;POINT(${x} ${y}))`);
     return this.http.get<WfsResponse>(url, { params }).pipe(
-      map((response) => {
-        if (response?.features?.length > 0) {
-          return response.features[0];
-        }
-        return null;
+      map(response => String(response?.features?.[0]?.properties?.['denominaci'] ?? '').trim() || null)
+    );
+  }
+  /**
+   * Devuelve las geometrías de TODOS los polígonos que componen un área
+   * recreativa (parque), para poder resaltar su superficie completa en el mapa.
+   * @param denominacion Denominación exacta del área (`denominaci` en `vw_tg_area_rec`).
+   * @returns Observable con las geometrías en EPSG:32718, o `null` si no hay ninguna.
+   */
+  searchGeometriasAreaRecreativa(denominacion: string): Observable<GeoJSONGeometry[] | null> {
+    // Escapamos las comillas simples para no romper el cql_filter.
+    const nombre = denominacion.trim().replace(/'/g, "''");
+    if (!nombre) return of(null);
+    const url = environment.geoserver.owsUrl;
+    const workspacePrefix = environment.geoserver.workspacePrefix;
+    const params = new HttpParams()
+      .set('service', 'WFS')
+      .set('version', '1.1.0')
+      .set('request', 'GetFeature')
+      .set('typeName', `${workspacePrefix}vw_tg_area_rec`)
+      .set('outputFormat', 'application/json')
+      .set('srsName', 'EPSG:32718')
+      // Pedimos solo la geometría: un área puede agrupar cientos de polígonos
+      // (el Bosque El Olivar, 326) y así la respuesta pesa bastante menos.
+      .set('propertyName', 'geom')
+      .set('cql_filter', `denominaci = '${nombre}'`);
+    return this.http.get<WfsResponse>(url, { params }).pipe(
+      map(response => {
+        const geometrias = (response?.features ?? [])
+          .map(feature => feature.geometry)
+          .filter((geometria): geometria is GeoJSONGeometry => !!geometria);
+        return geometrias.length > 0 ? geometrias : null;
       })
     );
+  }
+  /**
+   * Resuelve las geometrías con las que se resalta un parque encontrado por su
+   * nombre:
+   *  - Si el buscador devolvió centroides (`Point`, capa `vw_tg_area_rec_nombres`),
+   *    intenta localizar el área poligonal real en `vw_tg_area_rec` y devuelve sus
+   *    polígonos, de modo que el parque quede resaltado con su superficie.
+   *  - Si no hay área poligonal (o el servicio falla), devuelve los centroides,
+   *    con los que el mapa igualmente ubica y señala el parque con el pin.
+   * @param centroides Geometrías devueltas por el buscador de parques.
+   */
+  resolverGeometriasParque(centroides: GeoJSONGeometry[]): Observable<GeoJSONGeometry[]> {
+    const respaldo = (centroides ?? []).filter(geometria => !!geometria);
+    const centroide = respaldo.find(geometria =>
+      geometria.type === 'Point'
+      && Array.isArray(geometria.coordinates)
+      && geometria.coordinates.length >= 2);
+    if (!centroide) return of(respaldo);
+    const punto: Coordinate = [Number(centroide.coordinates?.[0]), Number(centroide.coordinates?.[1])];
+    return this.searchAreaRecreativaEnPunto(punto).pipe(
+      switchMap(denominacion => denominacion
+        ? this.searchGeometriasAreaRecreativa(denominacion)
+        : of(null)),
+      map(geometrias => (geometrias && geometrias.length > 0) ? geometrias : respaldo),
+      // Ante cualquier fallo del servicio de polígonos seguimos con el centroide:
+      // ubicar el parque es más importante que resaltar su superficie.
+      catchError(() => of(respaldo))
+    );
+  }
+  /**
+   * Busca predios por Código Único Catastral (CUC) (`busqueda-cuc`).
+   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
+   * de reintentos del Geovisor.
+   * @param cuc Código Único Catastral (8 dígitos).
+   * @returns Observable con la lista de coincidencias `{ txtcuc, txtpropietario, codlote, ... }`.
+   */
+  buscarPorCuc(cuc: string): Observable<CucResultado[]> {
+    return this.apisService.buscarPorCuc(cuc);
+  }
+  /**
+   * Busca predios por Código Predial (`busqueda-codpredial`).
+   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
+   * de reintentos del Geovisor.
+   * @param codigoPredial Código de predio (ej. '270543112').
+   * @returns Observable con la lista de coincidencias `{ txtcodipredrent, txtcuc, txttitular, codlote, ... }`.
+   */
+  buscarPorCodPredial(codigoPredial: string): Observable<CodPredialResultado[]> {
+    return this.apisService.buscarPorCodPredial(codigoPredial);
   }
   /**
    * Busca y devuelve una capa de OpenLayers por su ID asignado en la configuración.
@@ -1771,6 +2475,7 @@ export class MapService {
    * @returns La instancia de la capa de OpenLayers o `undefined` si no se encuentra.
    */
   private getLayerById(id: string): ImageLayer<ImageWMS> | undefined {
+    // 1) Búsqueda declarativa: capas registradas en el panel (control de capas)
     for (const section of this.sections()) {
       for (const item of section.items) {
         const layers = 'layers' in item ? item.layers : (item.type === 'layer' ? [item] : []);
@@ -1780,59 +2485,52 @@ export class MapService {
         }
       }
     }
+    // 2) Respaldo: capas agregadas directamente al mapa desde INITIAL_WMS_LAYERS
+    //    pero sin declaración en el panel (p. ej. 'lote', capa de fondo que
+    //    alimenta el popup de información del lote y el pick de impresión).
+    const map = this._map();
+    if (map) {
+      for (const layer of map.getLayers().getArray()) {
+        if (layer.get('id') === id && layer instanceof ImageLayer) {
+          return layer;
+        }
+      }
+    }
     return undefined;
   }
   /**
-   * Lista los números de vía (numeraciones) para un código de vía dado,
-   * consultando el API del Geovisor municipal.
-   * Estrategia de reintentos en orden:
-   *  1) Ruta relativa "/WSGEOVISOR/..." (same-origin: proxy de desarrollo o
-   *     el propio host municipal donde esté desplegada la app).
-   *  2) Host de pruebas: https://test.munisanisidro.gob.pe
-   *  3) Host de producción: https://www.munisanisidro.gob.pe
-   * Si todos fallan, propaga el error (no devuelve vacío) para que la UI
-   * pueda distinguir "sin resultados" de "sin conexión".
+   * Lista los números de vía (numeraciones) para un código de vía dado
+   * (`listar-via-numero`). Delegado en `ApisService`, que centraliza los
+   * endpoints y la estrategia de reintentos del Geovisor.
    * @param codVia El código de la vía (ej. 'L271170').
-   * @returns Un Observable con un array de registros { numero, codlote, codlotenumero }.
+   * @returns Un Observable con un array de registros `{ numero, codlote, codlotenumero }`.
    */
   listarViaNumeros(codVia: string): Observable<ViaNumero[]> {
-    const path = '/WSGEOVISOR/api/geovisor/listar-via-numero';
-    const hosts = [
-      '', // 1) Ruta relativa (same-origin / proxy de desarrollo)
-      'https://test.munisanisidro.gob.pe', // 2) Host de pruebas
-      'https://www.munisanisidro.gob.pe' // 3) Host de producción
-    ];
-    const params = new HttpParams().set('pvcCODVIA', codVia.trim());
-    const request = (url: string): Observable<ViaNumero[]> =>
-      this.http.get<ViaNumero[] | ViaNumero>(url ? url + path : path, { params }).pipe(
-        map(response => {
-          if (Array.isArray(response)) return response;
-          // La respuesta del API viene envuelta: { status: 200, data: [...] }
-          if (response && typeof response === 'object') {
-            const wrapped = response as any;
-            if (Array.isArray(wrapped.data)) return wrapped.data;
-            if (Array.isArray(wrapped.result)) return wrapped.result;
-            return [response as ViaNumero];
-          }
-          return [];
-        })
-      );
-    // Encadenamos los intentos: pasamos al siguiente host solo si el anterior falla
-    return request(hosts[0]).pipe(
-      catchError(err => {
-        console.warn('listarViaNumeros: falló intento (ruta relativa), reintentando con test.munisanisidro.gob.pe', err);
-        return request(hosts[1]);
-      }),
-      catchError(err => {
-        console.warn('listarViaNumeros: falló intento (test), reintentando con www.munisanisidro.gob.pe', err);
-        return request(hosts[2]);
-      }),
-      catchError(err => {
-        console.error('listarViaNumeros: fallaron todos los intentos de conexión', err);
-        return throwError(() => err);
-      })
-    );
+    return this.apisService.listarViaNumeros(codVia);
   }
+
+  /**
+   * Busca titulares catastrales por apellido o razón social
+   * (`busqueda-titular-catastral`). Delegado en `ApisService`, que centraliza
+   * los endpoints y la estrategia de reintentos del Geovisor.
+   * @param razonSocial Apellido o razón social (búsqueda parcial).
+   * @returns Observable con la lista de coincidencias `{ txttitular, codlote }`.
+   */
+  buscarTitularCatastral(razonSocial: string): Observable<TitularCatastral[]> {
+    return this.apisService.buscarTitularCatastral(razonSocial);
+  }
+
+  /**
+   * Busca predios por Denominación del Predio (`busqueda-denominacion-lote`).
+   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
+   * de reintentos del Geovisor.
+   * @param denominacion Denominación del predio (búsqueda parcial).
+   * @returns Observable con la lista de coincidencias `{ codlote, txtdenominacion, txtdirecprincipal, ... }`.
+   */
+  buscarDenominacionLote(denominacion: string): Observable<DenominacionLoteResultado[]> {
+    return this.apisService.buscarDenominacionLote(denominacion);
+  }
+
   /**
    * Busca vías en el servicio WFS. Puede buscar por nombre parcial (para autocompletar)
    * o por nombre exacto (para obtener la geometría).
@@ -1873,44 +2571,54 @@ export class MapService {
     );
   }
   /**
-   * Busca vías por nombre parcial (para el autocompletado) y devuelve también
-   * el código de vía (cod_via) de cada resultado, necesario para consultar las
-   * numeraciones del API listar-via-numero del Geovisor municipal.
-   * @param query El nombre (parcial) de la vía a buscar.
-   * @returns Un Observable con un array de sugerencias { etiqueta, codVia }.
+   * Resuelve la geometría de una vía a partir de los códigos que devuelve el
+   * API `listar-vias`.
+   *
+   * El API entrega `codviaequ` (ej. 'L271170') y `codvia` (ej. '1170'); estos
+   * corresponden a los campos `codi_via` ('L271170') y `codi_via2` ('1170') del
+   * WFS `vw_tg_via`, que es donde están los segmentos dibujados de la vía. Por
+   * eso la búsqueda por dirección consulta primero el API (fuente de verdad de
+   * los nombres) y luego usa estos códigos para resaltar la vía en la gráfica.
+   *
+   * @param vias Vías devueltas por `ApisService.listarVias`.
+   * @returns Observable con los features de la vía (varios segmentos), o `null`
+   *   si ninguna de las vías indicadas tiene geometría en la cartografía.
    */
-  searchViasConCodigo(query: string): Observable<ViaSugerencia[]> {
-    if (!query || query.trim().length < 3) {
-      return new Observable(subscriber => subscriber.next([]));
-    }
-    // Mismo comportamiento de normalización que searchVias
-    const normalizedQuery = query.trim().toUpperCase().replace(/^CA\s/, 'CA. ').replace(/^CA\./, 'CA.');
+  buscarGeometriaPorCodigosVia(vias: ViaApi[]): Observable<GeoJSONFeature[] | null> {
+    const codigos = Array.from(new Set(
+      (vias ?? [])
+        .flatMap(via => [String(via.codviaequ ?? '').trim(), String(via.codvia ?? '').trim()])
+        .filter(codigo => !!codigo)
+    ));
+    if (codigos.length === 0) return of(null);
     const url = environment.geoserver.owsUrl;
+    const workspacePrefix = environment.geoserver.workspacePrefix;
+    // Buscamos en ambos campos (codi_via con el prefijo 'L' y codi_via2 sin él)
+    // para no depender de cuál de los dos códigos trae completos cada registro.
+    const filtros = ['codi_via', 'codi_via2']
+      .map(campo => codigos.map(codigo => `${campo} = '${codigo}'`).join(' OR '))
+      .filter(filtro => filtro.length > 0)
+      .map(filtro => `(${filtro})`)
+      .join(' OR ');
     const params = new HttpParams()
       .set('service', 'WFS')
       .set('version', '1.1.0')
       .set('request', 'GetFeature')
-      .set('typeName', `${environment.geoserver.workspacePrefix}vw_tg_via`)
+      .set('typeName', `${workspacePrefix}vw_tg_via`)
       .set('outputFormat', 'application/json')
       .set('srsName', 'EPSG:32718')
-      .set('propertyName', 'etiquetado_ext,codi_via')
-      .set('cql_filter', `etiquetado_ext ILIKE '%${normalizedQuery}%'`);
+      .set('maxFeatures', '9999')
+      .set('cql_filter', filtros);
     return this.http.get<WfsResponse>(url, { params }).pipe(
       map(response => {
-        if (!response?.features) return [];
-        // Devolvemos pares únicos etiqueta+codigo
-        const seen = new Set<string>();
-        const suggestions: ViaSugerencia[] = [];
-        for (const f of response.features) {
-          const etiqueta = String(f.properties['etiquetado_ext'] ?? '').trim();
-          const codVia = String(f.properties['codi_via'] ?? '').trim();
-          const key = `${etiqueta}|${codVia}`;
-          if (etiqueta && codVia && !seen.has(key)) {
-            seen.add(key);
-            suggestions.push({ etiqueta, codVia });
-          }
+        if (!response?.features?.length) return null;
+        // Un mismo segmento puede venir duplicado por coincidir en ambos campos;
+        // lo eliminamos por identificador de feature para no dibujar dos veces.
+        const unicos = new Map<string, GeoJSONFeature>();
+        for (const feature of response.features) {
+          unicos.set(String(feature.id ?? unicos.size), feature);
         }
-        return suggestions;
+        return Array.from(unicos.values());
       })
     );
   }
@@ -2007,6 +2715,18 @@ export class MapService {
             new Style({ stroke: new Stroke({ color: 'rgba(255, 193, 7, 0.45)', width: 12 }) }),
             new Style({ stroke: new Stroke({ color: '#ff8f00', width: 5 }) }),
           ];
+        }
+        // Puntos (centroides de áreas recreativas): un estilo con `stroke` y
+        // `fill` NO dibuja nada sobre un Point, así que las áreas de las que
+        // solo se conoce su centroide se señalan con un círculo verde.
+        if (geometryType === 'Point' || geometryType === 'MultiPoint') {
+          return new Style({
+            image: new Circle({
+              radius: 10,
+              fill: new Fill({ color: 'rgba(70, 87, 15, 0.25)' }),
+              stroke: new Stroke({ color: '#46570f', width: 3 }),
+            }),
+          });
         }
         return new Style({
           stroke: new Stroke({
