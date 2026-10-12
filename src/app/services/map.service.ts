@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
 import { easeOut } from 'ol/easing';
 import type { Coordinate } from 'ol/coordinate';
 import type Geometry from 'ol/geom/Geometry';
-import { Observable, map, take, switchMap, catchError, of } from 'rxjs';
+import { Observable, map, take, switchMap, catchError, of, throwError } from 'rxjs';
 
 import { ORTOFOTO_YEARS } from '../interfaces/ortofotos';
 import { LAYER_PANEL_SECTIONS } from '../interfaces/controlCapasConfig';
