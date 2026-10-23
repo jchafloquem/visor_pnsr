@@ -233,7 +233,7 @@
     class="flex flex-col bg-white rounded-lg shadow-lg w-full max-w-[315px] h-[53%] animate-scale-in pointer-events-auto"
     [style.position]="'fixed'" [style.top.px]="cruceModalPosition().y" [style.left.px]="cruceModalPosition().x"
     [style.transform]="'translate(-50%, -50%)'">
-    <div
+    <div    
       class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg cursor-move select-none touch-none"
       (pointerdown)="startCruceDrag($event)" (pointermove)="dragCruce($event)" (pointerup)="endCruceDrag()"
       (pointercancel)="endCruceDrag()">
