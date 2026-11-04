@@ -60,7 +60,7 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
     // el visor entraba en modo público y la sesión se cerraba sola minutos
     // después. Verificado contra el API de integración: `010004` (el del
     // Geovisor) devuelve el JWT de 60 minutos con sus páginas y controles.
-    codigoSistema: cfg.codigoSistema ?? '010004',
+    codigoSistema: cfg.codigoSistema ?? '010011',
 
     // --- ENCUESTA DE SALIDA ---
     // Se abre en una pestaña nueva cuando el usuario confirma el cierre de sesión
@@ -69,8 +69,8 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
 
     // --- OBSERVATORIO URBANO ---
     // Enlace externo al Observatorio Urbano de la comuna (se abre en otra pestaña).
-    // Vive en el mismo portal municipal del ambiente.
-    observatorioUrl: `https://${host}/WebObservatorioUrbano/`,
+    // URL independiente del portal municipal del ambiente.
+    observatorioUrl: 'https://observatoriourbano.munisanisidro.gob.pe/webobsurb/',
 
     // --- CONFIGURACIÓN DE GEOSERVER ---
     geoserver: {
