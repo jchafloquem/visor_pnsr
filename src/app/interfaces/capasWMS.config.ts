@@ -7,7 +7,7 @@ const wp = environment.geoserver.workspacePrefix;
 const CATASTRALES_LAYERS: WmsLayerConfig[] = [
   // zIndex 0 -> 3: menor valor se dibuja al fondo, mayor valor encima
   { id: 'manzana', layerName: `${wp}vw_tg_manzana`, zIndex: 0, title: 'Manzana Catastral' },
-  { id: 'com-vial', layerName: `${wp}vw_tg_comp_via`, zIndex: 0, title: 'Manzana Catastral' },
+  { id: 'com-vial', layerName: `${wp}vw_tg_comp_via`, zIndex: 0.75, title: 'Manzana Catastral' },
   { id: 'lim-oceano', layerName: `${wp}tg_oceano`, zIndex: 0, title: 'Manzana Catastral' },
   { id: 'manz-vecinas', layerName: `${wp}tg_manzana_colindante`, zIndex: 0, title: 'Manzana Catastral' },
   { id: 'nom-distrito-vecinos', layerName: `${wp}tg_distrito_colin_nombres`, zIndex: 0, title: 'Manzana Catastral' },
@@ -40,8 +40,6 @@ const NOMENCLATURA_SECCIONES: WmsLayerConfig[] = [
 ];
 const NUMERACION_LAYERS: WmsLayerConfig[] = [
   { id: 'num_municipal_2024', layerName: `${wp}vw_numeracion_campo_2024`, zIndex: 3, title: 'Numeración de campo 2024' },
-  { id: 'num_municipal_2022', layerName: `${wp}mv_tg_numeracion_campo_2022`, zIndex: 3, title: 'Numeración de campo 2022' },
-  { id: 'puertas2024', layerName: `${wp}vw_tg_puertas`, zIndex: 3, title: 'Puertas 2024' },
 ];
 const AMBIENTAL_LAYERS: WmsLayerConfig[] = [
   { id: 'arbolado_urbano_2024', layerName: `${wp}vw_arboles_2024`, zIndex: 3, title: 'Árboles 2024' },
@@ -65,6 +63,7 @@ const MOVILIARIO_URBANO: WmsLayerConfig[] = [
   { id: 'cuponeras_2025', layerName: `${wp}cuponeras_2025_set`, zIndex: 3, title: 'Emisión de Cuponeras 2025' },
   { id: 'procesos_2025', layerName: `${wp}ZL_PROCESO_JUDICIAL_AL_2025`, zIndex: 3, title: 'Procesos Judiciales 2025' },
   { id: 'predios_recuperados', layerName: `${wp}PREDIOS_RECUPERADOS_A_SAN_ISIDRO`, zIndex: 3, title: 'Predios recuperados' },
+  { id: 'mobiliario_urbano_elementos_2026', layerName: `${wp}tg_mobiliario_urbano_elementos_2026`, zIndex: 3, title: 'Mobiliario urbano y Elementos del Espacio Público 2026' },
 ];
 const VUELOS_LAYERS: WmsLayerConfig[] = [
   { id: 'lote-ortofoto', layerName: `${wp}vw_tg_lote_ortofoto`, zIndex: 15, title: 'Lote Catastral' },
@@ -155,5 +154,3 @@ export const INITIAL_WMS_LAYERS: WmsLayerConfig[] = [
   ...AGUA_Y_ALCANTARILLADO,
   ...TUSNE
 ];
-
-
