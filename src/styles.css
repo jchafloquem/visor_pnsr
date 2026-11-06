@@ -2,11 +2,13 @@
 @import "bootstrap-icons/font/bootstrap-icons.css";
 @import "material-icons/iconfont/material-icons.css";
 
+@source "./app";
+
 @theme {
-  /* Definición de colores para v4 */
+  /* Tema compartido por los estilos globales y las utilidades de Tailwind. */
   --color-primary: #46570f;
-  --color-secondary: #3C3C3B;  
-  --font-family-poppins: "Poppins", sans-serif;
+  --color-secondary: #3C3C3B;
+  --font-poppins: "Poppins", sans-serif;
   --font-arial: Arial, Helvetica, sans-serif;
 }
 
