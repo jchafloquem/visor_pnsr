@@ -1,4 +1,16 @@
-import { Component, ElementRef, ViewChild, afterNextRender, inject, ChangeDetectorRef, effect, HostListener, signal, ViewEncapsulation } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  afterNextRender,
+  inject,
+  ChangeDetectorRef,
+  effect,
+  HostListener,
+  signal,
+  ViewEncapsulation,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 // Servicios y módulos
@@ -29,7 +41,7 @@ import { Dashboard } from '../dashboard/dashboard';
   imports: [
     CommonModule,
     Navbar,
-    Sidebar,    
+    Sidebar,
     Funciones,
     Login, // Add Login to imports
     Spinner,
@@ -39,6 +51,7 @@ import { Dashboard } from '../dashboard/dashboard';
     Dashboard,
   ],
   templateUrl: './map.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './map.css',
 })
 export class MapComponent {
@@ -63,7 +76,7 @@ export class MapComponent {
   /** Conjunto de ids de ventanas de lote cuyo iframe ya terminó de cargar (para ocultar el spinner). */
   private readonly loteWindowsLoaded = signal<Set<string>>(new Set());
 
-    public readonly mapService = inject(MapService);
+  public readonly mapService = inject(MapService);
   /**
    * Estado de la sesión, expuesto a la plantilla para la notificación de
    * caducidad (aviso previo y aviso de sesión finalizada).
@@ -86,8 +99,18 @@ export class MapComponent {
   /** Posición del modal de manzanas de accesibilidad */
   manzanaModalPosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
   /** Estado de arrastre para los modales */
-  private cruceDragState: { startX: number; startY: number; originX: number; originY: number } | null = null;
-  private manzanaDragState: { startX: number; startY: number; originX: number; originY: number } | null = null;
+  private cruceDragState: {
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null = null;
+  private manzanaDragState: {
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null = null;
 
   constructor() {
     // Usamos un 'effect' para reaccionar a los cambios de la signal 'isReady'.
@@ -120,10 +143,9 @@ export class MapComponent {
 
   /**
    * Escucha la tecla 'Escape' a nivel de documento para cerrar el modal.
-   * @param event El evento de teclado.
    */
-  @HostListener('document:keydown.escape', ['$event'])
-  onKeydownHandler(event: KeyboardEvent) {
+  @HostListener('document:keydown.escape')
+  onKeydownHandler() {
     if (this.mapService.loteInfoWindows().length > 0) {
       this.mapService.closeLastLoteWindow();
     }
@@ -195,7 +217,13 @@ export class MapComponent {
     }
   }
   /** Estado interno del arrastre de una ventana de lote */
-  private loteDragState: { id: string; startX: number; startY: number; originX: number; originY: number } | null = null;
+  private loteDragState: {
+    id: string;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null = null;
 
   /**
    * Inicia el arrastre de una ventana flotante desde su barra de título.
@@ -203,7 +231,13 @@ export class MapComponent {
   startLoteDrag(event: PointerEvent, win: LoteInfoWindow): void {
     if (event.button !== 0) return;
     event.preventDefault(); // Evita seleccionar texto durante el arrastre
-    this.loteDragState = { id: win.id, startX: event.clientX, startY: event.clientY, originX: win.x, originY: win.y };
+    this.loteDragState = {
+      id: win.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: win.x,
+      originY: win.y,
+    };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
@@ -236,7 +270,11 @@ export class MapComponent {
    */
   closeLoteWindow(id: string): void {
     this.mapService.closeLoteWindow(id);
-    this.loteWindowsLoaded.update(s => { const n = new Set(s); n.delete(id); return n; });
+    this.loteWindowsLoaded.update((s) => {
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    });
   }
 
   /**
@@ -256,7 +294,11 @@ export class MapComponent {
     // Si ya estaba registrado, no reescribimos la signal: evita disparar
     // ciclos de detección de cambios innecesarios con cada recarga.
     if (this.loteWindowsLoaded().has(id)) return;
-    this.loteWindowsLoaded.update(s => { const n = new Set(s); n.add(id); return n; });
+    this.loteWindowsLoaded.update((s) => {
+      const n = new Set(s);
+      n.add(id);
+      return n;
+    });
   }
 
   /**
@@ -301,7 +343,11 @@ export class MapComponent {
     const url = this.mapService.cruceAccesibilidadUrl();
     if (url) {
       this.clearIframeError(url);
-      this.iframeLoaded.update(loaded => { const s = new Set(loaded); s.delete(url); return s; });
+      this.iframeLoaded.update((loaded) => {
+        const s = new Set(loaded);
+        s.delete(url);
+        return s;
+      });
     }
     this.mapService.clearCruceAccesibilidadUrl();
   }
@@ -313,7 +359,11 @@ export class MapComponent {
     const url = this.mapService.cruceAccesibilidadManzanaUrl();
     if (url) {
       this.clearIframeError(url);
-      this.iframeLoaded.update(loaded => { const s = new Set(loaded); s.delete(url); return s; });
+      this.iframeLoaded.update((loaded) => {
+        const s = new Set(loaded);
+        s.delete(url);
+        return s;
+      });
     }
     this.mapService.clearCruceAccesibilidadManzanaUrl();
   }
@@ -435,7 +485,7 @@ export class MapComponent {
    * Maneja el evento de carga exitosa del iframe.
    */
   onIframeLoad(url: string): void {
-    this.iframeLoaded.update(loaded => {
+    this.iframeLoaded.update((loaded) => {
       const newLoaded = new Set(loaded);
       newLoaded.add(url);
       return newLoaded;
@@ -446,7 +496,7 @@ export class MapComponent {
    * Maneja el error de carga de un iframe.
    */
   onIframeError(url: string): void {
-    this.iframeErrors.update(errors => {
+    this.iframeErrors.update((errors) => {
       const newErrors = new Set(errors);
       newErrors.add(url);
       return newErrors;
@@ -457,13 +507,13 @@ export class MapComponent {
    * Limpia el error de carga de un iframe (para reintentos).
    */
   clearIframeError(url: string): void {
-    this.iframeErrors.update(errors => {
+    this.iframeErrors.update((errors) => {
       const newErrors = new Set(errors);
       newErrors.delete(url);
       return newErrors;
     });
     // También limpiamos el estado de cargado para que reaparezca el spinner
-    this.iframeLoaded.update(loaded => {
+    this.iframeLoaded.update((loaded) => {
       const newLoaded = new Set(loaded);
       newLoaded.delete(url);
       return newLoaded;
@@ -487,7 +537,7 @@ export class MapComponent {
       startX: event.clientX,
       startY: event.clientY,
       originX: this.cruceModalPosition().x,
-      originY: this.cruceModalPosition().y
+      originY: this.cruceModalPosition().y,
     };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
@@ -513,7 +563,7 @@ export class MapComponent {
       startX: event.clientX,
       startY: event.clientY,
       originX: this.manzanaModalPosition().x,
-      originY: this.manzanaModalPosition().y
+      originY: this.manzanaModalPosition().y,
     };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
@@ -540,7 +590,7 @@ export class MapComponent {
   /**
    * Cierra el modal de inicio de sesión.
    */
-    closeLoginModal(): void {
+  closeLoginModal(): void {
     this.showLoginModal.set(false);
   }
 
@@ -598,5 +648,3 @@ export class MapComponent {
     this.sidebarAbierto = isOpen;
   }
 }
-
-

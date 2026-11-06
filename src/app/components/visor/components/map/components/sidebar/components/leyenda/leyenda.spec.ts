@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 
@@ -14,9 +14,8 @@ describe('Leyenda', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Leyenda],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    })
-    .compileComponents();
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(Leyenda);
     component = fixture.componentInstance;
@@ -68,7 +67,7 @@ describe('Leyenda · capas compuestas', () => {
     await TestBed.configureTestingModule({
       imports: [Leyenda],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         {
           provide: MapService,
@@ -88,19 +87,24 @@ describe('Leyenda · capas compuestas', () => {
 
   it('muestra una leyenda por cada capa de la capa compuesta', async () => {
     const fixture = await montarConPanel(panelConZonificacion());
-    expect(fixture.componentInstance.activeLegends().map(l => l.url)).toEqual([URL_POLIGONOS, URL_LIMITES]);
+    expect(fixture.componentInstance.activeLegends().map((l) => l.url)).toEqual([
+      URL_POLIGONOS,
+      URL_LIMITES,
+    ]);
     expect(fixture.nativeElement.querySelectorAll('img').length).toBe(2);
   });
 
   it('comparte el título del panel de capas entre las dos simbologías', async () => {
     const fixture = await montarConPanel(panelConZonificacion());
-    expect(fixture.componentInstance.activeLegends().map(l => l.label))
-      .toEqual(['Zonificación usos del suelo', 'Zonificación usos del suelo']);
+    expect(fixture.componentInstance.activeLegends().map((l) => l.label)).toEqual([
+      'Zonificación usos del suelo',
+      'Zonificación usos del suelo',
+    ]);
   });
 
   it('no repite la leyenda cuando la capa declara una sola URL', async () => {
     const fixture = await montarConPanel(panelConZonificacion({ legendUrls: [] }));
-    expect(fixture.componentInstance.activeLegends().map(l => l.url)).toEqual([URL_POLIGONOS]);
+    expect(fixture.componentInstance.activeLegends().map((l) => l.url)).toEqual([URL_POLIGONOS]);
   });
 
   it('no muestra la leyenda de una capa oculta', async () => {

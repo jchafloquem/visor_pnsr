@@ -1,4 +1,10 @@
-import { Component, AfterViewInit, ElementRef, inject } from '@angular/core';
+import {
+  Component,
+  AfterViewInit,
+  ElementRef,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -11,6 +17,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './manualCompleto.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './manualCompleto.css',
 })
 export class ManualCompleto implements AfterViewInit {

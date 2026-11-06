@@ -1,4 +1,11 @@
-import { Component, effect, inject, NgZone, OnDestroy } from '@angular/core';
+import {
+  Component,
+  effect,
+  inject,
+  NgZone,
+  OnDestroy,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { EventsKey } from 'ol/events';
 import { CommonModule } from '@angular/common';
 import { MapService } from '@app/services/map.service';
@@ -10,12 +17,13 @@ import { toLonLat, transform } from 'ol/proj';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './coordinate-info.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './coordinate-info.css',
 })
 export class CoordinateInfo implements OnDestroy {
   private readonly mapService = inject(MapService);
   private readonly ngZone = inject(NgZone);
-  
+
   public lat: number = -12.0459403;
   public lon: number = -77.0305623;
   public este: number = 278950.35;
@@ -23,7 +31,7 @@ export class CoordinateInfo implements OnDestroy {
   public zona: string = '18S';
   public hemisferio: 'N' | 'S' = 'S';
   public sistemaCoord: 'GEOGRAFICA' | 'UTM' = 'UTM';
-  
+
   private pointerMoveKey: EventsKey | undefined;
 
   constructor() {
@@ -44,7 +52,7 @@ export class CoordinateInfo implements OnDestroy {
   private handlePointerMove(evt: any): void {
     const [lon, lat] = toLonLat(evt.coordinate);
     const { zona, hemisferio } = this.calcularZonaUTM(lon, lat);
-    
+
     this.updateUTMCoordinates(evt.coordinate, zona, hemisferio);
     this.updateCoordinates(lon, lat, zona, hemisferio);
   }
@@ -78,7 +86,7 @@ export class CoordinateInfo implements OnDestroy {
     this.sistemaCoord = this.sistemaCoord === 'GEOGRAFICA' ? 'UTM' : 'GEOGRAFICA';
   }
 
-  calcularZonaUTM(longitud: number, latitud: number): { zona: string, hemisferio: 'N' | 'S' } {
+  calcularZonaUTM(longitud: number, latitud: number): { zona: string; hemisferio: 'N' | 'S' } {
     let zona = Math.floor((longitud + 180) / 6) + 1;
 
     let hemisferio: 'N' | 'S' = latitud >= 0 ? 'N' : 'S';
@@ -99,6 +107,4 @@ export class CoordinateInfo implements OnDestroy {
     }
     return `EPSG:${epsg}`;
   }
-
 }
-

@@ -1,20 +1,45 @@
 ﻿import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit, ViewChild, ElementRef, Output, EventEmitter, signal } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  ElementRef,
+  Output,
+  EventEmitter,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Feature, Fill, fromLonLat, Overlay, Point, Stroke, Style, transform, VectorLayer, VectorSource } from '@app/modules/openlayers.module';
+import {
+  Feature,
+  Fill,
+  fromLonLat,
+  Overlay,
+  Point,
+  Stroke,
+  Style,
+  transform,
+  VectorLayer,
+  VectorSource,
+} from '@app/modules/openlayers.module';
 import { Coordinate } from 'ol/coordinate';
 import CircleStyle from 'ol/style/Circle';
 import { MapService } from '@app/services/map.service';
-import { ANIMATION_DURATION, SAN_ISIDRO_EXTENT, ZOOM_LEVEL_LOCATION, ZINDEX_GEOMETRIAS_USUARIO } from '@app/interfaces/mapas.config';
-
-
-
+import {
+  ANIMATION_DURATION,
+  SAN_ISIDRO_EXTENT,
+  ZOOM_LEVEL_LOCATION,
+  ZINDEX_GEOMETRIAS_USUARIO,
+} from '@app/interfaces/mapas.config';
 
 @Component({
   selector: 'app-coordenadas',
   imports: [FormsModule, CommonModule],
   standalone: true,
   templateUrl: './coordenadas.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './coordenadas.css',
 })
 export class UbicacionCoordenadas implements OnInit, OnDestroy {
@@ -48,7 +73,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
       // Por encima de ortofotos (5) y capas WMS (0–15): el marcador del punto
       // buscado no debe quedar oculto cuando hay una imagen aérea activa.
       zIndex: ZINDEX_GEOMETRIAS_USUARIO,
-      style: this.estiloPunto()
+      style: this.estiloPunto(),
     });
     this.mapService.map()?.addLayer(this.capaTemporal);
   }
@@ -63,13 +88,17 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
   }
 
   buscarPorCoordGeograficas(): void {
-    if (this.latitud === null || this.longitud === null ||
-      typeof this.latitud !== 'number' || typeof this.longitud !== 'number') {
+    if (
+      this.latitud === null ||
+      this.longitud === null ||
+      typeof this.latitud !== 'number' ||
+      typeof this.longitud !== 'number'
+    ) {
       this.errorMensaje = 'Por favor, ingrese valores numÃ©ricos para Latitud y Longitud.';
       return;
     }
 
-    const coordDestino = fromLonLat([this.longitud, this.latitud])
+    const coordDestino = fromLonLat([this.longitud, this.latitud]);
     if (!this.estaEnElDistrito(coordDestino)) {
       this.errorMensaje = 'La coordenada ingresada estÃ¡ fuera del distrito de San Isidro.';
       return;
@@ -78,13 +107,21 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
   }
 
   buscarPorCoordUTM() {
-    if (this.este === null || this.norte === null ||
-      typeof this.este !== 'number' || typeof this.norte !== 'number') {
+    if (
+      this.este === null ||
+      this.norte === null ||
+      typeof this.este !== 'number' ||
+      typeof this.norte !== 'number'
+    ) {
       this.errorMensaje = 'Por favor, ingrese valores numÃ©ricos para Este y Norte.';
       return;
     }
 
-    const coordDestino = transform([this.este, this.norte], UbicacionCoordenadas.ZONA_UTM_SAN_ISIDRO, 'EPSG:3857')
+    const coordDestino = transform(
+      [this.este, this.norte],
+      UbicacionCoordenadas.ZONA_UTM_SAN_ISIDRO,
+      'EPSG:3857',
+    );
     if (!this.estaEnElDistrito(coordDestino)) {
       this.errorMensaje = 'La coordenada ingresada estÃ¡ fuera del distrito de San Isidro.';
       return;
@@ -114,7 +151,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
   irACoordenada(coordenada: Coordinate) {
     this.borrarPunto();
     const feature = new Feature({
-      geometry: new Point(coordenada)
+      geometry: new Point(coordenada),
     });
 
     this.sourceTemporal.addFeature(feature);
@@ -124,7 +161,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
       this.markerOverlay = new Overlay({
         element: this.markerEl.nativeElement,
         positioning: 'center-center',
-        stopEvent: false
+        stopEvent: false,
       });
       this.mapService.map()?.addOverlay(this.markerOverlay);
     }
@@ -134,8 +171,8 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
     this.mapService.map()?.getView().animate({
       center: coordenada,
       zoom: ZOOM_LEVEL_LOCATION,
-      duration: ANIMATION_DURATION
-    })
+      duration: ANIMATION_DURATION,
+    });
   }
 
   borrarPunto(): void {
@@ -145,7 +182,6 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
       this.markerEl.nativeElement.classList.replace('flex', 'hidden');
     }
   }
-
 
   limpiarUbicacion(): void {
     this.latitud = null;
@@ -163,8 +199,8 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
       image: new CircleStyle({
         radius: 8,
         fill: new Fill({ color: '#2563eb' }), // Azul primario para el punto central
-        stroke: new Stroke({ color: '#ffffff', width: 2 })
-      })
+        stroke: new Stroke({ color: '#ffffff', width: 2 }),
+      }),
     });
   }
 

@@ -68,7 +68,7 @@ export const environment = crearEnvironment({
 # Levantar el servidor de desarrollo (http://localhost:4200 · usa proxy.conf.json)
 npm start
 
-# Build de desarrollo (sin optimizar y con sourcemaps) → dist/visor-mdsi/browser
+# Build de desarrollo (sin optimizar y con sourcemaps) → dist/visor_pnsr/browser
 ng build --configuration development
 
 # Build de desarrollo en modo watch (recompila automáticamente al guardar)
@@ -98,7 +98,7 @@ npm run start:qa            # servir la configuración QA localmente
 npm run build:qa            # compilar para QA (equivale a: ng build -c qa)
 ```
 
-**Salida del build:** `dist/visor-mdsi/browser/` (contiene el `index.html` y los
+**Salida del build:** `dist/visor_pnsr/browser/` (contiene el `index.html` y los
 `.js`/`.css` con hash de contenido, listos para publicar en Nginx).
 
 La selección del ambiente se hace mediante `fileReplacements` en

@@ -1,16 +1,16 @@
-import { Component, inject, Input, output, signal } from '@angular/core';
+import { Component, inject, Input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../../../services/auth.service';
 import { environment } from '../../../../../../../environments/environment';
-
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './navbar.html',
-  styleUrl: './navbar.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './navbar.css',
 })
 export class Navbar {
   /** Estado del tour activo (proyectado desde MapComponent vía DriverService). */

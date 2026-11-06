@@ -10,6 +10,7 @@ import {
   inject,
   input,
   signal,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -23,7 +24,8 @@ const CLAVE_RECORDADA = 'gmsi_usuario_recordado';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './login.html',
-  styleUrl: './login.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './login.css',
 })
 export class Login implements AfterViewInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
@@ -120,23 +122,26 @@ export class Login implements AfterViewInit, OnDestroy {
     // El servicio ya normaliza los errores: siempre llega `error.message` listo
     // para mostrar (credenciales inválidas, usuario bloqueado, sin conexión…).
     this.peticionLogin?.unsubscribe();
-    this.peticionLogin = this.authService.iniciarSesion(user, pass).pipe(take(1)).subscribe({
-      next: () => {
-        this.cargando.set(false);
-        // Solo se recuerda el nombre de usuario, nunca la contraseña.
-        if (this.recordarme) {
-          localStorage.setItem(CLAVE_RECORDADA, user);
-        } else {
-          localStorage.removeItem(CLAVE_RECORDADA);
-        }
-        this.close.emit(); // Cierra el modal: el navbar ya muestra al usuario
-      },
-      error: (error: Error) => {
-        this.cargando.set(false);
-        this.error.set(error?.message || 'No se pudo iniciar sesión. Intente nuevamente.');
-        this.clave = '';
-        this.claveInput?.nativeElement.focus();
-      }
-    });
+    this.peticionLogin = this.authService
+      .iniciarSesion(user, pass)
+      .pipe(take(1))
+      .subscribe({
+        next: () => {
+          this.cargando.set(false);
+          // Solo se recuerda el nombre de usuario, nunca la contraseña.
+          if (this.recordarme) {
+            localStorage.setItem(CLAVE_RECORDADA, user);
+          } else {
+            localStorage.removeItem(CLAVE_RECORDADA);
+          }
+          this.close.emit(); // Cierra el modal: el navbar ya muestra al usuario
+        },
+        error: (error: Error) => {
+          this.cargando.set(false);
+          this.error.set(error?.message || 'No se pudo iniciar sesión. Intente nuevamente.');
+          this.clave = '';
+          this.claveInput?.nativeElement.focus();
+        },
+      });
   }
 }

@@ -1,15 +1,15 @@
-import { Component, signal, output, inject } from '@angular/core';
+import { Component, signal, output, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MapService } from '@app/services/map.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from '@app/services/auditoria.service';
 import { LayerItemComponent } from './layer-item';
-
 
 @Component({
   selector: 'app-capas',
   standalone: true,
   imports: [CommonModule, LayerItemComponent],
   templateUrl: './capas.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './capas.css',
 })
 export class CapasComponent {
@@ -22,7 +22,7 @@ export class CapasComponent {
   /** Vista del panel filtrada por sesión (oculta capas con `requiresAuth` si no hay sesión) */
   sections = this.mapService.panelSections;
   toggleMinimize() {
-    this.isMinimized.update(v => !v);
+    this.isMinimized.update((v) => !v);
   }
   toggleSectionExpanded(sectionId: string) {
     this.mapService.toggleSectionExpanded(sectionId);
@@ -31,32 +31,32 @@ export class CapasComponent {
     this.mapService.toggleLayerVisibility(sectionId, layerId);
     this.auditoria.accion(
       AUDITORIA_OPCIONES.CAPA_VISIBILIDAD,
-      `Capa "${layerId}" de la sección "${sectionId}"`
+      `Capa "${layerId}" de la sección "${sectionId}"`,
     );
   }
   toggleAllLayersInSection(sectionId: string, visible: boolean) {
     this.mapService.toggleAllLayersInSection(sectionId, visible);
     this.auditoria.accion(
       AUDITORIA_OPCIONES.CAPA_VISIBILIDAD_GRUPADA,
-      `Capas de la sección "${sectionId}" ${visible ? 'visibles' : 'ocultas'}`
+      `Capas de la sección "${sectionId}" ${visible ? 'visibles' : 'ocultas'}`,
     );
   }
 
   toggleSubSectionExpanded(sectionId: string, subSectionId: string) {
     // Actualizamos el estado interno completo (panelSections se recalcula solo).
-    this.mapService.sections.update(sections =>
-      sections.map(section => {
+    this.mapService.sections.update((sections) =>
+      sections.map((section) => {
         if (section.id !== sectionId) return section;
         return {
           ...section,
-          items: section.items.map(item => {
+          items: section.items.map((item) => {
             if (item.id === subSectionId && item.type === 'subsection') {
               return { ...item, expanded: !item.expanded };
             }
             return item;
-          })
+          }),
         };
-      })
+      }),
     );
   }
 
@@ -66,7 +66,7 @@ export class CapasComponent {
     this.mapService.setLayerOpacity(sectionId, layerId, newOpacity);
     this.auditoria.accion(
       AUDITORIA_OPCIONES.CAPA_OPACIDAD,
-      `Opacidad de la capa "${layerId}" al ${Math.round(newOpacity * 100)}%`
+      `Opacidad de la capa "${layerId}" al ${Math.round(newOpacity * 100)}%`,
     );
   }
 }

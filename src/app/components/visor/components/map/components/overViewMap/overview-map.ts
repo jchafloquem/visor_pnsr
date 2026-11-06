@@ -1,6 +1,20 @@
-import { Component, Input, ElementRef, ViewChild, OnDestroy, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  Input,
+  ElementRef,
+  ViewChild,
+  OnDestroy,
+  AfterViewInit,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { OlMap, OverviewMap, View, TileLayer, XYZ } from '../../../../../../modules/openlayers.module';
+import {
+  OlMap,
+  OverviewMap,
+  View,
+  TileLayer,
+  XYZ,
+} from '../../../../../../modules/openlayers.module';
 import { GOOGLE_SATELLITE_URL } from '../../../../../../interfaces/mapas.config';
 
 /**
@@ -12,6 +26,7 @@ import { GOOGLE_SATELLITE_URL } from '../../../../../../interfaces/mapas.config'
   standalone: true,
   imports: [CommonModule],
   templateUrl: './overview-map.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './overview-map.css',
 })
 export class OverviewMapComponent implements OnDestroy, AfterViewInit {
@@ -38,59 +53,59 @@ export class OverviewMapComponent implements OnDestroy, AfterViewInit {
    * Utiliza la capa satelital para el mapa de vista general.
    */
   private initOverviewMap(): void {
-  if (!this.mainMap || !this.overviewMapContainer) return;
+    if (!this.mainMap || !this.overviewMapContainer) return;
 
-  const overviewTileLayer = new TileLayer({
-    source: new XYZ({
-      url: GOOGLE_SATELLITE_URL,
-      crossOrigin: 'anonymous',
-      maxZoom: 19,
-      interpolate: true,
-    }),
-  });
+    const overviewTileLayer = new TileLayer({
+      source: new XYZ({
+        url: GOOGLE_SATELLITE_URL,
+        crossOrigin: 'anonymous',
+        maxZoom: 19,
+        interpolate: true,
+      }),
+    });
 
-  const control = new OverviewMap({
-    className: 'ol-overviewmap custom-overview',
-    layers: [overviewTileLayer],
-    view: new View({
-      projection: this.mainMap.getView().getProjection(),
-      center: this.mainMap.getView().getCenter(),
-      zoom: (this.mainMap.getView().getZoom() || 0) - 4,
-    }),
-    target: this.overviewMapContainer.nativeElement,
-    collapsible: true,
-    collapsed: false,
-    label: '−',
-    collapseLabel: '⤢',
-  });
+    const control = new OverviewMap({
+      className: 'ol-overviewmap custom-overview',
+      layers: [overviewTileLayer],
+      view: new View({
+        projection: this.mainMap.getView().getProjection(),
+        center: this.mainMap.getView().getCenter(),
+        zoom: (this.mainMap.getView().getZoom() || 0) - 4,
+      }),
+      target: this.overviewMapContainer.nativeElement,
+      collapsible: true,
+      collapsed: false,
+      label: '−',
+      collapseLabel: '⤢',
+    });
 
-  this.overviewMapControl = control;
+    this.overviewMapControl = control;
 
-  // Escuchador para cambios de estado (Colapsar/Expandir)
-  control.on('propertychange' as any, (event: any) => {
-    if (event.key === 'collapsed') {
-      const ovMap = control.getOverviewMap();
-      if (ovMap) {
-        setTimeout(() => {
-          ovMap.updateSize();
-          ovMap.getView().changed();
-        }, 350); // Tiempo suficiente para la transición CSS
+    // Escuchador para cambios de estado (Colapsar/Expandir)
+    control.on('propertychange' as any, (event: any) => {
+      if (event.key === 'collapsed') {
+        const ovMap = control.getOverviewMap();
+        if (ovMap) {
+          setTimeout(() => {
+            ovMap.updateSize();
+            ovMap.getView().changed();
+          }, 350); // Tiempo suficiente para la transición CSS
+        }
       }
-    }
-  });
+    });
 
-  this.mainMap.addControl(control);
+    this.mainMap.addControl(control);
 
-  // --- SOLUCIÓN PARA EL MAPA PERDIDO AL INICIO ---
-  // Forzamos el tamaño inmediatamente después de agregarlo
-  const internalMap = control.getOverviewMap();
-  if (internalMap) {
-    internalMap.updateSize();
-    setTimeout(() => {
+    // --- SOLUCIÓN PARA EL MAPA PERDIDO AL INICIO ---
+    // Forzamos el tamaño inmediatamente después de agregarlo
+    const internalMap = control.getOverviewMap();
+    if (internalMap) {
       internalMap.updateSize();
-    }, 100);
+      setTimeout(() => {
+        internalMap.updateSize();
+      }, 100);
+    }
   }
-}
 
   /**
    * Limpia el control OverviewMap cuando el componente es destruido para evitar fugas de memoria.

@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 //Servicio
 import { MapService } from '@app/services/map.service';
@@ -31,6 +31,7 @@ const CLAUSULAS_TERMINOS: readonly string[] = [
   standalone: true,
   imports: [FormsModule],
   templateUrl: './terminos.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './terminos.css',
 })
 export class TermsModal {
@@ -67,7 +68,7 @@ export class TermsModal {
         this.auditoria.accion(
           AUDITORIA_OPCIONES.TERMINOS_MOSTRADOS,
           'Se mostró el modal de Términos y Condiciones',
-          { conexionNombre: 'NAVEGADOR' }
+          { conexionNombre: 'NAVEGADOR' },
         );
       }
     });
@@ -79,7 +80,7 @@ export class TermsModal {
     this.auditoria.accion(
       AUDITORIA_OPCIONES.TERMINOS_RECHAZADOS,
       'El visitante rechazó los términos y salió al portal',
-      { conexionNombre: 'NAVEGADOR' }
+      { conexionNombre: 'NAVEGADOR' },
     );
     this.mapService.closeTermsModal();
     // El visor puede estar embebido en un iframe del portal municipal. Si ocurre,
@@ -110,7 +111,7 @@ export class TermsModal {
         this.authService.isAuthenticated()
           ? 'Ingreso con sesión ya iniciada al aceptar los términos'
           : 'Ingreso como usuario anónimo al aceptar los términos',
-        { conexionNombre: 'NAVEGADOR' }
+        { conexionNombre: 'NAVEGADOR' },
       );
       this.modalTermsAccepted.set(false);
       this.isClosing.set(false);

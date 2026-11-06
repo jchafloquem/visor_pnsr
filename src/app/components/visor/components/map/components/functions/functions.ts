@@ -1,4 +1,13 @@
-import { Component, ElementRef, NgZone, ViewChild, afterNextRender, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  NgZone,
+  ViewChild,
+  afterNextRender,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MapService } from '../../../../../../services/map.service';
 import { TipoMapaBase } from '../../../../../../interfaces/geoLayers';
@@ -9,9 +18,10 @@ import { OverviewMapComponent } from '../overViewMap/overview-map';
 @Component({
   selector: 'app-funciones',
   standalone: true,
-  imports: [CommonModule,OverviewMapComponent],
+  imports: [CommonModule, OverviewMapComponent],
   templateUrl: './functions.html',
-  styleUrl: './functions.css'
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styleUrl: './functions.css',
 })
 export class Funciones {
   @ViewChild('userMarker') userMarker!: ElementRef;
@@ -51,17 +61,21 @@ export class Funciones {
   }
 
   zoomIn(): void {
-    this.olMap()?.getView().animate({
-      zoom: this.olMap()!.getView().getZoom()! + 1,
-      duration: 250
-    });
+    this.olMap()
+      ?.getView()
+      .animate({
+        zoom: this.olMap()!.getView().getZoom()! + 1,
+        duration: 250,
+      });
   }
 
   zoomOut(): void {
-    this.olMap()?.getView().animate({
-      zoom: this.olMap()!.getView().getZoom()! - 1,
-      duration: 250
-    });
+    this.olMap()
+      ?.getView()
+      .animate({
+        zoom: this.olMap()!.getView().getZoom()! - 1,
+        duration: 250,
+      });
   }
 
   goHome(): void {
@@ -89,7 +103,9 @@ export class Funciones {
       return;
     }
     if (!window.isSecureContext) {
-      alert('El navegador bloquea la ubicación porque la página no se sirve por HTTPS. Acceda al geovisor mediante https:// (o desde localhost) y vuelva a intentarlo.');
+      alert(
+        'El navegador bloquea la ubicación porque la página no se sirve por HTTPS. Acceda al geovisor mediante https:// (o desde localhost) y vuelva a intentarlo.',
+      );
       return;
     }
     if (this.ubicacionCargando()) return; // Ya hay una petición en curso
@@ -98,7 +114,9 @@ export class Funciones {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { longitude, latitude, accuracy } = position.coords;
-        console.debug(`[GPS] Posición obtenida: ${longitude}, ${latitude} (±${Math.round(accuracy)} m)`);
+        console.debug(
+          `[GPS] Posición obtenida: ${longitude}, ${latitude} (±${Math.round(accuracy)} m)`,
+        );
         // Los callbacks de geolocalización no pasan por Angular: entramos a la
         // zona para que los signals y el marcador se pinten de inmediato.
         this.zone.run(() => {
@@ -121,7 +139,7 @@ export class Funciones {
           alert(`No se pudo obtener tu ubicación. ${motivos[error.code] ?? error.message}`);
         });
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   }
 
@@ -144,7 +162,7 @@ export class Funciones {
       },
       // Silencioso: el seguimiento no debe interrumpir con alertas repetidas.
       () => undefined,
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
     );
   }
 
@@ -187,7 +205,9 @@ export class Funciones {
     // Guardia defensiva: si el elemento no está en la plantilla, el overlay
     // quedaría huérfano y el popup jamás sería visible (falla silenciosa).
     if (!this.userMarker?.nativeElement || !this.locationPopup?.nativeElement) {
-      console.error('[GPS] No se encontraron los elementos #userMarker/#locationPopup en la plantilla.');
+      console.error(
+        '[GPS] No se encontraron los elementos #userMarker/#locationPopup en la plantilla.',
+      );
       return;
     }
     // Coordenada del punto en la proyección del mapa (EPSG:3857 por defecto).
@@ -236,9 +256,8 @@ export class Funciones {
 
   // --- Métodos para Dibujo y Medición ---
 
-  
   toggleHerramientas(): void {
-    this.herramientasActivas.update(v => !v);
+    this.herramientasActivas.update((v) => !v);
     if (!this.herramientasActivas()) {
       this.drawMeasureService.desactivarHerramienta();
       this.mapService.cancelarMedicionAreaLote();

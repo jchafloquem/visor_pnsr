@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 @Component({
   selector: 'app-spinner',
   standalone: true,
   imports: [],
   templateUrl: './spinner.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './spinner.css',
 })
 export class Spinner {

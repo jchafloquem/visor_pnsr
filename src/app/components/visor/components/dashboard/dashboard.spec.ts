@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { of } from 'rxjs';
 
 import { Dashboard } from './dashboard';
@@ -11,22 +11,31 @@ describe('Dashboard', () => {
 
   const mapServiceStub = {
     // Devuelve una muestra para ejercitar el procesamiento y el render.
-    getConformidadObraData: () => of([
-      { type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: { txttipobra: 'Ampliación', codanoconformidad: 'Conforme' } },
-      { type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: { txttipobra: 'Ampliación', codanoconformidad: 'Conforme' } },
-      { type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: { txttipobra: 'Construcción', codanoconformidad: 'No conforme' } },
-    ]),
+    getConformidadObraData: () =>
+      of([
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [0, 0] },
+          properties: { txttipobra: 'Ampliación', codanoconformidad: 'Conforme' },
+        },
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [0, 0] },
+          properties: { txttipobra: 'Ampliación', codanoconformidad: 'Conforme' },
+        },
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [0, 0] },
+          properties: { txttipobra: 'Construcción', codanoconformidad: 'No conforme' },
+        },
+      ]),
   };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Dashboard],
-      providers: [
-        provideHttpClient(),
-        { provide: MapService, useValue: mapServiceStub },
-      ],
-    })
-    .compileComponents();
+      providers: [provideHttpClient(withXhr()), { provide: MapService, useValue: mapServiceStub }],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(Dashboard);
     component = fixture.componentInstance;

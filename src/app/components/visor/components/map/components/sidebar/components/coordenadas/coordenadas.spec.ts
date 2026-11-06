@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { UbicacionCoordenadas } from './coordenadas';
@@ -11,9 +11,8 @@ describe('UbicacionCoordenadas', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [UbicacionCoordenadas],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    })
-    .compileComponents();
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(UbicacionCoordenadas);
     component = fixture.componentInstance;

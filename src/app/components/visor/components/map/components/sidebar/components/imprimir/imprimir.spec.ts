@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { LineString } from '@app/modules/openlayers.module';
@@ -21,7 +21,7 @@ describe('Imprimir', () => {
       imports: [Imprimir],
       providers: [
         // `Imprimir` inyecta AuthService (restricción de foto) → HttpClient.
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         {
           provide: MapService,
@@ -71,7 +71,7 @@ describe('Imprimir', () => {
 
     const a4 = sut.calcularRepartoInferior(190, 3);
     expect(a4.fotoW + 3 + a4.infoW).toBe(190); // sin huecos ni marcos muertos
-    expect(a4.infoW).toBeGreaterThan(100);     // la ficha gana el hueco de la tabla
+    expect(a4.infoW).toBeGreaterThan(100); // la ficha gana el hueco de la tabla
 
     const a3 = sut.calcularRepartoInferior(400, 3);
     expect(a3.fotoW + 3 + a3.infoW).toBe(400);
@@ -82,7 +82,11 @@ describe('Imprimir', () => {
     // hacía que OpenLayers detectara stride=undefined, vaciara las
     // flatCoordinates y lanzara "RangeError: Invalid array length" dentro de
     // douglasPeucker al renderizar/simplificar la cuadrícula UTM.
-    const correcto = new LineString([[1, 2], [3, 4], [5, 6]]);
+    const correcto = new LineString([
+      [1, 2],
+      [3, 4],
+      [5, 6],
+    ]);
     expect(correcto.getStride()).toBe(2);
     expect(correcto.getCoordinates().length).toBe(3);
 

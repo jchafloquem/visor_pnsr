@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { App } from './app';
 
@@ -7,7 +7,7 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     }).compileComponents();
   });
 
@@ -19,7 +19,7 @@ describe('App', () => {
 
   it('renderiza el outlet de enrutamiento principal', async () => {
     // Nota: la plantilla real de App es <router-outlet/>; la aserción del
-    // scaffolding ("Hello, visor-mdsi") quedó obsoleta tras el refactor.
+    // scaffolding quedó obsoleta tras el refactor.
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -29,6 +29,6 @@ describe('App', () => {
   it('expone el título de la aplicación', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance as unknown as { title(): string };
-    expect(app.title()).toBe('visor-mdsi');
+    expect(app.title()).toBe('visor_pnsr');
   });
 });

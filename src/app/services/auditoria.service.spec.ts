@@ -1,6 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { HttpClient, HttpContext, HttpParams, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpContext,
+  HttpParams,
+  provideHttpClient,
+  withInterceptors,
+  withXhr,
+} from '@angular/common/http';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
@@ -43,7 +50,7 @@ describe('AuditoriaService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AuditoriaService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -66,7 +73,7 @@ describe('AuditoriaService', () => {
    */
   function registrar(entrada: Parameters<AuditoriaService['registrar']>[0]) {
     let resultado: boolean | undefined;
-    service.registrar(entrada).subscribe(valor => (resultado = valor));
+    service.registrar(entrada).subscribe((valor) => (resultado = valor));
     const peticion = httpMock.expectOne(URL_AUDITORIA);
     return {
       peticion,
@@ -149,7 +156,7 @@ describe('AuditoriaService', () => {
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
-// --- Encaje con mdsisicu.sicu_logmensajes -----------------------------
+  // --- Encaje con mdsisicu.sicu_logmensajes -----------------------------
   // Cada columna es varchar(n) y `dectiempo` es numeric(12,2): si el valor
   // viaja más largo de lo que admite la columna, el INSERT falla entero y se
   // pierde el evento. Estas pruebas fijan el recorte y el formato.
@@ -251,7 +258,7 @@ describe('auditoriaInterceptor', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([auditoriaInterceptor])),
+        provideHttpClient(withXhr(), withInterceptors([auditoriaInterceptor])),
         provideHttpClientTesting(),
       ],
     });
@@ -292,9 +299,7 @@ describe('auditoriaInterceptor', () => {
       },
     });
 
-    httpMock
-      .expectOne(r => r.url.includes('/listar-vias'))
-      .flush({ status: 'ok', data: [] });
+    httpMock.expectOne((r) => r.url.includes('/listar-vias')).flush({ status: 'ok', data: [] });
     // Auditar no debe alterar el resultado de la consulta original.
     expect(fallo).toBeNull();
 
@@ -312,11 +317,13 @@ describe('auditoriaInterceptor', () => {
   });
 
   it('registra los parámetros de la consulta en el mensaje', () => {
-    http.get(`${environment.geovisorApiUrl}/listar-vias`, {
-      params: { pvcTXTNOMBREVIA: 'av' },
-    }).subscribe();
+    http
+      .get(`${environment.geovisorApiUrl}/listar-vias`, {
+        params: { pvcTXTNOMBREVIA: 'av' },
+      })
+      .subscribe();
 
-    httpMock.expectOne(r => r.url.includes('/listar-vias')).flush({ status: 'ok', data: [] });
+    httpMock.expectOne((r) => r.url.includes('/listar-vias')).flush({ status: 'ok', data: [] });
 
     expect(auditoriaPemitida()['mensaje']).toContain('pvcTXTNOMBREVIA=av');
   });
@@ -330,7 +337,7 @@ describe('auditoriaInterceptor', () => {
     });
 
     httpMock
-      .expectOne(r => r.url.includes('/listar-vias'))
+      .expectOne((r) => r.url.includes('/listar-vias'))
       .flush('fallo', { status: 500, statusText: 'Server Error' });
     // El error se propaga intacto a quien pidió los datos.
     expect(fallo).not.toBeNull();
@@ -346,7 +353,7 @@ describe('auditoriaInterceptor', () => {
     });
 
     httpMock
-      .expectOne(r => r.url.includes('/listar-vias'))
+      .expectOne((r) => r.url.includes('/listar-vias'))
       .error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
 
     // status 0 = no hubo respuesta: se distingue de un error del servidor.
@@ -359,13 +366,17 @@ describe('auditoriaInterceptor', () => {
     // búsquedas reales, y no deben llenar la tabla de auditoría.
     http
       .get(environment.geoserver.owsUrl, {
-        params: { service: 'WFS', request: 'GetFeature', typeName: 'WEB_GIS:vw_tg_area_rec_nombres' },
+        params: {
+          service: 'WFS',
+          request: 'GetFeature',
+          typeName: 'WEB_GIS:vw_tg_area_rec_nombres',
+        },
         context: new HttpContext().set(SIN_AUDITORIA, true),
       })
       .subscribe();
 
     httpMock
-      .expectOne(r => r.url.startsWith(environment.geoserver.owsUrl))
+      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
       .flush({ features: [] });
 
     // Ni una sola auditoría por la sugerencia.
@@ -383,10 +394,10 @@ describe('auditoriaInterceptor', () => {
       .set('contrasena', '123456')
       .set('codigoSistema', '010011')
       .toString();
-    http
-      .post(`${environment.seguridadApiUrl}/auth/iniciar-sesion`, cuerpo)
-      .subscribe();
-    httpMock.expectOne(r => r.url.includes('/auth/iniciar-sesion')).flush({ codigoRespuesta: '00' });
+    http.post(`${environment.seguridadApiUrl}/auth/iniciar-sesion`, cuerpo).subscribe();
+    httpMock
+      .expectOne((r) => r.url.includes('/auth/iniciar-sesion'))
+      .flush({ codigoRespuesta: '00' });
 
     httpMock.expectNone(URL_AUDITORIA);
   });
@@ -394,7 +405,7 @@ describe('auditoriaInterceptor', () => {
   it('ignora los backends ajenos al visor (DataGIS, TUSNE)', () => {
     http.get('/DataGIS_WGS84/LotePublico.asp?codigo_i=31').subscribe();
 
-    httpMock.expectOne(r => r.url.includes('LotePublico')).flush('ok');
+    httpMock.expectOne((r) => r.url.includes('LotePublico')).flush('ok');
     // Ni una sola auditoría: el interceptor cubre `/WSGEOVISOR/api/` y el OWS de
     // GeoServer, que son los dos backends que consulta el visor.
     // Las teselas WMS NO pasan por HttpClient (las pide OpenLayers con el
@@ -422,7 +433,9 @@ describe('auditoriaInterceptor', () => {
       })
       .subscribe();
 
-    httpMock.expectOne(r => r.url.startsWith(environment.geoserver.owsUrl)).flush({ features: [] });
+    httpMock
+      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
+      .flush({ features: [] });
 
     const cuerpo = auditoriaPemitida();
     expect(cuerpo['opcion']).toBe(AUDITORIA_OPCIONES.CONSULTA_GEOSERVER);
@@ -440,7 +453,7 @@ describe('auditoriaInterceptor', () => {
       .subscribe({ error: () => undefined });
 
     httpMock
-      .expectOne(r => r.url.startsWith(environment.geoserver.owsUrl))
+      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
       .flush('error', { status: 500, statusText: 'Server Error' });
 
     const cuerpo = auditoriaPemitida();
@@ -463,7 +476,7 @@ describe('AuditoriaService · usuario de la sesión', () => {
   beforeEach(() => {
     sessionStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     auth = TestBed.inject(AuthService);
     auditoria = TestBed.inject(AuditoriaService);
@@ -482,22 +495,20 @@ describe('AuditoriaService · usuario de la sesión', () => {
   /** Autentica contra el API con la respuesta de éxito real. */
   function iniciarSesion(): void {
     auth.iniciarSesion('ADMIN', '123456').subscribe();
-    httpMock
-      .expectOne(`${environment.seguridadApiUrl}/auth/iniciar-sesion`)
-      .flush({
-        token: 'a.b.c',
-        tokenExpiraEnMinutos: 60,
-        informacionUsuario: {
-          codigoUsuario: 'ADMIN',
-          nombres: 'ADMINISTRADOR',
-          correoElectronico: 'a@b.gob.pe',
-          codigoRol: 'COORDINADOR',
-        },
-        paginas: [],
-        controles: [],
-        codigoRespuesta: '00',
-        mensajeRespuesta: 'Autenticacion exitosa',
-      });
+    httpMock.expectOne(`${environment.seguridadApiUrl}/auth/iniciar-sesion`).flush({
+      token: 'a.b.c',
+      tokenExpiraEnMinutos: 60,
+      informacionUsuario: {
+        codigoUsuario: 'ADMIN',
+        nombres: 'ADMINISTRADOR',
+        correoElectronico: 'a@b.gob.pe',
+        codigoRol: 'COORDINADOR',
+      },
+      paginas: [],
+      controles: [],
+      codigoRespuesta: '00',
+      mensajeRespuesta: 'Autenticacion exitosa',
+    });
     // El login se audita a sí mismo; se vacía para aislar la prueba siguiente.
     httpMock.expectOne(URL_AUDITORIA).flush({ codigoRespuesta: '00' });
   }
@@ -587,10 +598,10 @@ describe('AuditoriaService · usuario tras una recarga (F5)', () => {
         codigoUsuario: 'ADMIN',
         paginas: [],
         controles: [],
-      })
+      }),
     );
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     auth = TestBed.inject(AuthService);
     auditoria = TestBed.inject(AuditoriaService);

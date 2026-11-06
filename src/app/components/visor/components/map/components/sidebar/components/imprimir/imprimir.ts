@@ -1,4 +1,13 @@
-import { Component, HostListener, signal, computed, inject, effect, ViewEncapsulation } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  signal,
+  computed,
+  inject,
+  effect,
+  ViewEncapsulation,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Spinner } from '@app/animations/spinner/spinner';
@@ -18,7 +27,7 @@ type FormatoPapel = 'a4' | 'a3';
 
 const LOGO_SRC = 'assets/images/logo_visor.png';
 const COLOR_INSTITUCIONAL: [number, number, number] = [27, 42, 78]; // #1b2a4e
-const COLOR_VERDE: [number, number, number] = [70, 87, 15];         // #46570f
+const COLOR_VERDE: [number, number, number] = [70, 87, 15]; // #46570f
 
 /**
  * Panel de impresión/exportación del visor.
@@ -32,6 +41,7 @@ const COLOR_VERDE: [number, number, number] = [70, 87, 15];         // #46570f
   templateUrl: './imprimir.html',
   styleUrl: './imprimir.css',
   // Necesario para que las reglas @media print afecten a todo el documento
+  changeDetection: ChangeDetectionStrategy.Eager,
   encapsulation: ViewEncapsulation.None,
 })
 export class Imprimir {
@@ -79,8 +89,17 @@ export class Imprimir {
 
   /** Formatea una fecha como DD/MM/YYYY HH:mm:ss (es-PE) */
   private formatearFecha(fecha: Date): string {
-    const dia = fecha.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const hora = fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const dia = fecha.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const hora = fecha.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
     return `${dia} ${hora}`;
   }
 
@@ -123,13 +142,13 @@ export class Imprimir {
       }
       // Margen mayor de estabilización tras el redimensionado del lienzo
       // (los servicios WMS necesitan re-planificar sus peticiones)
-      await new Promise(res => setTimeout(res, 120));
+      await new Promise((res) => setTimeout(res, 120));
 
       // Encuadre según la escala elegida (usa el nuevo ancho en píxeles)
       if (this.mapService.loteSeleccionadoCodigo()) {
         await this.prepararVista(cajaMm.w);
       } else {
-        await new Promise(res => setTimeout(res, 120));
+        await new Promise((res) => setTimeout(res, 120));
       }
 
       // Cuadrícula UTM-18S eventual: se genera DESPUÉS de fijar tamaño y
@@ -175,7 +194,7 @@ export class Imprimir {
   /** Captura simple (sin adaptación de recuadro): respaldo si no hay mapa OL. */
   private async capturarMapaSimple(): Promise<string> {
     // Pequeña espera para que terminen de cargar los tiles en curso
-    await new Promise(res => setTimeout(res, 300));
+    await new Promise((res) => setTimeout(res, 300));
     const canvas = this.mapService.getMapCanvas();
     if (!canvas || !canvas.width) {
       throw new Error('El mapa aún no está listo para exportarse.');
@@ -188,7 +207,7 @@ export class Imprimir {
 
   /** Resuelve cuando el mapa termina de renderizar (con tope de espera). */
   private esperarRenderCompleto(olMap: OlMap): Promise<void> {
-    return new Promise(res => {
+    return new Promise((res) => {
       let listo = false;
       const fin = () => {
         if (!listo) {
@@ -220,7 +239,10 @@ export class Imprimir {
 
   /** Normaliza el título para usarlo en el nombre del archivo */
   private slug(texto: string): string {
-    const base = texto.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+    const base = texto
+      .trim()
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-+|-+$/g, '');
     return (base || 'plano').slice(0, 60);
   }
 
@@ -307,9 +329,9 @@ export class Imprimir {
     // 1) Tablas HTML: clasificamos cada celda por su clase CSS de la ficha
     //    ("Subtitulo" = etiqueta, "Dato" = valor); soporta filas dobles
     //    [Etiqueta | Valor | Etiqueta | Valor] sin mezclar campos.
-    doc.querySelectorAll('tr').forEach(tr => {
+    doc.querySelectorAll('tr').forEach((tr) => {
       let etiquetaPendiente: string | null = null;
-      tr.querySelectorAll('td,th').forEach(td => {
+      tr.querySelectorAll('td,th').forEach((td) => {
         const clase = td.getAttribute('class') ?? '';
         const texto = limpiar(td.textContent);
         if (!texto) return;
@@ -327,14 +349,14 @@ export class Imprimir {
       });
       // Fila residual: etiqueta sin clase y última celda como valor
       if (etiquetaPendiente) {
-        const celdas = Array.from(tr.querySelectorAll('td,th')).map(x => limpiar(x.textContent));
+        const celdas = Array.from(tr.querySelectorAll('td,th')).map((x) => limpiar(x.textContent));
         if (celdas.length >= 2) agregarPar(etiquetaPendiente, celdas[celdas.length - 1]);
       }
     });
 
     // 2) Bloques de texto con pares "Etiqueta: valor" (formato real de la ficha)
     if (filas.length === 0) {
-      doc.querySelectorAll('td, p, div, b, strong, font, li').forEach(el => {
+      doc.querySelectorAll('td, p, div, b, strong, font, li').forEach((el) => {
         // Solo nodos hoja para no duplicar el texto de los contenedores
         if (el.querySelector('td, p, div, b, strong, li')) return;
         const texto = limpiar(el.textContent);
@@ -374,7 +396,9 @@ export class Imprimir {
    * Devuelve el HTML o null si ambos intentos fallan.
    */
   private async descargarPaginaDataGIS(ruta: string, codigo: string): Promise<string | null> {
-    return this.descargarUrlDataGIS(`/DataGIS_WGS84/${ruta}?codigo_i=${encodeURIComponent(codigo)}`);
+    return this.descargarUrlDataGIS(
+      `/DataGIS_WGS84/${ruta}?codigo_i=${encodeURIComponent(codigo)}`,
+    );
   }
 
   /**
@@ -428,14 +452,16 @@ export class Imprimir {
   private async obtenerFotoLote(codigo: string): Promise<string | null> {
     try {
       const baseFicha = '/DataGIS_WGS84/WEBFILES/informacion.asp';
-      const htmlFicha = await this.descargarUrlDataGIS(`${baseFicha}?codigo_i=${encodeURIComponent(codigo)}`);
+      const htmlFicha = await this.descargarUrlDataGIS(
+        `${baseFicha}?codigo_i=${encodeURIComponent(codigo)}`,
+      );
       if (!htmlFicha) return null;
 
       type Candidato = { ruta: string; prioridad: number };
       const candidatos: Candidato[] = [];
       const procesarPagina = (html: string, rutaPagina: string): void => {
         const doc = new DOMParser().parseFromString(html, 'text/html');
-        doc.querySelectorAll('img').forEach(img => {
+        doc.querySelectorAll('img').forEach((img) => {
           const src = img.getAttribute('src') ?? '';
           // La imagen principal de la ficha se marca con name="IMAGEN_LOTE"
           const esPrincipal = /imagen_lote/i.test(img.getAttribute('name') ?? '');
@@ -460,7 +486,7 @@ export class Imprimir {
       // Algunas fichas sólo enlazan la galería de fotos ("Ver Fotos"): la
       // descargamos y sumamos también sus imágenes a los candidatos.
       const docFicha = new DOMParser().parseFromString(htmlFicha, 'text/html');
-      const enlacesGaleria = Array.from(docFicha.querySelectorAll('a')).filter(a => {
+      const enlacesGaleria = Array.from(docFicha.querySelectorAll('a')).filter((a) => {
         const texto = (a.textContent ?? '').trim();
         const destino = a.getAttribute('href') ?? a.getAttribute('onclick') ?? '';
         return /ver\s*fotos|galer[ií]a|fotograf/i.test(`${texto} ${destino}`);
@@ -495,8 +521,12 @@ export class Imprimir {
           return dataUrl;
         }
       }
-      console.info('[Imprimir] Sin fotografía usable para el lote', codigo,
-        '· candidatos revisados:', unicas.length);
+      console.info(
+        '[Imprimir] Sin fotografía usable para el lote',
+        codigo,
+        '· candidatos revisados:',
+        unicas.length,
+      );
       return null;
     } catch {
       return null; // Sin imagen disponible: el PDF usará el enlace a la ficha
@@ -515,7 +545,10 @@ export class Imprimir {
    *    "/GaleriaFotosCatastro" en desarrollo) + absoluta.
    * Devuelve [] si el valor no es utilizable o apunta a otro host.
    */
-  private rutasCandidatasDeSrc(valor: string, rutaBase?: string): { ruta: string; prioridad: number }[] {
+  private rutasCandidatasDeSrc(
+    valor: string,
+    rutaBase?: string,
+  ): { ruta: string; prioridad: number }[] {
     const limpio = valor.trim();
     if (!limpio || /^(data:|javascript:|mailto:|#)/i.test(limpio)) return [];
     let url: URL;
@@ -604,11 +637,9 @@ export class Imprimir {
     const eleccion = this.escala();
     if (eleccion !== 'auto') {
       const horizontal = this.orientacion() === 'horizontal';
-      const base = this.formato() === 'a3'
-        ? { v: 297, h: 420 }
-        : { v: 210, h: 297 };
+      const base = this.formato() === 'a3' ? { v: 297, h: 420 } : { v: 210, h: 297 };
       const anchoPapelMm = horizontal ? base.h : base.v;
-      const anchoMapaMm = anchoCajaMm ?? (anchoPapelMm - 22); // ancho real del recuadro impreso
+      const anchoMapaMm = anchoCajaMm ?? anchoPapelMm - 22; // ancho real del recuadro impreso
       const cssWidth = olMap.getSize()?.[0] ?? 1;
       // denominadorEscala = metrosRealesRepresentados / metrosEnPapel
       const resolucion = (Number(eleccion) * (anchoMapaMm / 1000)) / cssWidth;
@@ -619,7 +650,7 @@ export class Imprimir {
     }
     // Esperamos al repintado tras el cambio de vista/resolución (margen mayor
     // para dar tiempo a que los nuevos tiles de ortofoto lleguen a solicitarse)
-    await new Promise(res => setTimeout(res, 650));
+    await new Promise((res) => setTimeout(res, 650));
   }
 
   /**
@@ -646,10 +677,10 @@ export class Imprimir {
       // --- Geometría según norma ISO 5457 ---
       // Márgenes de 10 mm por lado ⇒ área útil: A4V 190×277 mm · A3H 400×277 mm
       const gapBloques = 3;
-      const yLinea = margen + 15;          // línea separadora del encabezado
+      const yLinea = margen + 15; // línea separadora del encabezado
       const areaY = yLinea + 3;
-      const areaW = ancho - margen * 2;    // 190 (A4 vertical) · 400 (A3 horizontal)
-      const areaH = (alto - margen) - areaY - 9; // pie reservado DENTRO del área útil
+      const areaW = ancho - margen * 2; // 190 (A4 vertical) · 400 (A3 horizontal)
+      const areaH = alto - margen - areaY - 9; // pie reservado DENTRO del área útil
 
       const tieneLote = !!this.mapService.loteSeleccionadoCodigo();
       const filasInfo = tieneLote ? this.infoPublicaFilas() : [];
@@ -657,11 +688,16 @@ export class Imprimir {
 
       // Mapa a TODO el ancho útil; en la parte inferior, DOS marcos:
       // fotografía · ficha pública (LotePublico.asp).
-      let mapaX = margen, mapaY = areaY, mapaW = areaW, mapaH = areaH;
+      let mapaX = margen,
+        mapaY = areaY,
+        mapaW = areaW,
+        mapaH = areaH;
       let yInferior = areaY;
       let altoInferior = 0;
-      let fotoX = 0, fotoW = 0;
-      let infoX = 0, infoW = 0;
+      let fotoX = 0,
+        fotoW = 0;
+      let infoX = 0,
+        infoW = 0;
       if (tieneLote) {
         const necesarias = filasInfo.length * 5.2 + 10;
         altoInferior = Math.min(Math.max(necesarias, 48), 92);
@@ -726,8 +762,15 @@ export class Imprimir {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(90, 90, 90);
-      pdf.text('Municipalidad de San Isidro · Geovisor Catastral', ancho / 2, margen + 8, { align: 'center' });
-      pdf.text(`Fecha de impresión: ${this.fechaHora()}   ·   Escala: ${this.etiquetaEscala()}`, ancho / 2, margen + 12, { align: 'center' });
+      pdf.text('Municipalidad de San Isidro · Geovisor Catastral', ancho / 2, margen + 8, {
+        align: 'center',
+      });
+      pdf.text(
+        `Fecha de impresión: ${this.fechaHora()}   ·   Escala: ${this.etiquetaEscala()}`,
+        ancho / 2,
+        margen + 12,
+        { align: 'center' },
+      );
 
       // --- Línea separadora ---
       pdf.setDrawColor(...COLOR_VERDE);
@@ -754,12 +797,9 @@ export class Imprimir {
           pdf.setFontSize(6.8);
           pdf.setTextColor(110, 110, 110);
           pdf.text('Sin datos públicos disponibles.', infoX, yInferior + 11);
-          pdf.textWithLink(
-            'Ver ficha en línea',
-            infoX,
-            yInferior + 16,
-            { url: `${environment.dataGis.lotePublicoUrl}?codigo_i=${this.mapService.loteSeleccionadoCodigo()}` },
-          );
+          pdf.textWithLink('Ver ficha en línea', infoX, yInferior + 16, {
+            url: `${environment.dataGis.lotePublicoUrl}?codigo_i=${this.mapService.loteSeleccionadoCodigo()}`,
+          });
         }
       } else {
         // Sin lote: el mapa ocupa todo el cuerpo
@@ -772,7 +812,9 @@ export class Imprimir {
       pdf.setFontSize(7.5);
       pdf.setTextColor(80, 80, 80);
       pdf.text('Subgerencia de Planeamiento Urbano y Catastro', margen, alto - margen - 2);
-      pdf.text(`Impreso: ${this.fechaHora()}`, ancho - margen, alto - margen - 2, { align: 'right' });
+      pdf.text(`Impreso: ${this.fechaHora()}`, ancho - margen, alto - margen - 2, {
+        align: 'right',
+      });
 
       // --- Sello de agua diagonal sobre TODA la hoja (encima de todo, opacidad baja) ---
       this.dibujarMarcaAgua(pdf);
@@ -781,7 +823,7 @@ export class Imprimir {
       pdf.save(`${this.slug(this.titulo())}_${stamp}.pdf`);
       this.auditoria.accion(
         AUDITORIA_OPCIONES.IMPRESION_FICHA,
-        `PDF de la ficha del lote ${this.mapService.loteSeleccionadoCodigo() ?? '(sin lote)'}`
+        `PDF de la ficha del lote ${this.mapService.loteSeleccionadoCodigo() ?? '(sin lote)'}`,
       );
     } catch (err) {
       console.error('Error generando PDF:', err);
@@ -789,7 +831,7 @@ export class Imprimir {
         AUDITORIA_OPCIONES.ERROR_CLIENTE,
         err instanceof Error ? err.message : 'No se pudo generar el PDF.',
         { conexionNombre: 'NAVEGADOR' },
-        'ERR-PDF'
+        'ERR-PDF',
       );
       this.error.set(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
     } finally {
@@ -820,8 +862,7 @@ export class Imprimir {
       this.estiloPagina?.remove();
       this.estiloPagina = document.createElement('style');
       this.estiloPagina.id = 'msi-print-page-style';
-      this.estiloPagina.textContent =
-        `@page { size: ${this.formato()} ${this.orientacion() === 'horizontal' ? 'landscape' : 'portrait'}; margin: 8mm; }`;
+      this.estiloPagina.textContent = `@page { size: ${this.formato()} ${this.orientacion() === 'horizontal' ? 'landscape' : 'portrait'}; margin: 8mm; }`;
       document.head.appendChild(this.estiloPagina);
 
       // Mostramos spinner durante 2 segundos antes de abrir la ventana de impresión
@@ -831,7 +872,7 @@ export class Imprimir {
       }, 2000);
       this.auditoria.accion(
         AUDITORIA_OPCIONES.IMPRESION_FICHA,
-        `Impresión del mapa, lote ${this.mapService.loteSeleccionadoCodigo() ?? '(sin lote)'}`
+        `Impresión del mapa, lote ${this.mapService.loteSeleccionadoCodigo() ?? '(sin lote)'}`,
       );
     } catch (err) {
       console.error('Error preparando la impresión:', err);
@@ -840,7 +881,7 @@ export class Imprimir {
         err instanceof Error ? err.message : 'No se pudo preparar la impresión.',
         { conexionNombre: 'NAVEGADOR' },
         // `vchcodmensaje` es varchar(12): el código debe caber en la columna.
-        'ERR-IMPR'
+        'ERR-IMPR',
       );
       this.error.set(err instanceof Error ? err.message : 'No se pudo preparar la impresión.');
       this.generando.set(false);
@@ -850,13 +891,20 @@ export class Imprimir {
   /** Etiqueta legible de la escala elegida */
   private etiquetaEscala(): string {
     switch (this.escala()) {
-      case '250': return '1/250';
-      case '500': return '1/500';
-      case '750': return '1/750';
-      case '1000': return '1/1000';
-      case '1250': return '1/1250';
-      case '2000': return '1/2000';
-      default: return 'Automática';
+      case '250':
+        return '1/250';
+      case '500':
+        return '1/500';
+      case '750':
+        return '1/750';
+      case '1000':
+        return '1/1000';
+      case '1250':
+        return '1/1250';
+      case '2000':
+        return '1/2000';
+      default:
+        return 'Automática';
     }
   }
 
@@ -883,7 +931,14 @@ export class Imprimir {
    * Dibuja la imagen del mapa ajustada (contain) dentro del área dada,
    * centrada y con marco institucional.
    */
-  private dibujarMapa(pdf: jsPDF, imagen: string, x: number, y: number, w: number, h: number): void {
+  private dibujarMapa(
+    pdf: jsPDF,
+    imagen: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
     const escala = Math.min(w / this.mapaAnchoPx, h / this.mapaAltoPx);
     const mapaW = this.mapaAnchoPx * escala;
     const mapaH = this.mapaAltoPx * escala;
@@ -933,7 +988,11 @@ export class Imprimir {
       pdf.text(fila[0], x + 1.5, cursorY + rowH - 1.8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(20, 20, 20);
-      pdf.text(this.truncarTexto(pdf, fila[1], w - colClave - 4), x + colClave, cursorY + rowH - 1.8);
+      pdf.text(
+        this.truncarTexto(pdf, fila[1], w - colClave - 4),
+        x + colClave,
+        cursorY + rowH - 1.8,
+      );
       pdf.setDrawColor(215, 215, 215);
       pdf.setLineWidth(0.12);
       pdf.line(x, cursorY + rowH, x + w, cursorY + rowH);
@@ -955,7 +1014,14 @@ export class Imprimir {
    * Dibuja la fotografía del lote (si está disponible) o el enlace a la
    * ficha en línea cuando no lo está.
    */
-  private dibujarFoto(pdf: jsPDF, foto: string | null, x: number, y: number, w: number, h: number): void {
+  private dibujarFoto(
+    pdf: jsPDF,
+    foto: string | null,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): void {
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(7);
     pdf.setTextColor(...COLOR_INSTITUCIONAL);
@@ -1030,8 +1096,8 @@ export class Imprimir {
 
     // Rejilla en mosaico calculada con el ancho real del texto, de modo que
     // los sellos quedan uniformes y cubren también los bordes de la hoja.
-    const anchoTexto = pdf.getTextWidth(TEXTO);          // mm con la fuente actual
-    const extension = (anchoTexto + 6) * Math.SQRT1_2;   // extensión del sello rotado 45° por eje
+    const anchoTexto = pdf.getTextWidth(TEXTO); // mm con la fuente actual
+    const extension = (anchoTexto + 6) * Math.SQRT1_2; // extensión del sello rotado 45° por eje
     const pasoX = extension + 10;
     const pasoY = extension + 8;
 
@@ -1052,7 +1118,12 @@ export class Imprimir {
    * (abajo-izquierda): 4 segmentos alternados con etiquetas de distancia,
    * calculada con la resolución real (m/px) de la última captura.
    */
-  private dibujarBarraEscala(pdf: jsPDF, xRecuadro: number, yBaseRecuadro: number, anchoRecuadroMm: number): void {
+  private dibujarBarraEscala(
+    pdf: jsPDF,
+    xRecuadro: number,
+    yBaseRecuadro: number,
+    anchoRecuadroMm: number,
+  ): void {
     if (this.resolucionCapturaMpx <= 0 || this.mapaAnchoPx <= 1 || anchoRecuadroMm <= 10) return;
     // Metros reales representados por cada milímetro de papel en el recuadro
     const metrosPorMm = this.resolucionCapturaMpx * (this.mapaAnchoPx / anchoRecuadroMm);
@@ -1063,8 +1134,8 @@ export class Imprimir {
     const largoMm = distancia / metrosPorMm;
     if (distancia <= 0 || largoMm < 8 || largoMm > anchoRecuadroMm - 6) return;
 
-    const x = xRecuadro + 3;              // margen interior izquierdo
-    const y = yBaseRecuadro - 8;          // margen interior inferior
+    const x = xRecuadro + 3; // margen interior izquierdo
+    const y = yBaseRecuadro - 8; // margen interior inferior
     const seg = largoMm / 4;
 
     // Fondo blanco para legibilidad sobre cualquier parte del mapa
@@ -1093,7 +1164,9 @@ export class Imprimir {
     pdf.setFontSize(5.6);
     pdf.setTextColor(25, 25, 25);
     pdf.text('0', x, y - 2.7, { align: 'center' });
-    pdf.text(this.formatearDistanciaM(distancia / 2), x + largoMm / 2, y - 2.7, { align: 'center' });
+    pdf.text(this.formatearDistanciaM(distancia / 2), x + largoMm / 2, y - 2.7, {
+      align: 'center',
+    });
     pdf.text(this.formatearDistanciaM(distancia), x + largoMm, y - 2.7, { align: 'left' });
   }
 
@@ -1118,4 +1191,3 @@ export class Imprimir {
     return `${Math.round(metros)} m`;
   }
 }
-

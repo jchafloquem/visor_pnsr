@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MapService } from '@app/services/map.service';
 import { capasConSimbologiaVisible } from '@interfaces/geoLayers';
@@ -16,6 +16,7 @@ import { capasConSimbologiaVisible } from '@interfaces/geoLayers';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './leyenda.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './leyenda.css',
 })
 export class Leyenda {
@@ -24,7 +25,8 @@ export class Leyenda {
   x = signal(16);
   y = signal(76);
   /** Estado interno del arrastre de la ventana */
-  private dragState: { startX: number; startY: number; originX: number; originY: number } | null = null;
+  private dragState: { startX: number; startY: number; originX: number; originY: number } | null =
+    null;
 
   constructor() {
     // Posición inicial: anclada al borde derecho, bajo la barra superior (w-80 = 320px + 16px de margen)
@@ -41,7 +43,12 @@ export class Leyenda {
   startDrag(event: PointerEvent): void {
     if (event.button !== 0) return;
     event.preventDefault(); // Evita seleccionar texto durante el arrastre
-    this.dragState = { startX: event.clientX, startY: event.clientY, originX: this.x(), originY: this.y() };
+    this.dragState = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: this.x(),
+      originY: this.y(),
+    };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
@@ -58,10 +65,10 @@ export class Leyenda {
   endDrag(): void {
     this.dragState = null;
   }
-  isMinimized = signal(false);  
+  isMinimized = signal(false);
 
   toggleMinimize() {
-    this.isMinimized.update(v => !v);
+    this.isMinimized.update((v) => !v);
   }
   /**
    * Simbologías que se muestran en la ventana. El filtro de qué capas cuentan
@@ -76,7 +83,11 @@ export class Leyenda {
     for (const layer of capasConSimbologiaVisible(this.mapService.panelSections())) {
       // Una capa puede aportar varias leyendas (capas compuestas: p. ej. los
       // polígonos de zonificación y sus límites); `legendUrl` es la primera.
-      const urls = layer.legendUrls?.length ? layer.legendUrls : layer.legendUrl ? [layer.legendUrl] : [];
+      const urls = layer.legendUrls?.length
+        ? layer.legendUrls
+        : layer.legendUrl
+          ? [layer.legendUrl]
+          : [];
       for (const url of urls) {
         // Se usa la URL como clave: evita repetir la misma imagen si varias
         // capas comparten simbología.
@@ -88,4 +99,3 @@ export class Leyenda {
     return Array.from(uniqueLegends.values());
   });
 }
-

@@ -1,4 +1,4 @@
-import { Component, inject, Output, EventEmitter } from '@angular/core';
+import { Component, inject, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 //Servicio
@@ -17,19 +17,20 @@ import { Manual } from './components/manual/manual';
   standalone: true,
   imports: [
     About,
-    CapasComponent,    
+    CapasComponent,
     CommonModule,
     Consultas,
-    Descargaspdf,        
+    Descargaspdf,
     FormsModule,
     Imprimir,
     Manual,
     UbicacionCoordenadas,
   ],
   templateUrl: './sidebar.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './sidebar.css',
 })
-export class Sidebar  {  
+export class Sidebar {
   /** Emite el estado de apertura del sidebar (true: abierto, false: cerrado) */
   @Output() onToggle = new EventEmitter<boolean>();
   public mapService = inject(MapService);
@@ -37,15 +38,15 @@ export class Sidebar  {
   activeTools = this.mapService.activeSidebarTools;
   isOpen = false;
   // Ítems de navegación vinculados a las herramientas del MapService
-  menuItems: { id: string; icon: string; label: string}[] = [
-    { id: 'search', icon: 'bi-search', label: 'Busquedas'},
-    { id: 'layers', icon: 'bi-layers', label: 'Capas'},
-    { id: 'legend', icon: 'bi bi-map-fill', label: 'Leyenda'},
-    { id: 'coordenadas', icon: 'bi bi-geo', label: 'Busqueda por Coordenadas'},
-    { id: 'print', icon: 'bi-printer', label: 'Imprimir'},    
-    { id: 'downloads', icon: 'bi-download', label: 'Descargas'},
-    { id: 'manual', icon: 'bi-book', label: 'Manual'},
-    
+  menuItems: { id: string; icon: string; label: string }[] = [
+    { id: 'search', icon: 'bi-search', label: 'Busquedas' },
+    { id: 'layers', icon: 'bi-layers', label: 'Capas' },
+    { id: 'legend', icon: 'bi bi-map-fill', label: 'Leyenda' },
+    { id: 'coordenadas', icon: 'bi bi-geo', label: 'Busqueda por Coordenadas' },
+    { id: 'print', icon: 'bi-printer', label: 'Imprimir' },
+    { id: 'downloads', icon: 'bi-download', label: 'Descargas' },
+    { id: 'manual', icon: 'bi-book', label: 'Manual' },
+
     //{ id: 'about', icon: 'bi-info-circle', label: 'Acerca de'},
   ];
   /** Obtiene el ID de la primera herramienta activa del Set */
@@ -56,7 +57,7 @@ export class Sidebar  {
   get activeTitle(): string {
     const active = this.activeTab;
     if (!active) return '';
-    return this.menuItems.find(i => i.id === active)?.label || 'Herramienta';
+    return this.menuItems.find((i) => i.id === active)?.label || 'Herramienta';
   }
   /**
    * Resaltado del menú lateral. La leyenda usa su propia señal
@@ -64,9 +65,7 @@ export class Sidebar  {
    * de opciones se resaltan según el Set de herramienta activa.
    */
   isActive(toolId: string): boolean {
-    return toolId === 'legend'
-      ? this.mapService.leyendaVisible()
-      : this.activeTools().has(toolId);
+    return toolId === 'legend' ? this.mapService.leyendaVisible() : this.activeTools().has(toolId);
   }
   toggleSidebar() {
     this.isOpen = !this.isOpen;
@@ -74,7 +73,7 @@ export class Sidebar  {
   }
   toggleTool(toolId: string) {
     console.log('Sidebar: Recibida orden de toggle para', toolId);
-    const item = this.menuItems.find(i => i.id === toolId);
+    const item = this.menuItems.find((i) => i.id === toolId);
     if (item) this.setActive(item.id);
   }
   setActive(toolId: string) {

@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-visor',
   imports: [RouterOutlet],
   templateUrl: './visor.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './visor.css',
 })
-export default class Visor { }
+export default class Visor {}

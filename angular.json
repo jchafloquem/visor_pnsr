@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "visor-mdsi": {
+    "visor_pnsr": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -85,18 +85,18 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "buildTarget": "visor-mdsi:build",
+            "buildTarget": "visor_pnsr:build",
             "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {
-              "buildTarget": "visor-mdsi:build:production"
+              "buildTarget": "visor_pnsr:build:production"
             },
             "qa": {
-              "buildTarget": "visor-mdsi:build:qa"
+              "buildTarget": "visor_pnsr:build:qa"
             },
             "development": {
-              "buildTarget": "visor-mdsi:build:development"
+              "buildTarget": "visor_pnsr:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -104,7 +104,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "buildTarget": "visor-mdsi:build:development",
+            "buildTarget": "visor_pnsr:build:development",
             "tsConfig": "tsconfig.spec.json",
             "runner": "vitest",
             "setupFiles": ["src/test-setup.ts"]

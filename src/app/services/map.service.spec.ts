@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { vi } from 'vitest';
@@ -63,7 +63,7 @@ describe('MapService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: ApisService, useValue: apis },
         { provide: AuthService, useValue: auth },
@@ -100,7 +100,13 @@ describe('MapService', () => {
           requiresAuth: false,
           layers: [
             { id: 'capa-publica', name: 'Pública', visible: false, opacity: 1 },
-            { id: 'capa-restringida', name: 'Restringida', visible: false, opacity: 1, requiresAuth: true },
+            {
+              id: 'capa-restringida',
+              name: 'Restringida',
+              visible: false,
+              opacity: 1,
+              requiresAuth: true,
+            },
           ],
         },
         {
@@ -307,10 +313,34 @@ describe('MapService', () => {
 
     describe('geometría de lote para cálculo de área', () => {
       it('calcula el área en metros cuadrados para polígonos y multipolígonos UTM', () => {
-        const poligono = new Polygon([[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]);
+        const poligono = new Polygon([
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+          ],
+        ]);
         const multipoligono = new MultiPolygon([
-          [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]],
-          [[[20, 0], [30, 0], [30, 10], [20, 10], [20, 0]]],
+          [
+            [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+              [0, 10],
+              [0, 0],
+            ],
+          ],
+          [
+            [
+              [20, 0],
+              [30, 0],
+              [30, 10],
+              [20, 10],
+              [20, 0],
+            ],
+          ],
         ]);
 
         expect(service['calcularAreaGeometriaLote'](poligono)).toBe(100);
@@ -319,8 +349,24 @@ describe('MapService', () => {
 
       it('ubica la etiqueta del área dentro del polígono más grande del lote', () => {
         const multipoligono = new MultiPolygon([
-          [[[20, 0], [25, 0], [25, 5], [20, 5], [20, 0]]],
-          [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]],
+          [
+            [
+              [20, 0],
+              [25, 0],
+              [25, 5],
+              [20, 5],
+              [20, 0],
+            ],
+          ],
+          [
+            [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+              [0, 10],
+              [0, 0],
+            ],
+          ],
         ]);
 
         const punto = service['obtenerPuntoEtiquetaAreaLote'](multipoligono);
@@ -346,7 +392,14 @@ describe('MapService', () => {
 
         expect(peticion.request.params.get('srsName')).toBe('EPSG:32718');
 
-        peticion.flush({ features: [{ geometry: { type: 'Polygon', coordinates: [] }, properties: { id_lote: '3112065002' } }] });
+        peticion.flush({
+          features: [
+            {
+              geometry: { type: 'Polygon', coordinates: [] },
+              properties: { id_lote: '3112065002' },
+            },
+          ],
+        });
         await expect(promesa).resolves.toMatchObject({ properties: { id_lote: '3112065002' } });
       });
     });
@@ -422,7 +475,7 @@ describe('MapService', () => {
       const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
 
       expect(peticion.request.params.get('typeName')).toBe(
-        `${environment.geoserver.workspacePrefix}vw_tg_via`
+        `${environment.geoserver.workspacePrefix}vw_tg_via`,
       );
       expect(peticion.request.params.get('cql_filter')).toBe("etiquetado_ext ILIKE '%AV CIRCUN%'");
 
@@ -475,7 +528,7 @@ describe('MapService', () => {
       const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
 
       expect(peticion.request.params.get('typeName')).toBe(
-        `${environment.geoserver.workspacePrefix}view_conformidadobra`
+        `${environment.geoserver.workspacePrefix}view_conformidadobra`,
       );
       expect(peticion.request.params.get('srsName')).toBe('EPSG:32718');
 

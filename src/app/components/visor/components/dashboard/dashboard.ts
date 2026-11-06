@@ -8,6 +8,7 @@ import {
   signal,
   output,
   OnDestroy,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -27,8 +28,16 @@ interface RenglonConformidad {
 
 /** Paleta de colores para las series clasificadas por `codanoconformidad`. */
 const PALETA = [
-  '#2d780e', '#2563eb', '#d97706', '#dc2626', '#7c3aed',
-  '#0d9488', '#db2777', '#4b5563', '#ca8a04', '#059669',
+  '#2d780e',
+  '#2563eb',
+  '#d97706',
+  '#dc2626',
+  '#7c3aed',
+  '#0d9488',
+  '#db2777',
+  '#4b5563',
+  '#ca8a04',
+  '#059669',
 ];
 
 @Component({
@@ -36,6 +45,7 @@ const PALETA = [
   standalone: true,
   imports: [CommonModule],
   templateUrl: './dashboard.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './dashboard.css',
 })
 export class Dashboard implements OnDestroy {
@@ -94,21 +104,26 @@ export class Dashboard implements OnDestroy {
   cargarDatos(): void {
     this.cargando.set(true);
     this.error.set(null);
-    this.mapService.getConformidadObraData().pipe(
-      take(1),
-      catchError((err) => {
-        console.error('[Dashboard] Error consultando Conformidad de Obra:', err);
-        this.error.set('No se pudo conectar con el servicio WFS. Verifique la conexión e intente nuevamente.');
+    this.mapService
+      .getConformidadObraData()
+      .pipe(
+        take(1),
+        catchError((err) => {
+          console.error('[Dashboard] Error consultando Conformidad de Obra:', err);
+          this.error.set(
+            'No se pudo conectar con el servicio WFS. Verifique la conexión e intente nuevamente.',
+          );
+          this.cargando.set(false);
+          return of(null);
+        }),
+      )
+      .subscribe((features) => {
+        this.procesar(features ?? []);
         this.cargando.set(false);
-        return of(null);
-      })
-    ).subscribe((features) => {
-      this.procesar(features ?? []);
-      this.cargando.set(false);
-      // Diferimos la creación de los gráficos para que Angular haya montado los
-      // <canvas> en el DOM (tanto en la carga inicial como al refrescar).
-      setTimeout(() => this.renderChart(), 0);
-    });
+        // Diferimos la creación de los gráficos para que Angular haya montado los
+        // <canvas> en el DOM (tanto en la carga inicial como al refrescar).
+        setTimeout(() => this.renderChart(), 0);
+      });
   }
 
   /** Cierra el dashboard (emitido al contenedor). */
@@ -126,7 +141,8 @@ export class Dashboard implements OnDestroy {
   private procesar(features: GeoJSONFeature[]): void {
     const renglones: RenglonConformidad[] = features.map((f) => ({
       txttipobra: String(f.properties?.['txttipobra'] ?? '').trim() || 'Sin especificar',
-      codanoconformidad: String(f.properties?.['codanoconformidad'] ?? '').trim() || 'Sin especificar',
+      codanoconformidad:
+        String(f.properties?.['codanoconformidad'] ?? '').trim() || 'Sin especificar',
     }));
 
     // Valores únicos conservando el orden de aparición.
@@ -157,8 +173,16 @@ export class Dashboard implements OnDestroy {
   private renderChart(): void {
     try {
       if (!this.tipObras.length || !this.codConformidad.length) return;
-      if (!this.chartBarraEl?.nativeElement?.getContext || !this.chartTortaEl?.nativeElement?.getContext) return;
-      if (!this.chartBarraEl.nativeElement.getContext('2d') || !this.chartTortaEl.nativeElement.getContext('2d')) return;
+      if (
+        !this.chartBarraEl?.nativeElement?.getContext ||
+        !this.chartTortaEl?.nativeElement?.getContext
+      )
+        return;
+      if (
+        !this.chartBarraEl.nativeElement.getContext('2d') ||
+        !this.chartTortaEl.nativeElement.getContext('2d')
+      )
+        return;
 
       // Barras apiladas: eje X = txttipobra; series = codanoconformidad.
       if (this.chartBarra) this.chartBarra.destroy();
@@ -193,11 +217,13 @@ export class Dashboard implements OnDestroy {
         type: 'doughnut',
         data: {
           labels: this.tipObras,
-          datasets: [{
-            data: this.totalesPorTipo,
-            backgroundColor: this.tipObras.map((_, i) => PALETA[i % PALETA.length]),
-            borderWidth: 2,
-          }],
+          datasets: [
+            {
+              data: this.totalesPorTipo,
+              backgroundColor: this.tipObras.map((_, i) => PALETA[i % PALETA.length]),
+              borderWidth: 2,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -220,4 +246,3 @@ export class Dashboard implements OnDestroy {
     }
   }
 }
-

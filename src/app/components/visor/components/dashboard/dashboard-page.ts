@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { Dashboard } from './dashboard';
 
 /**
@@ -9,6 +9,7 @@ import { Dashboard } from './dashboard';
   selector: 'app-dashboard-page',
   standalone: true,
   imports: [Dashboard],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-dashboard [fullPage]="true"></app-dashboard>`,
 })
 export class DashboardPage {}

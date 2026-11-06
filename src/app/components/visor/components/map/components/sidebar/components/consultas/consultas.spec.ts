@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { Consultas } from './consultas';
@@ -14,11 +14,27 @@ const CENTROIDE: GeoJSONGeometry = { type: 'Point', coordinates: [279316.4016, 8
 /** Polígonos (EPSG:32718) del área recreativa real que contiene ese centroide. */
 const AREA_POLIGONO_A: GeoJSONGeometry = {
   type: 'Polygon',
-  coordinates: [[[279286, 8662111], [279346, 8662111], [279346, 8662154], [279286, 8662154], [279286, 8662111]]]
+  coordinates: [
+    [
+      [279286, 8662111],
+      [279346, 8662111],
+      [279346, 8662154],
+      [279286, 8662154],
+      [279286, 8662111],
+    ],
+  ],
 };
 const AREA_POLIGONO_B: GeoJSONGeometry = {
   type: 'Polygon',
-  coordinates: [[[279300, 8662100], [279330, 8662100], [279330, 8662120], [279300, 8662120], [279300, 8662100]]]
+  coordinates: [
+    [
+      [279300, 8662100],
+      [279330, 8662100],
+      [279330, 8662120],
+      [279300, 8662120],
+      [279300, 8662100],
+    ],
+  ],
 };
 
 describe('Consultas', () => {
@@ -28,12 +44,11 @@ describe('Consultas', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Consultas],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Consultas);
     component = fixture.componentInstance;
-    await fixture.whenStable();
   });
 
   it('should create', () => {
@@ -43,18 +58,20 @@ describe('Consultas', () => {
   describe('búsqueda por Dirección', () => {
     let httpMock: HttpTestingController;
     /** Petición al API listar-vias (búsqueda por nombre de vía). */
-    const peticionApi = (nombre: string) => httpMock.expectOne(
-      req => req.url.endsWith('/listar-vias') && req.params.get('pvcTXTNOMBREVIA') === nombre);
+    const peticionApi = (nombre: string) =>
+      httpMock.expectOne(
+        (req) => req.url.endsWith('/listar-vias') && req.params.get('pvcTXTNOMBREVIA') === nombre,
+      );
     /** Petición al WFS que trae la geometría de la vía por su código. */
-    const peticionGeometria = () => httpMock.expectOne(
-      req => (req.params.get('typeName') ?? '').includes('vw_tg_via'));
+    const peticionGeometria = () =>
+      httpMock.expectOne((req) => (req.params.get('typeName') ?? '').includes('vw_tg_via'));
     const viaApi = {
       codvia: '1170',
       txtnomvia: 'Juan De Arona',
       txttipoviaabrev: 'Av.',
       codviaequ: 'L271170',
       codtipovia: '010011',
-      txttipovia: 'AVENIDA'
+      txttipovia: 'AVENIDA',
     };
     const segmento = (id: string) => ({
       type: 'Feature',
@@ -62,8 +79,13 @@ describe('Consultas', () => {
       properties: { codi_via: 'L271170', codi_via2: '1170', etiquetado_ext: 'Av. Juan De Arona' },
       geometry: {
         type: 'MultiLineString',
-        coordinates: [[[279000, 8661000], [279100, 8661050]]]
-      }
+        coordinates: [
+          [
+            [279000, 8661000],
+            [279100, 8661050],
+          ],
+        ],
+      },
     });
 
     beforeEach(() => {
@@ -73,7 +95,9 @@ describe('Consultas', () => {
     });
 
     it('abre el modal con las coincidencias y no mueve el mapa hasta elegir una vía', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToGeometry').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToGeometry')
+        .mockImplementation(() => undefined);
       const closeSpy = vi.spyOn(component.Close, 'emit');
 
       component.handleSearch();
@@ -89,7 +113,9 @@ describe('Consultas', () => {
     });
 
     it('resalta la vía en la gráfica al elegir una coincidencia del modal', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToGeometry').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToGeometry')
+        .mockImplementation(() => undefined);
       const closeSpy = vi.spyOn(component.Close, 'emit');
 
       component.handleSearch();
@@ -112,7 +138,9 @@ describe('Consultas', () => {
     });
 
     it('avisa cuando la vía existe en el API pero no está dibujada en la cartografía', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToGeometry').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToGeometry')
+        .mockImplementation(() => undefined);
       const closeSpy = vi.spyOn(component.Close, 'emit');
 
       component.handleSearch();
@@ -127,7 +155,9 @@ describe('Consultas', () => {
     });
 
     it('informa cuando el API no devuelve ninguna vía con ese nombre', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToGeometry').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToGeometry')
+        .mockImplementation(() => undefined);
 
       component.handleSearch();
       peticionApi('Juan De Arona').flush({ status: 200, data: [] });
@@ -160,7 +190,6 @@ describe('Consultas', () => {
     });
 
     it('abre el modal al pulsar Buscar con una sola letra escrita', () => {
-      fixture.detectChanges();
       component.activeTab = 'direccion';
       // Una única letra escrita: el botón NO debe estar deshabilitado.
       component.nombreVia = 'A';
@@ -190,14 +219,22 @@ describe('Consultas', () => {
         status: 200,
         data: [
           viaApi,
-          { ...viaApi, codvia: '1900', codviaequ: 'L271900', txtnomvia: 'José Gálvez', txttipoviaabrev: 'Jr.' }
-        ]
+          {
+            ...viaApi,
+            codvia: '1900',
+            codviaequ: 'L271900',
+            txtnomvia: 'José Gálvez',
+            txttipoviaabrev: 'Jr.',
+          },
+        ],
       });
       fixture.detectChanges();
 
       // Ambas vías se listan en el modal con su etiqueta oficial.
       expect(component.viasEncontradas.length).toBe(2);
-      expect(component.sugerenciaDe(component.viasEncontradas[0]).etiqueta).toBe('Av. Juan De Arona');
+      expect(component.sugerenciaDe(component.viasEncontradas[0]).etiqueta).toBe(
+        'Av. Juan De Arona',
+      );
       expect(component.sugerenciaDe(component.viasEncontradas[0]).codVia).toBe('L271170');
       const modal = fixture.nativeElement.querySelector('#vias-modal');
       expect(modal.textContent).toContain('José Gálvez');
@@ -212,7 +249,9 @@ describe('Consultas', () => {
       // Estado de una búsqueda ya completada: vía elegida con sus numeraciones
       // y un número seleccionado (esto es lo que rompía el flujo).
       component.codVia = 'L271170';
-      component.viaNumeros = [{ numero: '0110', codlote: '3105075021', codlotenumero: '31050750210110' }];
+      component.viaNumeros = [
+        { numero: '0110', codlote: '3105075021', codlotenumero: '31050750210110' },
+      ];
       component.numeroSeleccionado = '0110';
       component.viasEncontradas = [viaApi];
       component.modalViasAbierto.set(true);
@@ -234,7 +273,7 @@ describe('Consultas', () => {
       expect(fixture.nativeElement.querySelector('#numeroViaSelect')).toBeNull();
       expect(component.isSearchDisabled()).toBe(true);
       // No se consulta el API: se reinicia para escribir una vía nueva.
-      httpMock.expectNone(req => req.url.endsWith('/listar-vias'));
+      httpMock.expectNone((req) => req.url.endsWith('/listar-vias'));
     });
 
     it('no renderiza lista desplegable bajo el campo de vía', () => {
@@ -253,9 +292,7 @@ describe('Consultas', () => {
       component.codVia = 'L271170';
       component.viasEncontradas = [viaApi];
       component.modalViasAbierto.set(true);
-      component.viaNumeros = [
-        { numero: '101', codlote: 'LOT1', codlotenumero: 'LOT1-101' }
-      ] as any;
+      component.viaNumeros = [{ numero: '101', codlote: 'LOT1', codlotenumero: 'LOT1-101' }] as any;
       component.numeroSeleccionado = '101';
       component.viaNumerosError = null;
       fixture.detectChanges();
@@ -285,17 +322,23 @@ describe('Consultas', () => {
     /** Filtro CQL con el que se consultan las áreas recreacionales (parques). */
     const filtro = (patron: string) => `denominaci ILIKE '${patron}'`;
     const peticion = (patron: string) =>
-      httpMock.expectOne(req => req.params.get('cql_filter') === filtro(patron));
+      httpMock.expectOne((req) => req.params.get('cql_filter') === filtro(patron));
     /** Petición espacial que localiza el área poligonal que contiene el centroide. */
-    const peticionAreaEnPunto = () => httpMock.expectOne(
-      req => (req.params.get('cql_filter') ?? '').startsWith('INTERSECTS(geom,SRID=32718;POINT('));
+    const peticionAreaEnPunto = () =>
+      httpMock.expectOne((req) =>
+        (req.params.get('cql_filter') ?? '').startsWith('INTERSECTS(geom,SRID=32718;POINT('),
+      );
     /** Petición de los polígonos del área recreativa localizada. */
     const peticionAreaPoligonos = (denominacion: string) =>
-      httpMock.expectOne(req => req.params.get('cql_filter') === `denominaci = '${denominacion}'`);
+      httpMock.expectOne(
+        (req) => req.params.get('cql_filter') === `denominaci = '${denominacion}'`,
+      );
     /** Respuesta del buscador con el centroide del área (capa `..._nombres`). */
     const centroide = (denominacion: string) => ({
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: { denominaci: denominacion }, geometry: CENTROIDE }]
+      features: [
+        { type: 'Feature', properties: { denominaci: denominacion }, geometry: CENTROIDE },
+      ],
     });
     const sinResultados = { type: 'FeatureCollection', features: [] };
 
@@ -305,8 +348,12 @@ describe('Consultas', () => {
     });
 
     it('resalta el ÁREA real del parque cuando el buscador solo devuelve su centroide', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
-      const markerSpy = vi.spyOn(TestBed.inject(MapService), 'drawSearchMarkerForParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
+      const markerSpy = vi
+        .spyOn(TestBed.inject(MapService), 'drawSearchMarkerForParque')
+        .mockImplementation(() => undefined);
       const closeSpy = vi.spyOn(component.Close, 'emit');
       component.nombreParque = 'Bosque El Olivar';
 
@@ -323,11 +370,11 @@ describe('Consultas', () => {
       const enPunto = peticionAreaEnPunto();
       expect(enPunto.request.params.get('typeName')).toContain('vw_tg_area_rec');
       expect(enPunto.request.params.get('cql_filter')).toBe(
-        `INTERSECTS(geom,SRID=32718;POINT(${CENTROIDE.coordinates![0]} ${CENTROIDE.coordinates![1]}))`
+        `INTERSECTS(geom,SRID=32718;POINT(${CENTROIDE.coordinates![0]} ${CENTROIDE.coordinates![1]}))`,
       );
       enPunto.flush({
         type: 'FeatureCollection',
-        features: [{ type: 'Feature', properties: { denominaci: 'EL OLIVAR' } }]
+        features: [{ type: 'Feature', properties: { denominaci: 'EL OLIVAR' } }],
       });
 
       // 3) Se traen TODOS los polígonos del área para resaltar su superficie.
@@ -337,8 +384,8 @@ describe('Consultas', () => {
         type: 'FeatureCollection',
         features: [
           { type: 'Feature', properties: {}, geometry: AREA_POLIGONO_A },
-          { type: 'Feature', properties: {}, geometry: AREA_POLIGONO_B }
-        ]
+          { type: 'Feature', properties: {}, geometry: AREA_POLIGONO_B },
+        ],
       });
 
       // El encuadre recibe la extensión unida de todos los polígonos del área
@@ -354,8 +401,12 @@ describe('Consultas', () => {
     });
 
     it('ubica el parque con su centroide cuando no existe área poligonal', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
-      const markerSpy = vi.spyOn(TestBed.inject(MapService), 'drawSearchMarkerForParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
+      const markerSpy = vi
+        .spyOn(TestBed.inject(MapService), 'drawSearchMarkerForParque')
+        .mockImplementation(() => undefined);
       const closeSpy = vi.spyOn(component.Close, 'emit');
       component.nombreParque = 'Parque Grecia';
 
@@ -371,7 +422,9 @@ describe('Consultas', () => {
     });
 
     it('mantiene la ubicación con el centroide si falla el servicio de polígonos', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
       component.nombreParque = 'Parque Antequera';
 
       component.handleSearch();
@@ -383,7 +436,9 @@ describe('Consultas', () => {
     });
 
     it('recurre a la búsqueda parcial cuando no hay coincidencia exacta', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
       component.nombreParque = 'El Olivar';
 
       component.handleSearch();
@@ -397,7 +452,9 @@ describe('Consultas', () => {
     });
 
     it('busca por palabras significativas cuando el nombre escrito lleva el término genérico', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
       // Es el texto de ejemplo del campo: "Parque El Olivar" no coincide con la
       // denominación real "Bosque El Olivar" ni exacta ni parcialmente.
       component.nombreParque = 'Parque El Olivar';
@@ -415,7 +472,9 @@ describe('Consultas', () => {
     });
 
     it('no repite la búsqueda por palabras significativas si ya encontró el parque', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
       component.nombreParque = 'Parque Antequera';
 
       component.handleSearch();
@@ -429,7 +488,9 @@ describe('Consultas', () => {
     });
 
     it('informa al usuario cuando no se encuentra ningún parque', () => {
-      const fitSpy = vi.spyOn(TestBed.inject(MapService), 'fitToParque').mockImplementation(() => undefined);
+      const fitSpy = vi
+        .spyOn(TestBed.inject(MapService), 'fitToParque')
+        .mockImplementation(() => undefined);
       component.nombreParque = 'Parque Inexistente';
 
       component.handleSearch();

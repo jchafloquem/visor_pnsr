@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 //Servicio
 import { MapService } from '@app/services/map.service';
@@ -8,6 +8,7 @@ import { MapService } from '@app/services/map.service';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './about.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './about.css',
 })
 export class About {
