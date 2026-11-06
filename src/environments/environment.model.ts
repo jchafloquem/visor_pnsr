@@ -22,7 +22,7 @@ export interface ParametrosEnvironment {
    * registra con otro código.
    */
   codigoSistema?: string;
-  /** Servidores internos (por defecto, los de la red municipal) */
+  /** URL de GeoServer (por defecto, servidor local de desarrollo) */
   geoserverUrl?: string;
   ortofotoServerUrl?: string;
   dataGisServerUrl?: string;
@@ -74,8 +74,8 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
 
     // --- CONFIGURACIÓN DE GEOSERVER ---
     geoserver: {
-      // Servidor MSI proporcionado
-      serverUrl: cfg.geoserverUrl ?? 'http://192.168.40.58:8081/geoserver',
+      // Servidor local para desarrollo y QA; producción define su URL pública.
+      serverUrl: cfg.geoserverUrl ?? 'http://localhost:8080/geoserver',
       // La URL para el servicio de impresión es la misma que la de GeoServer
       get serverImpresionLocal(): string { return this.serverUrl; },
       // Workspace compartido para todas las capas y consultas OGC

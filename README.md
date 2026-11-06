@@ -41,8 +41,8 @@ src/environments/
 
 | Archivo | Ambiente | Portal / API base | GeoServer |
 |---|---|---|---|
-| `environment.ts` | **Desarrollo** | `https://test.munisanisidro.gob.pe` | `http://192.168.40.58:8081/geoserver` (red interna) |
-| `environment.qa.ts` | **QA** | `https://test.munisanisidro.gob.pe` | `http://192.168.40.58:8081/geoserver` (red interna) |
+| `environment.ts` | **Desarrollo** | `https://test.munisanisidro.gob.pe` | `http://localhost:8080/geoserver` |
+| `environment.qa.ts` | **QA** | `https://test.munisanisidro.gob.pe` | `http://localhost:8080/geoserver` |
 | `environment.prod.ts` | **Producción** | `https://munisanisidro.gob.pe` | `https://geomapas.munisanisidro.gob.pe/geoserver` (público) |
 
 Los tres archivos se generan con la fábrica `crearEnvironment()` de
