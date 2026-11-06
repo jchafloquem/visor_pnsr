@@ -67,11 +67,6 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
     // o sale del geovisor.
     encuestaSalidaUrl: 'https://forms.gle/zadpPzpAR6h8Ud2P7',
 
-    // --- OBSERVATORIO URBANO ---
-    // Enlace externo al Observatorio Urbano de la comuna (se abre en otra pestaña).
-    // URL independiente del portal municipal del ambiente.
-    observatorioUrl: 'https://observatoriourbano.munisanisidro.gob.pe/webobsurb/',
-
     // --- CONFIGURACIÓN DE GEOSERVER ---
     geoserver: {
       // Servidor local para desarrollo y QA; producción define su URL pública.

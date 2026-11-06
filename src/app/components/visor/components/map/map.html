@@ -14,18 +14,12 @@
   </div>
 </div>
 }
-<app-navbar [tourActivo]="isTourActive()" (login)="openLoginModal()" (tour)="startTour()"
-  (dashboard)="abrirDashboard()"></app-navbar>
+<app-navbar (login)="openLoginModal()"></app-navbar>
 <app-sidebar (onToggle)="handleSidebarToggle($event)"></app-sidebar>
 <div #mapContainer id="mapContainer" class="map-container" [class.blank-base]="mapService.baseLayerType() === 'blanco'" [class.sidebar-open]="sidebarAbierto">
 </div>
 <app-funciones></app-funciones>
 
-<!-- Logo institucional del visor: esquina inferior izquierda,
-     desplazado a la derecha del sidebar (w-12) y elevado para no
-     superponerse con la barra de escala de OpenLayers -->
-<img src="/assets/images/logo_visor.png" alt="Logo San Isidro" draggable="false"
-  class="absolute left-16 bottom-16 z-[5] h-20 w-auto pointer-events-none select-none [filter:drop-shadow(0_0_12px_rgba(255,255,255,0.7))]" />
 <!-- Ventanas flotantes de información del lote (no bloquean el mapa; varias pueden estar abiertas) -->
 @if (!mapService.areaLoteActivo()) {
 @for (win of mapService.loteInfoWindows(); track win.id) {
@@ -728,10 +722,6 @@
     </button>
   </div>
 </div>
-}
-<!-- Dashboard de Conformidad de Obra -->
-@if (dashboardVisible()) {
-<app-dashboard (Close)="closeDashboard()"></app-dashboard>
 }
 <app-coordinate-info></app-coordinate-info>
 <!-- Modal global de Términos y Condiciones (se muestra al hacer zoom sobre el distrito) -->

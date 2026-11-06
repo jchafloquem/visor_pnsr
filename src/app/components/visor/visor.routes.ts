@@ -3,13 +3,8 @@ import { Routes } from '@angular/router';
 export default [
   {
     path: 'map',
-    title: 'Geovisor Catastral',
+    title: 'Geovisor',
     loadComponent: () => import('./components/map/map').then(m => m.MapComponent),
-  },
-  {
-    path: 'dashboard',
-    title: 'Dashboard · Geovisor Catastral',
-    loadComponent: () => import('./components/dashboard/dashboard-page').then(m => m.DashboardPage),
   },
   {
     path: '',
@@ -22,4 +17,3 @@ export default [
     pathMatch: 'full',
   },
 ] as Routes
-

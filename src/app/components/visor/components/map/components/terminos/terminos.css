@@ -105,9 +105,9 @@
   }
 }
 
-/* ===== Botón "Acepto e ingresar" (degradado institucional, antes inline en el HTML) ===== */
+/* ===== Botón "Acepto e ingresar" ===== */
 .btn-accept {
-  background: linear-gradient(155deg, rgb(95, 114, 32) 0%, rgb(70, 87, 15) 45%, rgb(33, 42, 11) 100%);
+  background: var(--color-primary);
 }
 
 /* ===== Scrollbar sutil para el cuerpo del modal ===== */

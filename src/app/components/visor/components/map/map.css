@@ -95,12 +95,6 @@
     object-fit: contain;
   }
 
-  app-map > img[alt="Logo San Isidro"] {
-    bottom: calc(6rem + env(safe-area-inset-bottom));
-    left: 0.5rem;
-    height: 3rem;
-  }
-
   #mapContainer .ol-scale-bar,
   #mapContainer.sidebar-open .ol-scale-bar {
     bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;

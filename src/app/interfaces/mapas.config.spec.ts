@@ -25,10 +25,10 @@ import { environment } from '../../environments/environment';
  * términos, por lo que conviene fijarlos con pruebas junto con sus relaciones de orden.
  */
 describe('mapas.config · vista inicial', () => {
-  it('centra el mapa en Lima (longitud, latitud) con un zoom de conjunto', () => {
+  it('centra el mapa en Perú (longitud, latitud) con un zoom de conjunto', () => {
     expect(INITIAL_CENTER).toHaveLength(2);
-    expect(INITIAL_CENTER[0]).toBeLessThan(0); // longitud (oeste)
-    expect(INITIAL_CENTER[1]).toBeLessThan(0); // latitud (sur)
+    expect(INITIAL_CENTER[0]).toBeCloseTo(-75, 0);
+    expect(INITIAL_CENTER[1]).toBeCloseTo(-9, 0);
     expect(INITIAL_ZOOM).toBeGreaterThanOrEqual(4);
     expect(INITIAL_ZOOM).toBeLessThan(SAN_ISIDRO_ZOOM);
   });

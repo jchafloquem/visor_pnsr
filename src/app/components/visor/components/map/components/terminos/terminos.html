@@ -83,7 +83,7 @@
       <label for="terms-accepted" class="flex cursor-pointer items-start gap-2 text-[11px] font-medium text-slate-700">
         <input
           id="terms-accepted"
-          class="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-[#46570f]"
+          class="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-primary"
           type="checkbox"
           [(ngModel)]="modalTermsAccepted">
         <span>He leído y acepto los términos y condiciones.</span>
@@ -99,7 +99,7 @@
           (click)="acceptAndEnter()"
           [disabled]="!modalTermsAccepted()"
           type="button"
-          class="btn-accept inline-flex min-h-9 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-bold text-white shadow-md transition-all hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#46570f] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:w-auto sm:gap-2 sm:px-3.5">
+          class="btn-accept inline-flex min-h-9 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] font-bold text-white shadow-md transition-all hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:w-auto sm:gap-2 sm:px-3.5">
           <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
           Acepto e ingresar
         </button>

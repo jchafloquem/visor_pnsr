@@ -27,7 +27,6 @@
             ],
                         "styles": [
               "node_modules/ol/ol.css",
-              "node_modules/driver.js/dist/driver.css",
               "src/styles.css"
             ]
           },

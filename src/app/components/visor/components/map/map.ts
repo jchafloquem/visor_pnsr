@@ -16,7 +16,6 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 // Servicios y módulos
 import { LoteInfoWindow } from '../../../../interfaces/geoLayers';
 import { MapService } from '../../../../services/map.service';
-import { DriverService } from '../../../../services/driver.service';
 import { DrawMeasureService } from '../../../../services/draw.service';
 import { AuthService } from '../../../../services/auth.service';
 // Componentes relacionados
@@ -28,7 +27,6 @@ import { Login } from '../../../auth/components/login/login'; // Import Login co
 import { CoordinateInfo } from './components/coordinate-info/coordinate-info';
 import { TermsModal } from './components/terminos/terminos';
 import { Leyenda } from './components/sidebar/components/leyenda/leyenda';
-import { Dashboard } from '../dashboard/dashboard';
 /**
  * Componente principal de la interfaz del mapa.
  * Coordina la visualización de la barra de herramientas, barra lateral y los controles
@@ -48,7 +46,6 @@ import { Dashboard } from '../dashboard/dashboard';
     CoordinateInfo,
     TermsModal,
     Leyenda,
-    Dashboard,
   ],
   templateUrl: './map.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -62,17 +59,6 @@ export class MapComponent {
   @ViewChild(Funciones) funcionesComponent!: Funciones;
 
   public showLoginModal = signal(false);
-  /** Controla la visibilidad del Dashboard de servicios temáticos. */
-  public dashboardVisible = signal(false);
-  /** Abre el Dashboard de Conformidad de Obra. */
-  abrirDashboard(): void {
-    this.dashboardVisible.set(true);
-  }
-  /** Cierra el Dashboard de Conformidad de Obra. */
-  closeDashboard(): void {
-    this.dashboardVisible.set(false);
-  }
-
   /** Conjunto de ids de ventanas de lote cuyo iframe ya terminó de cargar (para ocultar el spinner). */
   private readonly loteWindowsLoaded = signal<Set<string>>(new Set());
 
@@ -82,9 +68,6 @@ export class MapComponent {
    * caducidad (aviso previo y aviso de sesión finalizada).
    */
   public readonly authService = inject(AuthService);
-  private readonly driverService = inject(DriverService);
-  /** Estado del tour activo (proyectado al navbar para el resaltado del botón). */
-  isTourActive = this.driverService.tourActivo;
   /** Estado de apertura del sidebar; desplaza la barra de escala vía CSS. */
   sidebarAbierto = false;
   private readonly cdr = inject(ChangeDetectorRef);
@@ -592,14 +575,6 @@ export class MapComponent {
    */
   closeLoginModal(): void {
     this.showLoginModal.set(false);
-  }
-
-  /**
-   * Inicia el recorrido interactivo del visor (driver.js).
-   * Se delega al `DriverService` singleton.
-   */
-  startTour(): void {
-    this.driverService.startTour();
   }
 
   /**

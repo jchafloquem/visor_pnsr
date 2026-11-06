@@ -1972,21 +1972,17 @@ export class MapService {
     // Usamos goToCoordinates para una animación de "vuelo" más suave.
     this.goToCoordinates(SAN_ISIDRO_CENTER[1], SAN_ISIDRO_CENTER[0], SAN_ISIDRO_ZOOM, duration, onComplete);
   }
-  /**
-   * Centra el mapa en la extensión inicial del distrito sin activar el resaltado.
-   * Ideal para el botón "home" o vistas iniciales.
-   */
-  goToDistrito(duration = ANIMATION_DURATION / 2): void {
+  /** Restaura la vista inicial de Perú al pulsar el botón "Mapa Completo". */
+  goToInitialView(duration = ANIMATION_DURATION / 2): void {
     const map = this._map();
     if (!map) return;
     const view = map.getView();
-    const transformedExtent = transformExtent(SAN_ISIDRO_EXTENT, 'EPSG:32718', view.getProjection());
-    const size = map.getSize();
-    const fitSize = window.matchMedia('(max-width: 640px)').matches && size
-      ? [size[0] * 6, size[1] * 6]
-      : undefined;
-    this.cambiarMapaBase('blanco');
-    view.fit(transformedExtent, { duration, padding: [20, 20, 20, 20], size: fitSize });
+    view.animate({
+      center: fromLonLat(INITIAL_CENTER, view.getProjection()),
+      zoom: INITIAL_ZOOM,
+      duration,
+      easing: easeOut,
+    });
   }
   /**
    * Muestra el modal global de Términos y Condiciones.

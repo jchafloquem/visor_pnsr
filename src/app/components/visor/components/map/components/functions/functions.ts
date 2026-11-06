@@ -79,7 +79,7 @@ export class Funciones {
   }
 
   goHome(): void {
-    this.mapService.goToDistrito();
+    this.mapService.goToInitialView();
   }
 
   /**
