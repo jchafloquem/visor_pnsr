@@ -1,6 +1,6 @@
-<nav class="fixed z-10 top-0 left-0 w-full h-16 bg-primary backdrop-blur-md text-white flex items-center justify-between px-6 border-b border-white/10">
+<nav class="navbar-shell fixed z-10 top-0 left-0 w-full h-16 bg-primary backdrop-blur-md text-white flex items-center justify-between px-6 border-b border-white/10">
   <!-- Lado Izquierdo: Logo -->
-  <div class="flex-1 flex justify-start items-center gap-4">
+  <div class="navbar-brand flex-1 flex justify-start items-center gap-4">
     <div class="p-1.5 rounded-lg shadow-inner">
       <img #msiLogo
            src="assets/images/logo.png"
@@ -14,9 +14,9 @@
     <span class="navbar-title-glow text-3xl font-bold tracking-wider leading-tight text-white text-center">Geovisor Catastral</span>
   </div>
   <!-- Lado Derecho: Selector de Herramientas y Botón de Acceso -->
-  <div class="flex-1 flex justify-end items-center gap-2">
+  <div class="navbar-actions flex-1 flex justify-end items-center gap-2">
     <!-- Selector de Herramientas: Tour / Dashboard / Observatorio -->
-    <div class="relative">
+    <div class="navbar-tools relative">
       <select
         id="btn-menus"
         (change)="onOpcionSeleccionada($event)"

@@ -65,3 +65,71 @@
 #mapContainer.sidebar-open .ol-scale-bar {
   left: 25.5rem !important;
 }
+
+@media (max-width: 640px) {
+  .map-loading-overlay {
+    box-sizing: border-box;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .map-loading-content {
+    width: min(100%, 24rem);
+  }
+
+  .map-loading-message {
+    max-width: 24rem;
+    margin-top: 0.5rem;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .map-loading-logo {
+    max-width: min(70vw, 14rem);
+    height: 3.5rem;
+    margin-top: 1.5rem;
+    object-fit: contain;
+  }
+
+  app-map > img[alt="Logo San Isidro"] {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+    left: 0.5rem;
+    height: 3rem;
+  }
+
+  #mapContainer .ol-scale-bar,
+  #mapContainer.sidebar-open .ol-scale-bar {
+    bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;
+    left: 3.5rem !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .map-loading-overlay {
+    box-sizing: border-box;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: max(0.5rem, env(safe-area-inset-top)) 1rem max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .map-loading-content {
+    width: min(100%, 34rem);
+  }
+
+  .map-loading-message {
+    max-width: 32rem;
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  .map-loading-logo {
+    height: 2.5rem;
+    margin-top: 0.5rem;
+  }
+}
