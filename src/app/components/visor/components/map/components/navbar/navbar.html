@@ -1,14 +1,8 @@
 <nav class="navbar-shell fixed z-10 top-0 left-0 w-full h-16 bg-white backdrop-blur-md text-gray-800 flex items-center justify-between px-6 border-b border-gray-200 shadow-sm">
   <!-- Logo y título -->
   <div class="navbar-brand flex min-w-0 flex-1 justify-start items-center gap-3">
-    <div class="p-1.5 rounded-lg shadow-inner">
-      <img #msiLogo
-           src="https://visoremergencias.vivienda.gob.pe/assets/img/logo-mvsc.svg"
-           alt="Municipalidad de San Isidro"
-           class="h-7 sm:h-10 md:h-12 w-auto object-contain"
-           (error)="msiLogo.src='https://v0.app/placeholder.svg'">
-    </div>
-    <span class="navbar-title-glow truncate text-sm font-bold tracking-wide leading-tight text-gray-800 sm:text-xl md:text-2xl">Geovisor</span>
+    <img src="/assets/images/logo_mvcs.png" alt="Logo MVCS" class="h-[56.5px] w-auto shrink-0 object-contain">
+    <span class="navbar-title-glow truncate text-sm font-bold tracking-wide leading-tight text-gray-800 sm:text-xl md:text-2xl">Visor GeoEspacial | PNVR</span>
   </div>
   <!-- Lado Derecho: Botón de Acceso -->
   <div class="navbar-actions flex-1 flex justify-end items-center gap-2">
@@ -34,7 +28,7 @@
 </nav>
 <!-- Modal de Cierre de Sesión -->
 @if (showLogoutModal()) {
-<div class="fixed inset-0 z-[1050] flex items-center justify-center bg-black/60 animate-fade-in" (click)="cancelLogout()">
+<div class="fixed inset-0 z-1050 flex items-center justify-center bg-black/60 animate-fade-in" (click)="cancelLogout()">
   <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg animate-scale-in" (click)="$event.stopPropagation()">
     <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
       <div class="sm:flex sm:items-start">

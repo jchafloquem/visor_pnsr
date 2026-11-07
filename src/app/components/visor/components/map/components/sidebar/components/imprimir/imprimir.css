@@ -46,14 +46,8 @@
     display: flex;
     align-items: center;
     gap: 7mm;
-    border-bottom: 0.8mm solid #46570f;
+    border-bottom: 0.8mm solid #48ade5;
     padding-bottom: 3mm;
-  }
-
-  .msi-logo {
-    height: 16mm;
-    width: auto;
-    object-fit: contain;
   }
 
   .msi-head-texts h1 {
@@ -190,4 +184,3 @@
   color: #6b7280;
   line-height: 1.4;
 }
-

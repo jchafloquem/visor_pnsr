@@ -1,16 +1,15 @@
 @if (!mapService.isReady()) {
-<div class="map-loading-overlay fixed inset-0 z-[99999] flex flex-col items-center justify-center"
+<div class="map-loading-overlay fixed inset-0 z-99999 flex flex-col items-center justify-center"
   role="status" aria-live="polite" aria-busy="true">
   <img src="assets/images/fondo.jpg" alt="" class="absolute inset-0 w-full h-full object-cover grayscale">
   <div class="absolute inset-0 bg-black/70"></div>
   <div class="map-loading-content relative z-10 flex flex-col items-center justify-center">
-    <app-spinner size="h-28 w-28 sm:h-40 sm:w-40" color="text-white" imageUrl="/assets/images/msibn.png">
+    <app-spinner size="h-28 w-28 sm:h-40 sm:w-40" color="text-white">
     </app-spinner>
     <span class="map-loading-message mt-4 text-white/70 text-sm font-bold tracking-[0.2em] animate-pulse uppercase">
-      Cargando geovisor catastral de la Municipalidad de San Isidro
+      Cargando geovisor Programa Nacional de Vivienda Rural
     </span>
-    <img src="/assets/images/logo.png" alt="Logo San Isidro"
-      class="map-loading-logo mt-8 h-20 w-auto [filter:drop-shadow(0_0_12px_rgba(255,255,255,0.7))]">
+    <span class="map-loading-logo mt-8 text-2xl font-black tracking-[0.3em] text-white">PNVR</span>
   </div>
 </div>
 }
@@ -45,7 +44,7 @@
     <!-- Indicador de carga del iframe: se oculta cuando el iframe dispara 'load' -->
     @if (!isLoteWindowLoaded(win.id)) {
     <div class="absolute inset-0 flex items-center justify-center bg-white/50">
-      <app-spinner size="h-32 w-32" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+      <app-spinner size="h-32 w-32" color="text-gray-800"></app-spinner>
     </div>
     }
     <iframe class="relative w-full h-full border-0" [src]="getSafeUrl(win.url)" frameborder="0"
@@ -128,7 +127,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -150,7 +149,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -172,7 +171,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -194,7 +193,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -216,7 +215,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -230,7 +229,7 @@
     class="flex flex-col bg-white rounded-lg shadow-lg w-full max-w-[315px] h-[53%] animate-scale-in pointer-events-auto"
     [style.position]="'fixed'" [style.top.px]="cruceModalPosition().y" [style.left.px]="cruceModalPosition().x"
     [style.transform]="'translate(-50%, -50%)'">
-    <div    
+    <div
       class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg cursor-move select-none touch-none"
       (pointerdown)="startCruceDrag($event)" (pointermove)="dragCruce($event)" (pointerup)="endCruceDrag()"
       (pointercancel)="endCruceDrag()">
@@ -259,7 +258,7 @@
       @if (!isIframeLoaded(url)) {
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg z-10">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       }
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"
@@ -305,7 +304,7 @@
       @if (!isIframeLoaded(url)) {
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg z-10">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       }
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"
@@ -330,7 +329,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -352,21 +351,21 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
   </div>
 </div>
 }
-<!-- Modal para Área Verde de San Isidro (PDF) -->
+<!-- Modal para ficha de área recreativa (PDF) -->
 @if (mapService.areaVerdeUrl(); as url) {
 <div class="fixed inset-0 z-[1050] flex items-center justify-center bg-black/60 animate-fade-in"
   (click)="closeAreaVerdeModal()" tabindex="-1">
   <div class="flex flex-col bg-white rounded-lg shadow-lg w-full max-w-[682px] h-[85%] animate-scale-in"
     (click)="$event.stopPropagation()">
     <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-      <h3 class="m-0 text-sm font-semibold text-gray-800">Ficha de Área Verde de San Isidro</h3>
+      <h3 class="m-0 text-sm font-semibold text-gray-800">Ficha de área recreativa del PNVR</h3>
       <button
         class="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-none text-2xl cursor-pointer transition-colors hover:bg-gray-200"
         (click)="closeAreaVerdeModal()" title="Cerrar">&times;</button>
@@ -374,7 +373,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -396,7 +395,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -418,7 +417,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -440,7 +439,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -462,7 +461,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -484,7 +483,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -506,7 +505,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -528,7 +527,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -550,7 +549,7 @@
     <div class="flex-grow p-0 overflow-hidden relative">
       <!-- Indicador de carga para el iframe -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-b-lg">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(url)" frameborder="0"></iframe>
     </div>
@@ -573,7 +572,7 @@
       <!-- Indicador de carga para la fotografía (se oculta al cargar o si falla) -->
       @if (!mapService.subsectorVecinalImgLoaded() && !mapService.subsectorVecinalImgError()) {
         <div class="absolute inset-0 flex items-center justify-center bg-white/50">
-          <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+          <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
         </div>
       }
       <!-- Fotografía ajustada al modal conservando su proporción -->
@@ -590,14 +589,14 @@
   </div>
 </div>
 }
-<!-- Modal para Fotografía de Señaletica San Isidro (2026) -->
+<!-- Modal para fotografía de señalética (2026) -->
 @if (mapService.senaleticaUrl(); as url) {
 <div class="fixed inset-0 z-[1050] flex items-center justify-center bg-black/60 animate-fade-in"
   (click)="closeSenaleticaModal()" tabindex="-1">
   <div class="flex flex-col bg-white rounded-lg shadow-lg w-full max-w-[520px] h-[80%] animate-scale-in"
     (click)="$event.stopPropagation()">
     <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-      <h3 class="m-0 text-lg font-semibold text-gray-800">Fotografía - Señaletica San Isidro (2026)</h3>
+      <h3 class="m-0 text-lg font-semibold text-gray-800">Fotografía de señalética del PNVR (2026)</h3>
       <button
         class="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-none text-2xl cursor-pointer transition-colors hover:bg-gray-200"
         (click)="closeSenaleticaModal()" title="Cerrar">&times;</button>
@@ -606,12 +605,12 @@
       <!-- Indicador de carga para la fotografía (se oculta al cargar o si falla) -->
       @if (!mapService.senaleticaImgLoaded() && !mapService.senaleticaImgError()) {
         <div class="absolute inset-0 flex items-center justify-center bg-white/50">
-          <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+          <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
         </div>
       }
       <!-- Fotografía ajustada al modal conservando su proporción -->
       <img class="relative max-w-full max-h-full w-auto h-auto object-contain" [src]="url"
-        alt="Fotografía - Señaletica San Isidro (2026)" (load)="mapService.senaleticaImgLoaded.set(true)"
+        alt="Fotografía de señalética del PNVR (2026)" (load)="mapService.senaleticaImgLoaded.set(true)"
         (error)="mapService.setSenaleticaImgError(true)">
       @if (mapService.senaleticaImgError()) {
         <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-600 p-4 text-center">
@@ -654,7 +653,7 @@
     <div class="flex-grow p-0 overflow-hidden relative bg-gray-100">
       <!-- Indicador de carga del PDF (queda detrás mientras el visor lo dibuja) -->
       <div class="absolute inset-0 flex items-center justify-center bg-white/50">
-        <app-spinner size="h-40 w-40" color="text-gray-800" imageUrl="/assets/images/msibn.png"></app-spinner>
+        <app-spinner size="h-40 w-40" color="text-gray-800"></app-spinner>
       </div>
       <iframe class="relative w-full h-full border-0 rounded-b-lg" [src]="getSafeUrl(lamina.url)"
         title="Lámina de sección vial normativa metropolitana" frameborder="0"></iframe>

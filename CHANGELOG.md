@@ -1,6 +1,6 @@
 # Historial de Cambios (Changelog)
 
-Este documento registra todos los cambios notables realizados en el "Visor Geográfico Municipal - Distrito de San Isidro".
+Este documento registra todos los cambios notables realizados en el visor geográfico del Programa Nacional de Vivienda Rural (PNVR).
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
@@ -67,7 +67,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 *   **Navegación y Experiencia de Usuario:**
     *   **Mapa de Vista General (OverviewMap):** Integrado un mini-mapa en la esquina para facilitar la orientación espacial.
-    *   **Animación de "Vuelo":** Se ha implementado una animación de navegación suave al usar funciones como "Ir a San Isidro", mejorando la experiencia de transición entre vistas lejanas y cercanas.
+    *   **Animación de "Vuelo":** Se ha implementado una animación de navegación suave al volver a la vista inicial, mejorando la experiencia de transición entre vistas lejanas y cercanas.
     *   **Pantalla de Bienvenida:** Diseño de una página de bienvenida (`/login`) con un carrusel de imágenes representativas del distrito.
 
 ### 🐛 Fixed (Correcciones)
@@ -82,4 +82,3 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 *   **Arquitectura:** El proyecto se estructura con componentes `standalone`, mejorando la modularidad y reduciendo la dependencia de `NgModules`.
 
 ---
-

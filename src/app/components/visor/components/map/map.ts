@@ -366,7 +366,7 @@ export class MapComponent {
   }
 
   /**
-   * Cierra el modal del área verde de San Isidro.
+   * Cierra el modal del área recreativa.
    */
   closeAreaVerdeModal(): void {
     this.mapService.clearAreaVerdeUrl();
@@ -436,7 +436,7 @@ export class MapComponent {
   }
 
   /**
-   * Cierra el modal de fotografía de señaletica San Isidro 2026.
+   * Cierra el modal de fotografía de señalética.
    */
   closeSenaleticaModal(): void {
     this.mapService.clearSenaleticaUrl();

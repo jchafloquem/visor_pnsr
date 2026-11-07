@@ -56,7 +56,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
   public coordSystem: 'GEOGRAFICA' | 'UTM' = 'GEOGRAFICA';
   public este: number | null = null;
   public norte: number | null = null;
-  /** San Isidro estÃ¡ Ã­ntegramente en la zona UTM 18S: es fija, sin selector. */
+  /** La cobertura geográfica configurada está en la zona UTM 18S: es fija, sin selector. */
   private static readonly ZONA_UTM_SAN_ISIDRO = 'EPSG:32718';
   public latitud: number | null = null;
   public longitud: number | null = null;
@@ -100,7 +100,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
 
     const coordDestino = fromLonLat([this.longitud, this.latitud]);
     if (!this.estaEnElDistrito(coordDestino)) {
-      this.errorMensaje = 'La coordenada ingresada estÃ¡ fuera del distrito de San Isidro.';
+      this.errorMensaje = 'La coordenada ingresada está fuera del ámbito configurado para el PNVR.';
       return;
     }
     this.irACoordenada(coordDestino);
@@ -123,7 +123,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
       'EPSG:3857',
     );
     if (!this.estaEnElDistrito(coordDestino)) {
-      this.errorMensaje = 'La coordenada ingresada estÃ¡ fuera del distrito de San Isidro.';
+      this.errorMensaje = 'La coordenada ingresada está fuera del ámbito configurado para el PNVR.';
       return;
     }
     this.irACoordenada(coordDestino);
@@ -131,7 +131,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
 
   /**
    * Indica si una coordenada (en la proyecciÃ³n del mapa, EPSG:3857) cae dentro
-   * del distrito de San Isidro. Se usa `SAN_ISIDRO_EXTENT` (bounding box del
+   * del área geográfica configurada. Se usa `SAN_ISIDRO_EXTENT` (bounding box del
    * distrito en EPSG:32718, la misma referencia del aviso de TÃ©rminos), con un
    * pequeÃ±o margen para no rechazar puntos vÃ¡lidos del borde por el redondeo
    * de la transformaciÃ³n de coordenadas.

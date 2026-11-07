@@ -36,13 +36,13 @@ export const ZOOM_MAX_PARQUE = 19;
  */
 export const ZOOM_MAX_PARQUE_CENTROIDE = 17;
 /** 
- * Extensión geográfica aproximada de San Isidro [oeste, sur, este, norte] en LonLat 
+ * Extensión geográfica configurada para el visor [oeste, sur, este, norte] en LonLat
  * Coordenadas actualizadas para Jirón Augusto Tamayo (lon, lat)
  */
 export const SAN_ISIDRO_CENTER: [number, number] = [-77.0295427, -12.0972444];
 /** Zoom específico para la vista del distrito */
 export const SAN_ISIDRO_ZOOM = 17;
-/** Extensión geográfica del distrito de San Isidro en EPSG:32718 */
+/** Extensión geográfica configurada para el visor en EPSG:32718 */
 export const SAN_ISIDRO_EXTENT = [275224.08, 8660213.79, 281557.72, 8663299.55];
 /** Zoom mínimo para considerar que el usuario está viendo el distrito (dispara el aviso de Términos y Condiciones) */
 export const TERMS_ZOOM_DISTRICTO = 14;

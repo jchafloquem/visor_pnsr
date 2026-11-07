@@ -72,7 +72,7 @@ describe('mapas.config · topes de acercamiento', () => {
   });
 });
 
-describe('mapas.config · distrito de San Isidro', () => {
+describe('mapas.config · cobertura geográfica del visor', () => {
   it('sitúa el centro del distrito en el Jirón Augusto Tamayo', () => {
     expect(SAN_ISIDRO_CENTER).toHaveLength(2);
     expect(SAN_ISIDRO_CENTER[0]).toBeCloseTo(-77.0295, 3);

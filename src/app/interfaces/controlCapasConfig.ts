@@ -188,7 +188,7 @@ const PANEL_BASE: Section[] = [
       ]),
       subseccion('vial', 'VIAL', [
         capa('red_semaforizada', 'Intersecciones Semaforizadas', { visible: false, showInLegend: true }),
-        capa('senaletica_limite', 'Señaletica San Isidro 2026', { visible: false, showInLegend: true }),
+        capa('senaletica_limite', 'Señalética del PNVR 2026', { visible: false, showInLegend: true }),
       ])
     ],
   },

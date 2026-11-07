@@ -1,5 +1,5 @@
 # 📘 Manual de Usuario — Geovisor Catastral
-### Municipalidad de San Isidro (MDSI)
+### Programa Nacional de Vivienda Rural (PNVR)
 
 **Versión del documento:** 1.0 · **Versión de la aplicación:** 1.0.0
 
@@ -7,7 +7,7 @@
 
 ## 1. Introducción
 
-El **Geovisor Catastral** es la aplicación web de la Municipalidad de San Isidro que permite a la ciudadanía, a los servidores municipales y a entidades públicas **consultar y visualizar la información geoespacial, la cartografía oficial y los datos técnicos de los predios del distrito**, sobre una base cartográfica y de imágenes satelitales actualizadas.
+El **Geovisor Catastral** es la aplicación web del Programa Nacional de Vivienda Rural (PNVR), que permite consultar y visualizar información geoespacial, cartografía y datos técnicos disponibles para el programa, sobre una base cartográfica y de imágenes satelitales actualizadas.
 
 ### 1.1. ¿A quién va dirigido este manual?
 
@@ -17,7 +17,7 @@ Este manual está dirigido a **cualquier persona que ingrese por primera vez al 
 
 | Elemento | Detalle |
 |---|---|
-| URL de la aplicación | Portal institucional de la Municipalidad de San Isidro (Geovisor Catastral) |
+| URL de la aplicación | Portal institucional del Programa Nacional de Vivienda Rural (PNVR) |
 | Navegadores recomendados | Google Chrome, Microsoft Edge, Mozilla Firefox (versiones recientes) |
 | Resolución recomendada | 1366 × 768 píxeles o superior |
 | Conexión | Se requiere conexión a Internet (las capas y el mapa se cargan en línea) |
@@ -79,7 +79,7 @@ Ubicada en la parte superior de la pantalla, contiene:
 
 | Elemento | Descripción |
 |---|---|
-| **Logo MSI** | Identificación institucional de la Municipalidad de San Isidro. |
+| **Identidad institucional** | Identificación del Programa Nacional de Vivienda Rural (PNVR). |
 | **Visitas** | Contador público de visitas al geovisor. Se incrementa con cada carga de la página. |
 | **Geovisor Catastral** | Título principal de la aplicación. |
 | **Tour (ℹ)** | Lanza el **recorrido interactivo guiado**: una secuencia de pasos que resalta cada elemento del visor con su explicación. Muy recomendado para primeros ingresos. Navegue con los botones *Siguiente / Anterior* y ciérrelo con ✕ o el botón *Finalizar*. |
@@ -157,7 +157,7 @@ Genera un **PDF** o envía a la impresora la vista actual del mapa, con **títul
 
 ### 5.6. 📥 Descargas
 
-Lista de **documentos y formatos de descarga disponibles** (p. ej. planos oficiales en PDF como *Plano de Zonificación* o *Sistema Vial Metropolitano de Lima en la Jurisdicción de San Isidro*). Haga clic en el documento; se abre o descarga según su navegador.
+Lista de **documentos y formatos de descarga disponibles**. Haga clic en el documento; se abre o descarga según su navegador.
 
 ### 5.7. ℹ️ Acerca de
 
@@ -173,7 +173,7 @@ Columna flotante de botones verticales:
 |---|---|
 | ➕ **Acercar zoom** | Aumenta el nivel de zoom para ver más detalle. |
 | ➖ **Alejar zoom** | Reduce el zoom para ver un área más amplia. |
-| 🏠 **Vista general (Home)** | Restablece la vista a la extensión inicial del distrito de San Isidro. |
+| 🏠 **Vista general (Home)** | Restablece la vista inicial del geovisor del PNVR. |
 | 📍 **Mi ubicación** | Centra el mapa en su posición actual (el navegador solicitará permiso de geolocalización). |
 | 🛰️ **Cambiar mapa base** | Alterna entre las vistas **Satélite → Calles → Mapa en blanco**. Al pulsarlo se despliega un pequeño selector de bases. |
 | 🛠️ **Herramientas de dibujo** | Abre el panel de herramientas para **medir distancias y áreas, y dibujar sobre el mapa**. El botón se resalta cuando las herramientas están activas. |
@@ -262,7 +262,7 @@ La cartografía está georreferenciada en **UTM WGS84 zona 18S (SIRGAS)**; el bu
 
 ## 12. Soporte
 
-Para consultas, reporte de errores o solicitudes de acceso con credenciales, contacte a la **Subgerencia de Planeamiento Urbano y Catastro — Municipalidad de San Isidro**, o a través del Observatorio Urbano: <https://observatoriourbano.munisanisidro.gob.pe/webobsurb/>
+Para consultas, reportes de errores o solicitudes de acceso, utilice los canales institucionales del Programa Nacional de Vivienda Rural (PNVR).
 
 ---
-*Documento generado a partir de la versión 1.0.0 del aplicativo Geovisor Catastral (Municipalidad de San Isidro).*
+*Documento generado a partir de la versión 1.0.0 del Geovisor Catastral del Programa Nacional de Vivienda Rural (PNVR).*

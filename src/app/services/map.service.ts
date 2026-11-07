@@ -366,7 +366,7 @@ export class MapService {
   bancas2016Url = signal<string | null>(null);
   /** URL con la información de un estacionamiento de bicicletas (2016) para mostrar en un modal. */
   estacBicis2016Url = signal<string | null>(null);
-  /** URL del PDF de un área verde de San Isidro para mostrar en un modal. */
+  /** URL del PDF de una ficha de área recreativa para mostrar en un modal. */
   areaVerdeUrl = signal<string | null>(null);
   /** URL con la información de un hidrante (2016) para mostrar en un modal. */
   hidrante2016Url = signal<string | null>(null);
@@ -427,7 +427,7 @@ export class MapService {
     this.infoLayerConfig('mu_bancas_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.bancas2016Url),
     // Estacionamientos de bicicletas 2016
     this.infoLayerConfig('mu_estac_bicis_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.estacBicis2016Url),
-    // Áreas verdes de San Isidro (PDF de ficha por id_lote)
+    // Fichas PDF de áreas recreativas (por id_lote)
     this.infoLayerConfig('nom_area_verde', p => p['id_lote'], id => `${environment.dataGis.areasVerdesUrlBase}/${id}.pdf`, this.areaVerdeUrl),
     // Hidrantes 2016
     this.infoLayerConfig('mu_hidrante_2016', p => p['codigo'], id => `${environment.dataGis.hidrante2016Url}?codigo_i=${id}`, this.hidrante2016Url),
@@ -451,7 +451,7 @@ export class MapService {
       const nombre = /\.[a-zA-Z]{3,4}$/.test(id) ? id : `${id}.jpg`;
       return `${environment.dataGis.subsectoresVecinalesFotosUrl}/${nombre}`;
     }, this.subsectorVecinalUrl),
-    // Señaletica San Isidro (2026) — fotografía del componente (campo llave "Foto")
+    // Señalética (2026) — fotografía del componente (campo llave "Foto")
     this.infoLayerConfig('senaletica_limite', p => p['Foto'] ?? p['foto'], id => {
       // El campo "Foto" incluye la ruta relativa (p. ej. "DCIM/JPEG_20260218150353457.jpg").
       // Si viniera sin extensión se agrega ".jpg", y si faltara la subcarpeta se antepone "DCIM/".
@@ -1695,7 +1695,7 @@ export class MapService {
     this.estacBicis2016Url.set(null);
   }
   /**
-   * Limpia la URL del área verde de San Isidro, para cerrar el modal.
+   * Limpia la URL de la ficha del área recreativa, para cerrar el modal.
    */
   clearAreaVerdeUrl(): void {
     this.areaVerdeUrl.set(null);
@@ -1899,7 +1899,7 @@ export class MapService {
     if (layerToRemove) currentMap.removeLayer(layerToRemove);
   }
   /**
-   * Centra y acerca el mapa al distrito de San Isidro con un vuelo animado.
+   * Centra y acerca el mapa al área geográfica configurada con un vuelo animado.
    */
   goToCoordinates(lat: number, lon: number, zoom = SAN_ISIDRO_ZOOM, duration = 2200, onComplete?: (complete: boolean) => void): void {
     const map = this._map();
@@ -1936,7 +1936,7 @@ export class MapService {
         duration: zoomOutDuration,
         easing: easeOut
       }, () => {
-        // Segunda animación: zoom a la ubicación de destino (San Isidro)
+        // Segunda animación: zoom a la ubicación de destino
         view.animate({
           center: destination,
           zoom,
@@ -1964,7 +1964,7 @@ export class MapService {
     return res;
   }
   /**
-   * Centra y acerca el mapa al distrito de San Isidro usando la constante
+   * Centra y acerca el mapa al área geográfica configurada usando la constante
    * `SAN_ISIDRO_CENTER`. Esta función mantiene compatibilidad con llamadas
    * previas que no pasan explícitamente lat/lon.
    */
@@ -2006,7 +2006,7 @@ export class MapService {
   }
   /**
    * Escucha el evento 'moveend' del mapa y muestra el modal de Términos y
-   * Condiciones cuando el usuario hace zoom sobre el distrito de San Isidro:
+   * Condiciones cuando el usuario hace zoom sobre el área geográfica configurada:
    * zoom >= TERMS_ZOOM_DISTRICTO y la vista intersecta SAN_ISIDRO_EXTENT.
    * El aviso se dispara una vez por cada entrada al área (se rearma al salir).
    * @param olMap Instancia del mapa de OpenLayers.
@@ -2893,7 +2893,7 @@ export class MapService {
       // Estilo según el tipo de geometría:
       // - Líneas (vías): trazo ámbar sólido sobre un halo translúcido más ancho,
       //   para que la vía encontrada destaque claramente sobre la cartografía.
-      // - Polígonos (lotes, habilitaciones): borde y relleno verdes institucionales.
+      // - Polígonos (lotes, habilitaciones): borde y relleno azules.
       style: feature => {
         const geometryType = feature.getGeometry()?.getType();
         if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
@@ -2904,23 +2904,23 @@ export class MapService {
         }
         // Puntos (centroides de áreas recreativas): un estilo con `stroke` y
         // `fill` NO dibuja nada sobre un Point, así que las áreas de las que
-        // solo se conoce su centroide se señalan con un círculo verde.
+        // solo se conoce su centroide se señalan con un círculo azul.
         if (geometryType === 'Point' || geometryType === 'MultiPoint') {
           return new Style({
             image: new Circle({
               radius: 10,
-              fill: new Fill({ color: 'rgba(70, 87, 15, 0.25)' }),
-              stroke: new Stroke({ color: '#46570f', width: 3 }),
+              fill: new Fill({ color: 'rgba(72, 173, 229, 0.25)' }),
+              stroke: new Stroke({ color: '#48ade5', width: 3 }),
             }),
           });
         }
         return new Style({
           stroke: new Stroke({
-            color: '#46570f', // Borde verde oscuro
+            color: '#48ade5',
             width: 3,
           }),
           fill: new Fill({
-            color: 'rgba(70, 87, 15, 0.2)', // Relleno verde semi-transparente
+            color: 'rgba(72, 173, 229, 0.2)',
           }),
         });
       },

@@ -45,7 +45,7 @@ const AMBIENTAL_LAYERS: WmsLayerConfig[] = [
   { id: 'arbolado_urbano_2024', layerName: `${wp}vw_arboles_2024`, zIndex: 3, title: 'Árboles 2024' },
   { id: 'arbolado_urbano_2015', layerName: `${wp}vw_arboles_2015`, zIndex: 3, title: 'Árboles 2015' },
   { id: 'cactus_yucca_2015', layerName: `${wp}vw_arboles_2015_cactus`, zIndex: 3, title: 'Cactus - Yucca 2015' },
-  { id: 'nom_area_verde', layerName: `${wp}vw_tg_area_rec_nombres`, zIndex: 3, title: 'Área verde de San Isidro' },
+  { id: 'nom_area_verde', layerName: `${wp}vw_tg_area_rec_nombres`, zIndex: 3, title: 'Área recreativa del PNVR' },
 ];
 const MOVILIARIO_URBANO: WmsLayerConfig[] = [
   { id: 'mu_sub_sectores_vecinales_2025', layerName: `${wp}subsectores_vecinales_1_3_y_2_1_2025`, zIndex: 3, title: 'Subsectores Vecinales 1-3 y 2-1 (2025)' },
@@ -93,7 +93,7 @@ const SISTEMA_VIAL: WmsLayerConfig[] = [
 ];
 const INFRAESTRUCTURA_LAYERS: WmsLayerConfig[] = [
   { id: 'red_semaforizada', layerName: `${wp}red_semaforica`, zIndex: 3, title: 'Intersecciones Semaforizadas' },
-  { id: 'senaletica_limite', layerName: `${wp}senaletica_limite`, zIndex: 3, title: 'Señaletica San Isidro 2026' },
+  { id: 'senaletica_limite', layerName: `${wp}senaletica_limite`, zIndex: 3, title: 'Señalética del PNVR 2026' },
 ];
 const ACCESIBILIDAD: WmsLayerConfig[] = [
   { id: 'cruces_accesibilidad_1', layerName: `${wp}vw_cruces_sector_vecinal_01`, zIndex: 3, title: 'Cruce Sector Vecinal 01' },

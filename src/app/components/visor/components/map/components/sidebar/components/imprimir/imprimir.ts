@@ -25,14 +25,13 @@ type Orientacion = 'vertical' | 'horizontal';
 /** Formatos de papel soportados */
 type FormatoPapel = 'a4' | 'a3';
 
-const LOGO_SRC = 'assets/images/logo_visor.png';
 const COLOR_INSTITUCIONAL: [number, number, number] = [27, 42, 78]; // #1b2a4e
-const COLOR_VERDE: [number, number, number] = [70, 87, 15]; // #46570f
+const COLOR_ACENTO: [number, number, number] = [72, 173, 229]; // #48ade5
 
 /**
  * Panel de impresión/exportación del visor.
  * Genera un PDF local (jsPDF) o envía a la impresora la vista actual del mapa,
- * incluyendo logo institucional, título editable y fecha/hora de impresión.
+ * incluyendo título editable y fecha/hora de impresión.
  */
 @Component({
   selector: 'app-imprimir',
@@ -52,7 +51,7 @@ export class Imprimir {
   /** Solo usuarios autenticados pueden imprimir la fotografía del lote */
   puedeImprimirFoto = computed(() => this.authService.isAuthenticated());
   /** Título editable que se estampará en el plano */
-  titulo = signal('Plano de Recorte - Municipalidad de San Isidro');
+  titulo = signal('Plano de Recorte - PNVR');
   /** Orientación del papel */
   orientacion = signal<Orientacion>('vertical');
   /** Tamaño de papel */
@@ -745,15 +744,6 @@ export class Imprimir {
       }
 
       // --- Encabezado (contenido dentro de los márgenes ISO de 10 mm) ---
-      try {
-        const logo = await this.cargarImagen(LOGO_SRC);
-        const logoAlto = 12;
-        const logoAncho = (logo.width / logo.height) * logoAlto;
-        pdf.addImage(logo, 'PNG', margen, margen, logoAncho, logoAlto);
-      } catch {
-        // Si el logo no está disponible continuamos sin él
-      }
-
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(13);
       pdf.setTextColor(...COLOR_INSTITUCIONAL);
@@ -762,7 +752,7 @@ export class Imprimir {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(90, 90, 90);
-      pdf.text('Municipalidad de San Isidro · Geovisor Catastral', ancho / 2, margen + 8, {
+      pdf.text('Programa Nacional de Vivienda Rural (PNVR) · Geovisor', ancho / 2, margen + 8, {
         align: 'center',
       });
       pdf.text(
@@ -773,7 +763,7 @@ export class Imprimir {
       );
 
       // --- Línea separadora ---
-      pdf.setDrawColor(...COLOR_VERDE);
+      pdf.setDrawColor(...COLOR_ACENTO);
       pdf.setLineWidth(0.6);
       pdf.line(margen, yLinea, ancho - margen, yLinea);
 

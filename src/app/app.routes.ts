@@ -13,7 +13,7 @@ export const routes: Routes = [
   },
   {
     path: 'manual',
-    title: 'Manual de Usuario · Geovisor Catastral — Municipalidad de San Isidro',
+    title: 'Manual de Usuario · Geovisor Catastral — PNVR',
     loadComponent: () => import('./components/visor/components/map/components/sidebar/components/manual/mancompleto/manualCompleto')
       .then(m => m.ManualCompleto),
   },
@@ -28,4 +28,3 @@ export const routes: Routes = [
 		pathMatch: 'full',
 	},
 ];
-

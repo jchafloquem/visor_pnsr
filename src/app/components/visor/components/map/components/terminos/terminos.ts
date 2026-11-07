@@ -12,18 +12,18 @@ import { AuthService } from '@app/services/auth.service';
  */
 const CLAUSULAS_TERMINOS: readonly string[] = [
   'La información gráfica, los polígonos, las áreas y los perímetros mostrados en el visor provienen de la base de datos catastral institucional y se encuentran georreferenciados en el sistema oficial de coordenadas (UTM WGS84-18S / SIRGAS). No obstante, tienen carácter estrictamente referencial y no constituyen un certificado de catastro, certificado de parámetros urbanísticos, ni título de propiedad, por lo que no surten efectos jurídicos para procesos administrativos formales, trámites de licencias de obra o procesos judiciales.',
-  'La base de datos catastral se encuentra en constante proceso de actualización, revisión e incorporación técnica por parte de la Subgerencia de Planeamiento Urbano y Catastro. La información mostrada corresponde al estado de la cartografía a la fecha de la consulta.',
-  'Los datos técnicos visualizados se obtienen mediante la consulta por código catastral, código CUC, dirección, o mediante la navegación directa sobre el mapa. Si detecta alguna incongruencia técnica o cartográfica, puede canalizar sus observaciones a través del correo institucional de la subgerencia o mediante los mecanismos de soporte habilitados para el proyecto.',
-  'El usuario se obliga a emplear la plataforma de manera correcta, cerniéndose a las directrices y criterios técnicos de la municipalidad. Queda prohibido utilizar la herramienta con fines ilícitos, intentar vulnerar los sistemas de seguridad, extraer masivamente la información mediante bots o scripts no autorizados, o alterar, modificar y comercializar los mapas e imágenes obtenidas a través del servicio.',
-  'La Municipalidad de San Isidro está facultada para supervisar el uso del visor, así como para realizar mantenimientos preventivos o correctivos, interrupciones temporales del servicio por actualización de datos o mejoras tecnológicas, sin previo aviso.',
-  'La municipalidad podrá modificar los presentes términos y condiciones en cualquier momento para adaptarlos a nuevas normativas (como los lineamientos del SNCP) o mejoras de la plataforma. Las modificaciones entrarán en vigor a partir de su publicación en el mismo portal del visor.',
+  'La información geográfica se encuentra en constante proceso de actualización y revisión. La información mostrada corresponde al estado de la cartografía a la fecha de la consulta.',
+  'Los datos técnicos visualizados se consultan mediante las herramientas disponibles en el visor. Si detecta alguna incongruencia técnica o cartográfica, utilice los canales institucionales de soporte del PNVR.',
+  'El usuario se obliga a emplear la plataforma de manera correcta y conforme a las directrices del PNVR. Queda prohibido utilizar la herramienta con fines ilícitos, intentar vulnerar los sistemas de seguridad, extraer masivamente la información mediante bots o scripts no autorizados, o alterar, modificar y comercializar los mapas e imágenes obtenidas a través del servicio.',
+  'El PNVR está facultado para supervisar el uso del visor, así como para realizar mantenimientos preventivos o correctivos e interrupciones temporales del servicio por actualización de datos o mejoras tecnológicas, sin previo aviso.',
+  'El PNVR podrá modificar los presentes términos y condiciones en cualquier momento para adaptarlos a nuevas normativas o mejoras de la plataforma. Las modificaciones entrarán en vigor a partir de su publicación en el mismo portal del visor.',
   'El uso de este visor implica la aceptacion plena de los presentes términos y condiciones.',
 ];
 
 /**
  * Modal global de Términos y Condiciones del Geovisor Catastral.
- * Se muestra automáticamente cuando el usuario hace zoom sobre el distrito de
- * San Isidro (ver MapService.setupTermsOnZoom) o al pulsar el botón
+ * Se muestra automáticamente cuando el usuario hace zoom sobre el área de
+ * cobertura (ver MapService.setupTermsOnZoom) o al pulsar el botón
  * "Ver Términos y Condiciones" del panel "Acerca de".
  */
 @Component({
@@ -56,7 +56,7 @@ export class TermsModal {
   /** Indica que el modal está animando su salida (efecto inverso a la aparición) */
   readonly isClosing = signal(false);
 
-  /** URL pública del sitio de la Municipalidad de San Isidro a la que se redirige al rechazar los términos */
+  /** URL institucional a la que se redirige al rechazar los términos */
   private readonly institutionalUrl = 'https://msi.gob.pe';
 
   constructor() {

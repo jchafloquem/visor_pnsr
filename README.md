@@ -195,8 +195,8 @@ graph TB
   %% =========================
   %% ESTILOS
   %% =========================
-  classDef front fill:#518330,stroke:#3b6d22,stroke-width:2px,color:#fff;
-  classDef service fill:#f0fdf4,stroke:#84cc16,stroke-width:1px,color:#166534;
+  classDef front fill:#df1021,stroke:#a00b17,stroke-width:2px,color:#fff;
+  classDef service fill:#eaf6fd,stroke:#48ade5,stroke-width:1px,color:#164c70;
   classDef db fill:#fefce8,stroke:#eab308,stroke-width:1px,color:#854d0e;
   classDef external fill:#fafafa,stroke:#a1a1aa,stroke-width:1px,color:#3f3f46;
 
