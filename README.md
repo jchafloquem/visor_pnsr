@@ -1,4 +1,4 @@
-# Aplicativo Visor Geográfico del Visor Municipalidad de San Isidro
+# Aplicativo Visor Geográfico del Programa Nacional de Vivienda Rural (PNVR)
 
 Aplicación frontend desarrollada con **Angular 20**.
 
@@ -41,9 +41,9 @@ src/environments/
 
 | Archivo | Ambiente | Portal / API base | GeoServer |
 |---|---|---|---|
-| `environment.ts` | **Desarrollo** | `https://test.munisanisidro.gob.pe` | `http://localhost:8080/geoserver` |
-| `environment.qa.ts` | **QA** | `https://test.munisanisidro.gob.pe` | `http://localhost:8080/geoserver` |
-| `environment.prod.ts` | **Producción** | `https://munisanisidro.gob.pe` | `https://geomapas.munisanisidro.gob.pe/geoserver` (público) |
+| `environment.ts` | **Desarrollo** | Definido en el archivo de entorno | `http://localhost:8080/geoserver` |
+| `environment.qa.ts` | **QA** | Definido en el archivo de entorno | Definido en el archivo de entorno |
+| `environment.prod.ts` | **Producción** | Definido en el archivo de entorno | Definido en el archivo de entorno |
 
 Los tres archivos se generan con la fábrica `crearEnvironment()` de
 `src/environments/environment.model.ts`, que centraliza toda la configuración
@@ -54,7 +54,6 @@ Si algún servidor interno cambia por ambiente, se pasa como override:
 export const environment = crearEnvironment({
   production: true,
   ambiente: 'Producción',
-  portalUrl: 'https://munisanisidro.gob.pe',
   // overrides opcionales de servidores internos:
   // geoserverUrl, ortofotoServerUrl, dataGisServerUrl, tusneServerUrl
 });
@@ -138,7 +137,7 @@ graph TB
   %% COMPONENTES
   %% =========================
   subgraph "Cliente Web"
-    FRONT[Geovisor-MDSI]
+    FRONT[Geovisor-PNVR]
   end 
 
   subgraph "Auth"
@@ -150,11 +149,11 @@ graph TB
   end
 
   subgraph "Bases de Datos PostgreSQL"
-    DB1[(MDSIBDE - 192.168.40.57:5432)]
+    DB1[(Base de datos geográfica)]
   end
 
   subgraph "Bases de Datos ArcGIS"
-    DB2[(MDSIBDE - 192.168.40.57:5433)]
+    DB2[(Servicios geográficos)]
   end
   
   subgraph "Servidor de Mapas"
@@ -170,7 +169,7 @@ graph TB
   end
 
   subgraph "Interoperatibilidad"
-    INTER[http://192.168.41.160/DataGIS_WGS84/WEBFILES]
+    INTER[Servicios interoperables]
   end
 
   subgraph "Capa de Servicios (APIs)"
@@ -213,6 +212,6 @@ graph TB
 
 [Local](http://localhost:4200/)
 
-[Producción - URL](https://geovisorcatastral.munisanisidro.gob.pe)
+Producción: URL institucional configurada para el PNVR.
 
-[Producción - GeoServer](https://geomapas.munisanisidro.gob.pe)
+La URL de producción de GeoServer se define en el archivo de entorno correspondiente.
