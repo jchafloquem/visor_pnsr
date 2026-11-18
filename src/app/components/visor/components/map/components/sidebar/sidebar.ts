@@ -4,21 +4,20 @@ import { FormsModule } from '@angular/forms';
 //Servicio
 import { MapService } from '../../../../../../services/map.service';
 //Componentes
-import { CapasComponent } from './components/capas/capas';
-
 import { About } from './components/about/about';
+import { Busquedas } from './components/busquedas/busquedas';
+import { ControlCapas } from './components/control-capas/control-capas';
 import { Descargaspdf } from './components/descargaspdf/descargaspdf';
 import { Imprimir } from './components/imprimir/imprimir';
-import { UbicacionCoordenadas } from './components/coordenadas/coordenadas';
 import { Manual } from './components/manual/manual';
-import { Busquedas } from './components/busquedas/busquedas';
+import { UbicacionCoordenadas } from './components/coordenadas/coordenadas';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
   imports: [
     About,
-    CapasComponent,
+    ControlCapas,
     CommonModule,
     Busquedas,
     Descargaspdf,
@@ -41,7 +40,7 @@ export class Sidebar {
   // Ítems de navegación vinculados a las herramientas del MapService
   menuItems: { id: string; icon: string; label: string }[] = [
     { id: 'search', icon: 'bi-search', label: 'Busquedas' },
-    { id: 'layers', icon: 'bi-layers', label: 'Capas' },
+    { id: 'layers', icon: 'bi-layers', label: 'Control de Capas' },
     { id: 'legend', icon: 'bi bi-map-fill', label: 'Leyenda' },
     { id: 'coordenadas', icon: 'bi bi-geo', label: 'Busqueda por Coordenadas' },
     { id: 'print', icon: 'bi-printer', label: 'Imprimir' },

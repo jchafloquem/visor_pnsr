@@ -77,7 +77,7 @@
           <div class="flex-1 p-3 overflow-y-auto custom-scrollbar">
             <ng-container [ngSwitch]="activeTab">
               <app-busquedas *ngSwitchCase="'search'" (onClose)="toggleSidebar()"></app-busquedas>
-              <app-capas *ngSwitchCase="'layers'" (onClose)="toggleSidebar()"></app-capas>
+              <app-control-capas *ngSwitchCase="'layers'" (onClose)="toggleSidebar()"></app-control-capas>
               <app-coordenadas
                 *ngSwitchCase="'coordenadas'"
                 (onClose)="toggleSidebar()"
