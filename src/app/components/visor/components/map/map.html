@@ -1,22 +1,20 @@
 @if (!mapService.isReady()) {
 <div class="map-loading-overlay fixed inset-0 z-99999 flex flex-col items-center justify-center"
   role="status" aria-live="polite" aria-busy="true">
-  <img src="assets/images/portada.png" alt="" class="absolute inset-0 w-full h-full object-cover grayscale">
-  <div class="absolute inset-0 bg-black/70"></div>
   <div class="map-loading-content relative z-10 flex flex-col items-center justify-center">
-    <app-spinner size="h-28 w-28 sm:h-40 sm:w-40" color="text-white">
-    </app-spinner>
-    <span class="map-loading-message mt-4 text-white/70 text-sm font-bold tracking-[0.2em] animate-pulse uppercase">
-      Cargando geovisor Programa Nacional de Vivienda Rural
-    </span>
-    <span class="map-loading-logo mt-8 text-2xl font-black tracking-[0.3em] text-white">PNVR</span>
+     <app-spinner [showBackground]="true" size="h-24 w-24 sm:h-32 sm:w-32" color="text-white"></app-spinner>
+      <span class="relative z-10 mt-4 text-sm font-bold uppercase tracking-[0.2em] text-white/80">
+        Cargando…
+      </span>    
   </div>
 </div>
 }
-<app-navbar (login)="openLoginModal()"></app-navbar>
-<app-sidebar (onToggle)="handleSidebarToggle($event)"></app-sidebar>
-<div #mapContainer id="mapContainer" class="map-container" [class.blank-base]="mapService.baseLayerType() === 'blanco'" [class.sidebar-open]="sidebarAbierto">
+<div class="map-ready-content" [class.map-ready-content-visible]="mapService.isReady()">
+  <app-navbar (login)="openLoginModal()"></app-navbar>
+  <app-sidebar (onToggle)="handleSidebarToggle($event)"></app-sidebar>
+  <div #mapContainer id="mapContainer" class="map-container" [class.blank-base]="mapService.baseLayerType() === 'blanco'" [class.sidebar-open]="sidebarAbierto">
+  </div>
+  <app-funciones></app-funciones>
+  <app-leyenda></app-leyenda>
+  <app-coordinate-info></app-coordinate-info>
 </div>
-<app-funciones></app-funciones>
-<app-leyenda></app-leyenda>
-<app-coordinate-info></app-coordinate-info>

@@ -25,8 +25,11 @@
             [disabled]="ubicacionCargando()"
             [title]="ubicacionCargando() ? 'Obteniendo ubicación…' : 'Mi Ubicación'"
             class="w-10 h-10 flex items-center justify-center bg-primary backdrop-blur-md text-white rounded-xl shadow-lg border border-white/20 hover:bg-secondary hover:scale-105 transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait disabled:hover:scale-100 disabled:hover:bg-primary">
-      <i class="bi text-xl" [class.bi-arrow-repeat]="ubicacionCargando()" [class.animate-spin]="ubicacionCargando()"
-         [class.bi-geo-alt-fill]="!ubicacionCargando()"></i>
+      @if (ubicacionCargando()) {
+        <app-spinner size="h-5 w-5" color="text-white"></app-spinner>
+      } @else {
+        <i class="bi bi-geo-alt-fill text-xl"></i>
+      }
     </button>
         <button id="btn-cambio-base"
             (click)="toggleBaseLayer()"
@@ -105,7 +108,10 @@
   @if (areaLoteCargando() || areaLoteError() || (areaLoteActiva() && !areaLoteResultado())) {
   <div class="fixed right-28 top-1/2 -translate-y-1/2 z-50 w-64 rounded-xl border border-blue-100 bg-white/95 p-3 shadow-xl backdrop-blur-md">
     @if (areaLoteCargando()) {
-      <p class="text-xs font-medium text-gray-600">Calculando el área del lote…</p>
+      <div class="flex items-center gap-2 text-xs font-medium text-gray-600">
+        <app-spinner size="h-4 w-4" color="text-primary"></app-spinner>
+        <span>Calculando el área del lote…</span>
+      </div>
     } @else if (areaLoteError()) {
       <p class="text-xs font-medium text-red-600">{{ areaLoteError() }}</p>
     } @else {

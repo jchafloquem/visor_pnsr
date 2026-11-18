@@ -11,6 +11,22 @@
   min-height: 100%;
 }
 
+.welcome-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 700ms ease, transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.welcome-content-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .background-image {
   position: absolute;
   inset: 0;
@@ -51,5 +67,12 @@
 
   .background-image {
     animation-duration: 28s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-content {
+    transition: none;
+    transform: none;
   }
 }

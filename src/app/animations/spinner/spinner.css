@@ -1,3 +1,15 @@
+.spinner-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgb(0 0 0 / 40%), rgb(0 0 0 / 40%)),
+    url('/assets/images/wallpapers/wallpaper0.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .neon-wrapper {
   /* Combinamos la rotación de Tailwind con el efecto de iluminación creciente */
   /* 'spin' es la animación nativa de Tailwind. neon-grow es nuestro efecto de luz. */

@@ -2,25 +2,27 @@
   @if (navegando()) {
     <div class="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-gray-900"
       role="status" aria-live="polite" aria-busy="true">
-      <app-spinner size="h-24 w-24 sm:h-32 sm:w-32" color="text-white"></app-spinner>
-      <span class="mt-4 text-sm font-bold uppercase tracking-[0.2em] text-white/80">
+      <app-spinner [showBackground]="true" size="h-24 w-24 sm:h-32 sm:w-32" color="text-white"></app-spinner>
+      <span class="relative z-10 mt-4 text-sm font-bold uppercase tracking-[0.2em] text-white/80">
         Cargando…
       </span>
     </div>
   }
-  <div class="background-image"
-       [style.backgroundImage]="backgrounds[0].url"
-       [class.fade-out]="backgrounds[0].fade"></div>
-  <div class="background-image"
-       [style.backgroundImage]="backgrounds[1].url"
-       [class.fade-out]="backgrounds[1].fade"></div>
-  <div class="absolute inset-0 bg-black/50"></div>
-  <div class="absolute top-4 left-4 z-10">
-    <img class="h-16 w-auto hidden sm:block drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logo.png" alt="PNSR" />
-    <img class="h-16 w-auto sm:hidden drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logoWelBNMini.png" alt="PNSR" />
-  </div>
-  <!-- Contenido principal -->
-  <div class="relative z-10 text-white text-center px-6">
+  <div class="welcome-content"
+       [class.welcome-content-visible]="!navegando()">
+    <div class="background-image"
+         [style.backgroundImage]="backgrounds[0].url"
+         [class.fade-out]="backgrounds[0].fade"></div>
+    <div class="background-image"
+         [style.backgroundImage]="backgrounds[1].url"
+         [class.fade-out]="backgrounds[1].fade"></div>
+    <div class="absolute inset-0 bg-black/50"></div>
+    <div class="absolute top-4 left-4 z-10">
+      <img class="h-16 w-auto hidden sm:block drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logo.png" alt="PNSR" />
+      <img class="h-16 w-auto sm:hidden drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logoWelBNMini.png" alt="PNSR" />
+    </div>
+    <!-- Contenido principal -->
+    <div class="relative z-10 text-white text-center px-6">
     <!-- Título -->
     <h1 id="welcome-title" class="mt-2 text-4xl md:text-6xl font-bold flex items-center justify-center gap-3 flex-wrap">
       <img src="assets/images/logos/mapa.png" alt="Ícono Geoportal" class="w-12 h-12 md:w-16 md:h-16 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
@@ -87,6 +89,7 @@
       <a href="" target="_blank" class="transition-all duration-300 hover:text-black hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
         <i class="bi bi-threads"></i>
       </a>
+    </div>
     </div>
   </div>
 </div>

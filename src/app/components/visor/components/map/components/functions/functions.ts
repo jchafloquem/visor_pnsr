@@ -14,11 +14,12 @@ import { TipoMapaBase } from '../../../../../../interfaces/geoLayers';
 import { DrawMeasureService } from '../../../../../../services/draw.service';
 import { fromLonLat, Overlay } from '../../../../../../modules/openlayers.module';
 import { OverviewMapComponent } from '../overViewMap/overview-map';
+import { Spinner } from '../../../../../../animations/spinner/spinner';
 
 @Component({
   selector: 'app-funciones',
   standalone: true,
-  imports: [CommonModule, OverviewMapComponent],
+  imports: [CommonModule, OverviewMapComponent, Spinner],
   templateUrl: './functions.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './functions.css',
