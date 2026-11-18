@@ -1,0 +1,24 @@
+/* Estilos específicos para el componente ProjectFormComponent */
+:host {
+  display: block;
+  font-family: var(--font-dm-sans, 'DM Sans', sans-serif);
+}
+
+/* Enfoque accesible visible */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: 2px solid var(--color-azul-institucional, #166cbe);
+  outline-offset: 1px;
+}
+
+/* Estados de solo lectura */
+input:read-only,
+textarea:read-only {
+  background-color: #f3f4f6;
+  color: #374151;
+  cursor: default;
+}
+
+/* Sin transiciones exageradas, apego a estándares sobrios de la administración pública */

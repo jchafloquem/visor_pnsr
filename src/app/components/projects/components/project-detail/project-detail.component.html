@@ -1,0 +1,481 @@
+<app-pnsr-header></app-pnsr-header>
+
+<div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-dm-sans">
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    @if (!proyecto()) {
+      <!-- Estado de proyecto no encontrado -->
+      <div class="bg-white border border-gray-200 p-8 text-center space-y-4">
+        <h1 class="text-xl font-bold text-gray-900 uppercase tracking-wide">
+          Proyecto no encontrado
+        </h1>
+        <p class="text-sm text-gray-600">
+          No se encontró ningún proyecto registrado con el CUI "{{ cui() }}".
+        </p>
+        <div>
+          <a
+            routerLink="/proyectos"
+            class="inline-block px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white bg-azul-institucional hover:bg-azul-institucional-dark focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+          >
+            Volver a la bandeja
+          </a>
+        </div>
+      </div>
+    } @else {
+      <!-- Navegación tipo Migas de Pan -->
+      <nav class="flex items-center space-x-2 text-xs text-gray-500 uppercase tracking-wider" aria-label="Breadcrumb">
+        <a routerLink="/proyectos" class="hover:text-gray-800 underline focus:outline-none focus:ring-2 focus:ring-azul-institucional">
+          Bandeja de proyectos
+        </a>
+        <span aria-hidden="true">/</span>
+        <span class="text-gray-700 font-semibold" aria-current="page">
+          Detalle CUI {{ proyecto()!.cui }}
+        </span>
+      </nav>
+
+      <!-- ENCABEZADO PRINCIPAL (Vista 360) -->
+      <header class="bg-white border border-gray-200 p-6 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span class="font-mono font-bold text-sm bg-gray-100 text-gray-900 px-2 py-0.5 border border-gray-300">
+                CUI {{ proyecto()!.cui }}
+              </span>
+              <span class="text-gray-700 font-medium px-2 py-0.5 border border-gray-200 bg-gray-50">
+                [Cartera: {{ proyecto()!.cartera }}]
+              </span>
+              <span
+                class="px-2 py-0.5 border font-medium"
+                [class.border-blue-600]="proyecto()!.priorizado2026"
+                [class.bg-blue-50]="proyecto()!.priorizado2026"
+                [class.text-blue-900]="proyecto()!.priorizado2026"
+                [class.border-gray-300]="!proyecto()!.priorizado2026"
+                [class.bg-gray-50]="!proyecto()!.priorizado2026"
+                [class.text-gray-600]="!proyecto()!.priorizado2026"
+              >
+                {{ proyecto()!.priorizado2026 ? '[Priorizado 2026]' : '[No priorizado]' }}
+              </span>
+              <span class="text-gray-700 font-medium px-2 py-0.5 border border-gray-200 bg-gray-50">
+                [Estado: {{ proyecto()!.estadoAdministrativo }}]
+              </span>
+            </div>
+
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+              {{ proyecto()!.nombre }}
+            </h1>
+
+            <p class="text-xs text-gray-500">
+              Programa Nacional de Saneamiento Rural — Sistema Integrado de Seguimiento y Control
+            </p>
+          </div>
+
+          <!-- Botonera de Acciones Rápidas -->
+          <div class="flex flex-wrap items-center gap-2 shrink-0 pt-2 lg:pt-0">
+            <a
+              [routerLink]="['/proyectos/editar', proyecto()!.cui]"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-800 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            >
+              Editar proyecto
+            </a>
+
+            <a
+              [routerLink]="['/proyectos/riesgos', proyecto()!.cui]"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-800 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            >
+              Gestionar riesgos
+            </a>
+
+            <button
+              type="button"
+              (click)="abrirAyudaMemoria()"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white bg-azul-institucional hover:bg-azul-institucional-dark focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            >
+              Generar Ayuda de Memoria
+            </button>
+
+            <a
+              routerLink="/visor"
+              [queryParams]="{ cui: proyecto()!.cui, x: proyecto()!.coordenadaX, y: proyecto()!.coordenadaY }"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-800 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            >
+              Ubicar en mapa
+            </a>
+
+            <a
+              routerLink="/proyectos"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600 hover:text-gray-900 border border-transparent hover:border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              Volver a la bandeja
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- ALERTA DE DESCALCE (Si supera 15 puntos porcentuales) -->
+      @if (existeDescalce()) {
+        <div role="alert" class="bg-red-50 border-l-4 border-red-700 p-4 text-sm text-red-900 space-y-1">
+          <p class="font-bold uppercase tracking-wide text-xs text-red-800">
+            Alerta de Descalce Financiero / Físico
+          </p>
+          <p>
+            Existe una discrepancia crítica de <strong class="underline">{{ descalce() }} puntos porcentuales</strong> entre el avance financiero ({{ fmtPorcentaje(proyecto()!.avanceFinanciero) }}) y el avance físico real ({{ fmtPorcentaje(proyecto()!.avanceFisicoReal) }}), superando el umbral admisible de 15 puntos.
+          </p>
+          <p class="text-xs text-red-700">
+            Se requiere revisión prioritaria de valorizaciones y conciliación con el residente y supervisor de obra.
+          </p>
+        </div>
+      }
+
+      <!-- SECCIÓN 1: Identificación y Ubicación Territorial -->
+      <section class="bg-white border border-gray-200 p-6 space-y-4" aria-labelledby="sec-identificacion-title">
+        <div class="border-b border-gray-200 pb-2">
+          <h2 id="sec-identificacion-title" class="text-sm font-bold uppercase tracking-wider text-gray-900">
+            1. Identificación y Localización Territorial
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div class="border border-gray-200 bg-gray-50/50 p-3">
+            <span class="text-gray-500 uppercase font-semibold block text-[11px]">Ubicación Territorial</span>
+            <p class="font-medium text-gray-900 mt-1">
+              {{ proyecto()!.departamento }} / {{ proyecto()!.provincia }} / {{ proyecto()!.distrito }}
+            </p>
+            <p class="text-gray-600 mt-0.5">Localidad: {{ proyecto()!.localidad }}</p>
+          </div>
+
+          <div class="border border-gray-200 bg-gray-50/50 p-3">
+            <span class="text-gray-500 uppercase font-semibold block text-[11px]">Coordenadas Geográficas / UTM</span>
+            <p class="font-mono text-gray-900 mt-1">
+              X: {{ proyecto()!.coordenadaX !== null ? proyecto()!.coordenadaX : 'No registrada' }}
+            </p>
+            <p class="font-mono text-gray-900">
+              Y: {{ proyecto()!.coordenadaY !== null ? proyecto()!.coordenadaY : 'No registrada' }}
+            </p>
+            <span class="text-[10px] text-gray-500 italic block mt-1">Datum WGS84 / UTM Zonas 17S-19S</span>
+          </div>
+
+          <div class="border border-gray-200 bg-gray-50/50 p-3">
+            <span class="text-gray-500 uppercase font-semibold block text-[11px]">Responsable PNSR</span>
+            <p class="font-medium text-gray-900 mt-1">
+              {{ proyecto()!.responsablePnsr }}
+            </p>
+            <span class="text-[10px] text-gray-500 block mt-0.5">Coordinador técnico a cargo</span>
+          </div>
+
+          <div class="border border-gray-200 bg-gray-50/50 p-3">
+            <span class="text-gray-500 uppercase font-semibold block text-[11px]">Contratista Ejecutor</span>
+            <p class="font-medium text-gray-900 mt-1">
+              {{ proyecto()!.contratista || 'No asignado' }}
+            </p>
+            <span class="text-[10px] text-gray-500 italic block mt-0.5">Fuente: SSP</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 2: Diagnóstico Físico y Financiero (Métricas Oficiales) -->
+      <section class="bg-white border border-gray-200 p-6 space-y-4" aria-labelledby="sec-diagnostico-title">
+        <div class="border-b border-gray-200 pb-2">
+          <h2 id="sec-diagnostico-title" class="text-sm font-bold uppercase tracking-wider text-gray-900">
+            2. Diagnóstico Físico y Financiero
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Columna A: Inversión y Devengado (SSI MEF) -->
+          <div class="border border-gray-200 p-4 space-y-3 bg-gray-50/50">
+            <div>
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide block">
+                Costo de Inversión Vigente
+              </span>
+              <p class="text-lg font-bold text-gray-900 mt-0.5">
+                {{ fmtMoneda(proyecto()!.costoInversion) }}
+              </p>
+              <span class="text-[10px] text-gray-500 italic">Fuente: SSI MEF</span>
+            </div>
+
+            <div class="pt-2 border-t border-gray-200">
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide block">
+                Devengado Acumulado
+              </span>
+              <p class="text-lg font-bold text-gray-900 mt-0.5">
+                {{ fmtMoneda(proyecto()!.devengadoAcumulado) }}
+              </p>
+              <div class="flex items-center justify-between text-xs text-gray-600 mt-1">
+                <span>Ejecución presupuestal:</span>
+                <span class="font-bold text-gray-900">{{ porcentajeDevengado() }}%</span>
+              </div>
+              <span class="text-[10px] text-gray-500 italic">Fuente: SSI MEF</span>
+            </div>
+          </div>
+
+          <!-- Columna B: Avance Físico Real vs Programado -->
+          <div class="border border-gray-200 p-4 space-y-3 bg-white">
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide block">
+              Avance Físico de Obra
+            </span>
+
+            <div class="space-y-2 text-xs">
+              <div>
+                <div class="flex justify-between font-medium">
+                  <span class="text-gray-700">Físico Real:</span>
+                  <span class="font-bold text-gray-900">{{ fmtPorcentaje(proyecto()!.avanceFisicoReal) }}</span>
+                </div>
+                <div class="w-full bg-gray-200 h-2 mt-1">
+                  <div class="bg-azul-institucional h-2" [style.width.%]="proyecto()!.avanceFisicoReal"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between font-medium">
+                  <span class="text-gray-700">Físico Programado:</span>
+                  <span class="font-bold text-gray-700">{{ fmtPorcentaje(proyecto()!.avanceFisicoProgramado) }}</span>
+                </div>
+                <div class="w-full bg-gray-200 h-2 mt-1">
+                  <div class="bg-gray-500 h-2" [style.width.%]="proyecto()!.avanceFisicoProgramado"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between font-medium">
+                  <span class="text-gray-700">Avance Financiero:</span>
+                  <span class="font-bold text-gray-900">{{ fmtPorcentaje(proyecto()!.avanceFinanciero) }}</span>
+                </div>
+                <div class="w-full bg-gray-200 h-2 mt-1">
+                  <div class="bg-emerald-600 h-2" [style.width.%]="proyecto()!.avanceFinanciero"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna C: Índice de Desempeño de Avance (IDA) -->
+          <div class="border border-gray-200 p-4 space-y-3 bg-white">
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide block">
+              Índice IDA (Real / Programado)
+            </span>
+
+            <div class="text-center py-2 border border-gray-100 bg-gray-50">
+              <span class="text-3xl font-extrabold font-mono text-gray-900 block">
+                {{ fmtIDA(ida()) }}
+              </span>
+              <div class="inline-flex items-center space-x-1.5 mt-1 px-2.5 py-0.5 border text-xs font-semibold"
+                   [class.border-emerald-600]="semaforoIDA().color === 'verde'"
+                   [class.bg-emerald-50]="semaforoIDA().color === 'verde'"
+                   [class.text-emerald-900]="semaforoIDA().color === 'verde'"
+                   [class.border-amber-600]="semaforoIDA().color === 'ambar'"
+                   [class.bg-amber-50]="semaforoIDA().color === 'ambar'"
+                   [class.text-amber-900]="semaforoIDA().color === 'ambar'"
+                   [class.border-red-600]="semaforoIDA().color === 'critico'"
+                   [class.bg-red-50]="semaforoIDA().color === 'critico'"
+                   [class.text-red-900]="semaforoIDA().color === 'critico'">
+                <span class="w-2 h-2 inline-block"
+                      [class.bg-emerald-600]="semaforoIDA().color === 'verde'"
+                      [class.bg-amber-600]="semaforoIDA().color === 'ambar'"
+                      [class.bg-red-600]="semaforoIDA().color === 'critico'"></span>
+                <span>Estado: {{ semaforoIDA().texto }}</span>
+              </div>
+            </div>
+
+            <div class="text-[11px] text-gray-500 space-y-1">
+              <p>• Óptimo: IDA &ge; 0.95</p>
+              <p>• En alerta: 0.80 &le; IDA &lt; 0.95</p>
+              <p>• Crítico: IDA &lt; 0.80</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 3: Resumen de Riesgos Críticos (Top 3) -->
+      <section class="bg-white border border-gray-200 p-6 space-y-4" aria-labelledby="sec-riesgos-title">
+        <div class="flex items-center justify-between border-b border-gray-200 pb-2">
+          <div>
+            <h2 id="sec-riesgos-title" class="text-sm font-bold uppercase tracking-wider text-gray-900">
+              3. Alertas y Riesgos Críticos (Top 3 más severos)
+            </h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Evaluación matricial de probabilidad e impacto (P &times; I).
+            </p>
+          </div>
+          <a
+            [routerLink]="['/proyectos/riesgos', proyecto()!.cui]"
+            class="text-xs font-semibold uppercase tracking-wider text-azul-institucional hover:underline focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+          >
+            Ver todos los riesgos ({{ proyecto()!.riesgos ? proyecto()!.riesgos.length : 0 }}) &rarr;
+          </a>
+        </div>
+
+        @if (riesgosCriticos().length === 0) {
+          <div class="p-6 text-center border border-dashed border-gray-200 bg-gray-50 text-gray-600 text-xs">
+            No se registran riesgos críticos activos para este proyecto.
+          </div>
+        } @else {
+          <div class="overflow-x-auto border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
+              <thead class="bg-gray-100 text-gray-800 font-semibold uppercase tracking-wider">
+                <tr>
+                  <th scope="col" class="py-2.5 px-3 w-28">Tipo</th>
+                  <th scope="col" class="py-2.5 px-3">Causa Raíz y Efecto Identificado</th>
+                  <th scope="col" class="py-2.5 px-2 w-20 text-center">P &times; I</th>
+                  <th scope="col" class="py-2.5 px-3 w-40">Nivel de Severidad</th>
+                  <th scope="col" class="py-2.5 px-3 w-36">Estado de Plazo</th>
+                  <th scope="col" class="py-2.5 px-2 w-20 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                @for (item of riesgosCriticos(); track item.riesgo.id) {
+                  <tr class="hover:bg-gray-50/50">
+                    <td class="py-3 px-3 font-semibold text-gray-900 align-top">
+                      {{ item.riesgo.categoria || item.riesgo.tipo }}
+                    </td>
+                    <td class="py-3 px-3 align-top space-y-1">
+                      <p class="text-gray-900 font-medium">{{ item.riesgo.identificacionCompleta || item.riesgo.causaRaiz }}</p>
+                      @if (!item.riesgo.identificacionCompleta && item.riesgo.efecto) {
+                        <p class="text-gray-500 text-[11px]">Efecto: {{ item.riesgo.efecto }}</p>
+                      }
+                    </td>
+                    <td class="py-3 px-2 text-center align-top font-mono text-xs">
+                      {{ item.riesgo.puntuacion ? item.riesgo.puntuacion.toFixed(3) : (item.riesgo.probabilidad + ' × ' + item.riesgo.impacto) }}
+                    </td>
+                    <td class="py-3 px-3 align-top">
+                      <div class="inline-flex items-center space-x-1.5 px-2 py-0.5 border text-xs font-semibold"
+                           [class.border-emerald-600]="item.semaforo.color === 'verde'"
+                           [class.bg-emerald-50]="item.semaforo.color === 'verde'"
+                           [class.text-emerald-900]="item.semaforo.color === 'verde'"
+                           [class.border-amber-600]="item.semaforo.color === 'ambar'"
+                           [class.bg-amber-50]="item.semaforo.color === 'ambar'"
+                           [class.text-amber-900]="item.semaforo.color === 'ambar'"
+                           [class.border-red-600]="item.semaforo.color === 'rojo'"
+                           [class.bg-red-50]="item.semaforo.color === 'rojo'"
+                           [class.text-red-900]="item.semaforo.color === 'rojo'">
+                        <span class="w-2 h-2 inline-block shrink-0"
+                              [class.bg-emerald-600]="item.semaforo.color === 'verde'"
+                              [class.bg-amber-600]="item.semaforo.color === 'ambar'"
+                              [class.bg-red-600]="item.semaforo.color === 'rojo'"></span>
+                        <span>Nivel {{ item.nivel }} ({{ item.semaforo.texto }})</span>
+                      </div>
+                    </td>
+                    <td class="py-3 px-3 align-top">
+                      @if (item.estadoPlazo) {
+                        <span class="font-medium"
+                              [class.text-red-700]="item.estadoPlazo.estado === 'vencido'"
+                              [class.text-amber-700]="item.estadoPlazo.estado === 'por_vencer'"
+                              [class.text-gray-800]="item.estadoPlazo.estado === 'controlado'"
+                              [class.text-emerald-700]="item.estadoPlazo.estado === 'mitigado'">
+                          {{ item.estadoPlazo.texto }}
+                          @if (item.estadoPlazo.diasRestantes !== null) {
+                            <span class="text-[10px] block">
+                              ({{ item.estadoPlazo.diasRestantes < 0 ? (item.estadoPlazo.diasRestantes * -1) + ' d vencido' : item.estadoPlazo.diasRestantes + ' d restantes' }})
+                            </span>
+                          }
+                        </span>
+                      } @else {
+                        <span class="text-gray-400 italic">Sin acciones</span>
+                      }
+                    </td>
+                    <td class="py-3 px-2 text-center align-top font-bold text-gray-800">
+                      {{ item.accionesCount }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <!-- SECCIÓN 4: Cronograma e Hitos Principales -->
+      <section class="bg-white border border-gray-200 p-6 space-y-4" aria-labelledby="sec-cronograma-title">
+        <div class="border-b border-gray-200 pb-2">
+          <h2 id="sec-cronograma-title" class="text-sm font-bold uppercase tracking-wider text-gray-900">
+            4. Cronograma de Metas e Hitos Contractuales
+          </h2>
+        </div>
+
+        @if (!proyecto()!.hitos || proyecto()!.hitos.length === 0) {
+          <div class="p-6 text-center border border-dashed border-gray-200 bg-gray-50 text-gray-600 text-xs">
+            No se registran hitos programados para este proyecto.
+          </div>
+        } @else {
+          <div class="overflow-x-auto border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
+              <thead class="bg-gray-100 text-gray-800 font-semibold uppercase tracking-wider">
+                <tr>
+                  <th scope="col" class="py-2.5 px-3">Descripción de la Meta</th>
+                  <th scope="col" class="py-2.5 px-3 w-28">Inicio Prog.</th>
+                  <th scope="col" class="py-2.5 px-3 w-28">Fin Prog.</th>
+                  <th scope="col" class="py-2.5 px-3 w-28">Fecha Real</th>
+                  <th scope="col" class="py-2.5 px-2 w-20 text-center">Avance</th>
+                  <th scope="col" class="py-2.5 px-3 w-32">Estado</th>
+                  <th scope="col" class="py-2.5 px-3">Responsable</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                @for (hito of proyecto()!.hitos; track hito.id) {
+                  <tr class="hover:bg-gray-50/50">
+                    <td class="py-2.5 px-3 font-medium text-gray-900 align-top">
+                      {{ hito.descripcion }}
+                    </td>
+                    <td class="py-2.5 px-3 text-gray-700 align-top">
+                      {{ fmtFecha(hito.fechaInicioProgramada) }}
+                    </td>
+                    <td class="py-2.5 px-3 text-gray-700 align-top">
+                      {{ fmtFecha(hito.fechaFinProgramada) }}
+                    </td>
+                    <td class="py-2.5 px-3 text-gray-700 align-top">
+                      {{ fmtFecha(hito.fechaReal) }}
+                    </td>
+                    <td class="py-2.5 px-2 text-center font-bold text-gray-800 align-top">
+                      {{ hito.avanceEsperado }}%
+                    </td>
+                    <td class="py-2.5 px-3 align-top">
+                      <span class="inline-block px-2 py-0.5 border text-xs font-semibold"
+                            [ngClass]="[
+                              obtenerClaseEstadoHito(hito.estado).border,
+                              obtenerClaseEstadoHito(hito.estado).bg,
+                              obtenerClaseEstadoHito(hito.estado).text
+                            ]">
+                        {{ hito.estado }}
+                      </span>
+                    </td>
+                    <td class="py-2.5 px-3 text-gray-700 align-top">
+                      {{ hito.responsable }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <!-- BARRA DE ACCIÓN INFERIOR -->
+      <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <a
+          routerLink="/proyectos"
+          class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        >
+          &larr; Volver a la bandeja
+        </a>
+
+        <div class="space-x-2">
+          <button
+            type="button"
+            (click)="abrirAyudaMemoria()"
+            class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white bg-azul-institucional hover:bg-azul-institucional-dark focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+          >
+            Generar Ayuda de Memoria
+          </button>
+        </div>
+      </div>
+    }
+
+  </div>
+</div>
+
+<app-pnsr-footer></app-pnsr-footer>
+
+<!-- Modal Oficial de Ayuda de Memoria Ejecutiva (con selector de sección de riesgos y generación PDF/A4) -->
+<app-ayuda-memoria
+  [visible]="mostrarAyudaMemoria()"
+  [proyecto]="proyecto()"
+  (cerrar)="cerrarAyudaMemoria()"
+></app-ayuda-memoria>
