@@ -2,6 +2,8 @@ import { Injectable, signal, computed, inject, NgZone, effect, untracked, Writab
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
+import { ArcGISRestService } from './arcgis-rest.service';
+import { WmsService } from './wms.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
 import { SIN_AUDITORIA } from '../interceptor/auditoria.interceptor';
 import { environment } from '../../environments/environment';
@@ -14,7 +16,10 @@ import Polygon from 'ol/geom/Polygon';
 import { Observable, map, take, switchMap, catchError, of, throwError } from 'rxjs';
 
 import { ORTOFOTO_YEARS } from '../interfaces/ortofotos';
-import { LAYER_PANEL_SECTIONS } from '../interfaces/controlCapasConfig';
+import {
+  LAYER_PANEL_SECTIONS,
+  VIVIENDAS_RURALES_LAYER_CONFIGS,
+} from '../interfaces/controlCapasConfig';
 import {
   Section,
   WmsLayerConfig,
@@ -42,7 +47,7 @@ import {
   INITIAL_ZOOM,
   MAP_MAX_ZOOM,
   GOOGLE_SATELLITE_URL,
-  OSM_URL,
+  ARCGIS_WORLD_TOPO_TILES_URL,
   TRAMA_WMS_URL,
   ANIMATION_DURATION,
   ZOOM_MAX_PARQUE,
@@ -101,6 +106,8 @@ export class MapService {
   private readonly zone = inject(NgZone);
   private readonly drawMeasureService = inject(DrawMeasureService);
   private readonly authService = inject(AuthService);
+  private readonly arcgisRestService = inject(ArcGISRestService);
+  private readonly wmsService = inject(WmsService);
   /** Registro de auditoría del uso de los servicios cartográficos (WMS). */
   private readonly auditoria = inject(AuditoriaService);
   baseLayerType = signal<TipoMapaBase>('streets');
@@ -598,6 +605,7 @@ export class MapService {
     this._map.set(olMap);
     olMap.getViewport().style.cursor = 'pointer';
     this.setupInitialWmsLayers();
+    this.setupViviendasRuralesLayers();
     this.handleMapResizing(olMap);
     this.setupHighlightLayer();
     this.setupAreaLoteLayer();
@@ -737,7 +745,7 @@ export class MapService {
       });
   };
   /**
-   * Configura las capas base de Google y OSM.
+   * Configura Google Satélite y ArcGIS World Topo Map.
    */
   private setupBaseLayers(): void {
     const satelliteSource = new XYZ({
@@ -749,21 +757,16 @@ export class MapService {
       wrapX: true,
       tileLoadFunction: this.tileLoadFunction
     });
-    const streetsSource = new XYZ({
-      url: OSM_URL,
-      crossOrigin: 'anonymous',
-      transition: 1000,
-      interpolate: true,
+    const streetsSource = this.arcgisRestService.createTileSource(ARCGIS_WORLD_TOPO_TILES_URL, {
       maxZoom: 19,
-      wrapX: true,
       tileLoadFunction: this.tileLoadFunction,
-      tileUrlFunction: (tileCoord) => {
+      tileUrlFunction: tileCoord => {
         if (!tileCoord) {
           return undefined;
         }
         const [z, x, y] = tileCoord;
         if (z <= 19) {
-          return OSM_URL
+          return ARCGIS_WORLD_TOPO_TILES_URL
             .replace('{z}', String(z))
             .replace('{x}', String(x))
             .replace('{y}', String(y));
@@ -771,11 +774,11 @@ export class MapService {
         const delta = z - 19;
         const fallbackX = Math.floor(x / Math.pow(2, delta));
         const fallbackY = Math.floor(y / Math.pow(2, delta));
-        return OSM_URL
+        return ARCGIS_WORLD_TOPO_TILES_URL
           .replace('{z}', '19')
           .replace('{x}', String(fallbackX))
           .replace('{y}', String(fallbackY));
-      }
+      },
     });
     this.satelliteLayer = this.createBaseLayer(satelliteSource, 'Satélite', 'satellite');
     this.streetsLayer = this.createBaseLayer(streetsSource, 'Calles', 'streets');
@@ -803,6 +806,36 @@ export class MapService {
     });
     // Inicializamos las capas catastrales recorriendo la lista
     INITIAL_WMS_LAYERS.forEach(config => this.addWmsLayer(config));
+  }
+  /** Agrega las capas de viviendas rurales, consultando solo el área visible. */
+  private setupViviendasRuralesLayers(): void {
+    const map = this._map();
+    if (!map) return;
+
+    const layers = VIVIENDAS_RURALES_LAYER_CONFIGS.map(config => ({
+      layerId: config.itemId,
+      layer: this.arcgisRestService.createViviendasRuralesLayer(config.arcgisLayerId, {
+        title: config.title,
+        color: config.color,
+        zIndex: config.zIndex,
+      }),
+    }));
+    layers.forEach(({ layerId, layer }) => {
+      layer.set('id', layerId);
+      map.addLayer(layer);
+      this.updateLayerInSectionsSignal(layerId, layer);
+    });
+
+    let previousExtent = map.getView().calculateExtent(map.getSize());
+    map.on('moveend', () => {
+      const currentExtent = map.getView().calculateExtent(map.getSize());
+      const extentChanged = currentExtent.some((value, index) =>
+        Math.abs(value - previousExtent[index]) > 1
+      );
+      if (!extentChanged) return;
+      previousExtent = currentExtent;
+      layers.forEach(({ layer }) => layer.getSource()?.refresh());
+    });
   }
   /**
    * Asegura que el mapa se actualice fuera de la zona de Angular para rendimiento.
@@ -846,27 +879,10 @@ export class MapService {
     const url = options.url ?? environment.geoserver.wmsUrl;
     const version = options.version ?? '1.1.0';
     const separator = url.includes('?') ? '&' : '?';
-    const wmsUrl = options.tiled ? `${url}${separator}tiled=true` : url;
-    const layer = new ImageLayer({
-      source: new ImageWMS({
-        url: wmsUrl,
-        params: {
-          'LAYERS': options.layerName,
-          'TILED': true,
-          'VERSION': version,
-          'FORMAT': 'image/png',
-          'TRANSPARENT': true
-        },
-        crossOrigin: 'anonymous',
-        serverType: 'geoserver',
-        imageLoadFunction: this.wmsImageLoadFunction
-      }),
-      className: options.className ?? options.id, // Aplicamos la clase CSS a la capa
-      zIndex: options.zIndex,
-      minZoom: options.minZoom, // Añadimos la propiedad minZoom aquí
-      maxZoom: options.maxZoom, // La capa se ocultará si el zoom es igual o mayor a este valor
-      properties: { id: options.id, title: options.title }
-    });
+    const layer = this.wmsService.createImageLayer(
+      { ...options, url, version },
+      this.wmsImageLoadFunction
+    );
     map.addLayer(layer);
     // Generamos la URL de la leyenda para servicios WMS (estándar GetLegendGraphic).
     // En capas compuestas `layerName` agrupa varias capas: se pide UNA leyenda por
@@ -920,9 +936,9 @@ export class MapService {
    * Actualiza el `signal` `sections` para asociar una capa de OpenLayers (olLayer)
    * a un `LayerItem` específico dentro de la estructura.
    * @param layerId El ID del `LayerItem` a actualizar.
-   * @param olLayer La instancia de `TileLayer` de OpenLayers a asociar.
+   * @param olLayer La instancia de capa de OpenLayers a asociar.
    */
-  private updateLayerInSectionsSignal(layerId: string, olLayer: TileLayer): void {
+  private updateLayerInSectionsSignal(layerId: string, olLayer: BaseLayer): void {
     this.sections.update(sections => sections.map(section => this.processSectionForLayerUpdate(section, layerId, olLayer)));
   }
   /**
@@ -932,7 +948,7 @@ export class MapService {
    * @param olLayer La instancia de la capa de OpenLayers.
    * @returns La sección actualizada.
    */
-  private processSectionForLayerUpdate(section: Section, layerId: string, olLayer: TileLayer): Section {
+  private processSectionForLayerUpdate(section: Section, layerId: string, olLayer: BaseLayer): Section {
     const updatedItems = section.items.map(item => {
       // Subsecciones: asociamos la instancia dentro de su array de capas.
       if ('layers' in item) {
@@ -955,7 +971,7 @@ export class MapService {
    * @param olLayer La instancia de la capa de OpenLayers.
    * @returns El array de capas actualizado.
    */
-  private updateLayersInSubSection(layers: LayerItem[], layerId: string, olLayer: TileLayer): LayerItem[] {
+  private updateLayersInSubSection(layers: LayerItem[], layerId: string, olLayer: BaseLayer): LayerItem[] {
     return layers.map(l => (l.id === layerId ? { ...l, olLayer } : l));
   }
   /**

@@ -73,15 +73,22 @@ describe('geoLayers · utilidades de simbología', () => {
         capaAportaSimbologia(capa({ visible: true, legendUrl: undefined, legendUrls: ['a', 'b'] }))
       ).toBe(true);
     });
+
+    it('es verdadera para una capa vectorial visible con color de símbolo', () => {
+      expect(
+        capaAportaSimbologia(capa({ visible: true, legendUrl: undefined, legendColor: '#16803c' }))
+      ).toBe(true);
+    });
   });
 
   describe('capasConSimbologiaVisible', () => {
-    it('filtra las capas apagadas, sin leyenda o sin imagen', () => {
+    it('filtra las capas apagadas, sin leyenda, imagen o símbolo', () => {
       const secciones = [
         seccion([
           capa({ id: 'visible', visible: true }),
           capa({ id: 'apagada', visible: true, showInLegend: false }),
           capa({ id: 'sinImagen', visible: true, legendUrl: undefined }),
+          capa({ id: 'sinSimbolo', visible: true, legendUrl: undefined, legendColor: undefined }),
         ]),
         seccion([
           {

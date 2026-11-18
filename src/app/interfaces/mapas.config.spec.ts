@@ -4,7 +4,7 @@ import {
   INITIAL_CENTER,
   INITIAL_ZOOM,
   MAP_MAX_ZOOM,
-  OSM_URL,
+  ARCGIS_WORLD_TOPO_TILES_URL,
   SAN_ISIDRO_CENTER,
   SAN_ISIDRO_EXTENT,
   SAN_ISIDRO_ZOOM,
@@ -41,7 +41,7 @@ describe('mapas.config · vista inicial', () => {
 
 describe('mapas.config · plantillas de teselas', () => {
   it('expone una URL por tesela para Google Satélite y para el mapa de calles', () => {
-    for (const url of [GOOGLE_SATELLITE_URL, OSM_URL]) {
+    for (const url of [GOOGLE_SATELLITE_URL, ARCGIS_WORLD_TOPO_TILES_URL]) {
       expect(url).toMatch(/^https:\/\//);
       expect(url).toContain('{z}');
       expect(url).toContain('{x}');

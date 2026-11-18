@@ -1,6 +1,4 @@
-import {
-  TileLayer,
-} from '../modules/openlayers.module';
+import { BaseLayer } from '../modules/openlayers.module';
 import ImageLayer from 'ol/layer/Image';
 import ImageWMS from 'ol/source/ImageWMS';
 
@@ -43,7 +41,7 @@ export interface LayerItem {
   label: string;
   visible: boolean;
   opacity: number;
-  olLayer?: TileLayer | ImageLayer<ImageWMS>;
+  olLayer?: BaseLayer;
   legendUrl?: string; // Añadimos la propiedad legendUrl
   /**
    * Leyendas de la capa: una imagen por cada capa WMS que compone el servicio
@@ -52,6 +50,8 @@ export interface LayerItem {
    * por compatibilidad.
    */
   legendUrls?: string[];
+  /** Color del símbolo cuando la capa vectorial no tiene una leyenda como imagen. */
+  legendColor?: string;
 }
 export interface WmsLayerConfig {
   id: string;
@@ -120,11 +120,11 @@ export function capasDeSeccion(seccion: Section): LayerItem[] {
  * Indica si una capa debe aportar su simbología al panel de leyenda: está
  * encendida, no se excluyó de la leyenda (`showInLegend: false`) y tiene al
  * menos una imagen generada (`legendUrls` en las capas compuestas, `legendUrl`
- * en el resto).
+ * en el resto) o un color de símbolo vectorial.
  */
 export function capaAportaSimbologia(capa: LayerItem): boolean {
   if (!capa.visible || capa.showInLegend === false) return false;
-  return (capa.legendUrls?.length ?? 0) > 0 || Boolean(capa.legendUrl);
+  return (capa.legendUrls?.length ?? 0) > 0 || Boolean(capa.legendUrl) || Boolean(capa.legendColor);
 }
 
 /**

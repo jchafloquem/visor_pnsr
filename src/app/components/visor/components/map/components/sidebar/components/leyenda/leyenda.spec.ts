@@ -116,4 +116,36 @@ describe('Leyenda · capas compuestas', () => {
     const fixture = await montarConPanel(panelConZonificacion({ showInLegend: false }));
     expect(fixture.componentInstance.activeLegends()).toHaveLength(0);
   });
+
+  it('muestra el símbolo de color de una capa vectorial', async () => {
+    const secciones: Section[] = [
+      {
+        id: 'viviendasRurales',
+        title: 'VIVIENDAS RURALES',
+        expanded: true,
+        items: [
+          {
+            type: 'layer',
+            id: 'viviendas-rurales-agua-con-acceso',
+            label: 'Con acceso a agua',
+            visible: true,
+            opacity: 1,
+            showInLegend: true,
+            legendColor: '#16803c',
+          },
+        ],
+      },
+    ];
+    const fixture = await montarConPanel(secciones);
+
+    expect(fixture.componentInstance.activeLegends()).toEqual([
+      {
+        key: 'symbol:viviendas-rurales-agua-con-acceso',
+        label: 'Con acceso a agua',
+        color: '#16803c',
+      },
+    ]);
+    expect(fixture.nativeElement.querySelector('img')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="img"]').style.backgroundColor).toBe('rgb(22, 128, 60)');
+  });
 });

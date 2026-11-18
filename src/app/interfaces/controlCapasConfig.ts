@@ -6,7 +6,7 @@ import { ORTOFOTO_YEARS } from './ortofotos';
 /* ------------------------------------------------------------------------- */
 
 /** Propiedades opcionales al declarar una capa (lo omitido toma el valor por defecto). */
-type CapaOpciones = Partial<Pick<LayerItem, 'visible' | 'opacity' | 'showInLegend' | 'disabled' | 'requiresAuth'>>;
+type CapaOpciones = Partial<Pick<LayerItem, 'visible' | 'opacity' | 'showInLegend' | 'disabled' | 'requiresAuth' | 'legendColor'>>;
 
 /**
  * Crea una capa del panel aplicando los valores por defecto
@@ -27,6 +27,54 @@ const capa = (id: string, label: string, opciones: CapaOpciones = {}): LayerItem
   disabled: id === '' ? true : false,
   ...opciones,
 });
+
+export const VIVIENDAS_RURALES_LAYER_CONFIGS = [
+  {
+    arcgisLayerId: 1,
+    itemId: 'viviendas-rurales-agua-con-acceso',
+    group: 'agua',
+    title: 'Viviendas rurales con acceso a agua',
+    label: 'Con acceso a agua',
+    color: '#16803c',
+    zIndex: 20,
+  },
+  {
+    arcgisLayerId: 2,
+    itemId: 'viviendas-rurales-agua-sin-acceso',
+    group: 'agua',
+    title: 'Viviendas rurales sin acceso a agua',
+    label: 'Sin acceso a agua',
+    color: '#dc2626',
+    zIndex: 21,
+  },
+  {
+    arcgisLayerId: 4,
+    itemId: 'viviendas-rurales-alcantarillado-con-acceso',
+    group: 'alcantarillado',
+    title: 'Viviendas rurales con acceso a alcantarillado',
+    label: 'Con acceso a alcantarillado',
+    color: '#2563eb',
+    zIndex: 22,
+  },
+  {
+    arcgisLayerId: 5,
+    itemId: 'viviendas-rurales-alcantarillado-sin-acceso',
+    group: 'alcantarillado',
+    title: 'Viviendas rurales sin acceso a alcantarillado',
+    label: 'Sin acceso a alcantarillado',
+    color: '#f97316',
+    zIndex: 23,
+  },
+] as const;
+
+const capasViviendasRurales = (group: 'agua' | 'alcantarillado'): LayerItem[] =>
+  VIVIENDAS_RURALES_LAYER_CONFIGS
+    .filter(layer => layer.group === group)
+    .map(layer => capa(layer.itemId, layer.label, {
+      visible: true,
+      showInLegend: true,
+      legendColor: layer.color,
+    }));
 
 /** Crea una subsección plegable con sus capas. */
 const subseccion = (
@@ -60,6 +108,7 @@ const SECCIONES_PUBLICAS: ReadonlySet<string> = new Set<string>([
   'catastral',
   'imaAereas',
   'normativaUrbana',
+  'viviendasRurales',
 ]);
 
 /** Marca como restringidas todas las secciones que no estén exentas en `SECCIONES_PUBLICAS`. */
@@ -71,6 +120,20 @@ const aplicarPoliticaAcceso = (secciones: Section[]): Section[] =>
 /* ------------------------------------------------------------------------- */
 
 const PANEL_BASE: Section[] = [
+  {
+    id: 'viviendasRurales',
+    title: 'VIVIENDAS RURALES',
+    expanded: true,
+    items: [
+      subseccion('viviendasRuralesAgua', 'ACCESO A AGUA', capasViviendasRurales('agua'), true),
+      subseccion(
+        'viviendasRuralesAlcantarillado',
+        'ACCESO A ALCANTARILLADO',
+        capasViviendasRurales('alcantarillado'),
+        true
+      ),
+    ],
+  },
   {
     id: 'catastral',
     title: 'INFORMACION CATASTRAL',

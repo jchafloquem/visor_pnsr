@@ -79,7 +79,10 @@ export class Leyenda {
    * imágenes y distintas capas pueden compartir la misma.
    */
   activeLegends = computed(() => {
-    const uniqueLegends = new Map<string, { label: string; url: string }>();
+    const uniqueLegends = new Map<
+      string,
+      { key: string; label: string; url?: string; color?: string }
+    >();
     for (const layer of capasConSimbologiaVisible(this.mapService.panelSections())) {
       // Una capa puede aportar varias leyendas (capas compuestas: p. ej. los
       // polígonos de zonificación y sus límites); `legendUrl` es la primera.
@@ -92,8 +95,12 @@ export class Leyenda {
         // Se usa la URL como clave: evita repetir la misma imagen si varias
         // capas comparten simbología.
         if (!uniqueLegends.has(url)) {
-          uniqueLegends.set(url, { label: layer.label, url });
+          uniqueLegends.set(url, { key: `image:${url}`, label: layer.label, url });
         }
+      }
+      if (urls.length === 0 && layer.legendColor) {
+        const key = `symbol:${layer.id}`;
+        uniqueLegends.set(key, { key, label: layer.label, color: layer.legendColor });
       }
     }
     return Array.from(uniqueLegends.values());

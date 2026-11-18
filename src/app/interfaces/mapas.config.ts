@@ -13,8 +13,8 @@ export const INITIAL_ZOOM = 6;
 export const MAP_MAX_ZOOM = 30;
 /** URL del servicio de mapas satelitales de Google */
 export const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
-/** URL del servicio de mapas de calles (OpenStreetMap) */
-export const OSM_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+/** URL de teselas del ArcGIS REST World Topographic Map */
+export const ARCGIS_WORLD_TOPO_TILES_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 /** URL del servidor WMS de INEI para departamentos (sigue el GeoServer del ambiente activo) */
 export const TRAMA_WMS_URL = environment.geoserver.wmsUrl;
 /** Duración de las animaciones del mapa en milisegundos */
