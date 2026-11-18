@@ -9,7 +9,11 @@
   "projects": {
     "visor_pnsr": {
       "projectType": "application",
-      "schematics": {},
+      "schematics": {
+        "@schematics/angular:component": {
+          "type": ""
+        }
+      },
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
@@ -25,7 +29,7 @@
                 "input": "public"
               }
             ],
-                        "styles": [
+            "styles": [
               "node_modules/ol/ol.css",
               "src/styles.css"
             ]
@@ -106,7 +110,9 @@
             "buildTarget": "visor_pnsr:build:development",
             "tsConfig": "tsconfig.spec.json",
             "runner": "vitest",
-            "setupFiles": ["src/test-setup.ts"]
+            "setupFiles": [
+              "src/test-setup.ts"
+            ]
           }
         }
       }
