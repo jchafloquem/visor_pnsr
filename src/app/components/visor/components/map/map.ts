@@ -25,7 +25,7 @@ import { Funciones } from './components/functions/functions';
 import { Spinner } from '../../../../animations/spinner/spinner';
 import { Login } from '../../../auth/components/login/login'; // Import Login component
 import { CoordinateInfo } from './components/coordinate-info/coordinate-info';
-import { TermsModal } from './components/terminos/terminos';
+
 import { Leyenda } from './components/sidebar/components/leyenda/leyenda';
 /**
  * Componente principal de la interfaz del mapa.
@@ -44,7 +44,7 @@ import { Leyenda } from './components/sidebar/components/leyenda/leyenda';
     Login, // Add Login to imports
     Spinner,
     CoordinateInfo,
-    TermsModal,
+    
     Leyenda,
   ],
   templateUrl: './map.html',
