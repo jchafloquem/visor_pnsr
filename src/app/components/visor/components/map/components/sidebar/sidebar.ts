@@ -5,12 +5,13 @@ import { FormsModule } from '@angular/forms';
 import { MapService } from '../../../../../../services/map.service';
 //Componentes
 import { CapasComponent } from './components/capas/capas';
-import { Consultas } from './components/consultas/consultas';
+
 import { About } from './components/about/about';
 import { Descargaspdf } from './components/descargaspdf/descargaspdf';
 import { Imprimir } from './components/imprimir/imprimir';
 import { UbicacionCoordenadas } from './components/coordenadas/coordenadas';
 import { Manual } from './components/manual/manual';
+import { Busquedas } from './components/busquedas/busquedas';
 
 @Component({
   selector: 'app-sidebar',
@@ -19,7 +20,7 @@ import { Manual } from './components/manual/manual';
     About,
     CapasComponent,
     CommonModule,
-    Consultas,
+    Busquedas,
     Descargaspdf,
     FormsModule,
     Imprimir,
