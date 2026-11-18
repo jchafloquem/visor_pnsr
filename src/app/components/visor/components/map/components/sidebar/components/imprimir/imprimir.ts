@@ -1181,3 +1181,4 @@ export class Imprimir {
     return `${Math.round(metros)} m`;
   }
 }
+
