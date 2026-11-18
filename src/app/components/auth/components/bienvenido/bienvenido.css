@@ -1,0 +1,21 @@
+@keyframes zoomInOut {
+  0%, 100% { transform: scale(1); }
+  25%, 75% { transform: scale(1.2); }
+  50% { transform: scale(1.4); }
+}
+
+.background-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: zoomInOut 20s ease-in-out infinite;
+  transform-origin: center center;
+  opacity: 1;
+  transition: opacity 1.5s ease-in-out;
+}
+
+.background-image.fade-out {
+  opacity: 0;
+}

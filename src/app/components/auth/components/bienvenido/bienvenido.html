@@ -1,1 +1,92 @@
-<p>bienvenido works!</p>
+<div class="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-900">
+  @if (navegando()) {
+    <div class="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-gray-900"
+      role="status" aria-live="polite" aria-busy="true">
+      <app-spinner size="h-24 w-24 sm:h-32 sm:w-32" color="text-white"></app-spinner>
+      <span class="mt-4 text-sm font-bold uppercase tracking-[0.2em] text-white/80">
+        Cargando…
+      </span>
+    </div>
+  }
+  <div class="background-image"
+       [style.backgroundImage]="backgrounds[0].url"
+       [class.fade-out]="backgrounds[0].fade"></div>
+  <div class="background-image"
+       [style.backgroundImage]="backgrounds[1].url"
+       [class.fade-out]="backgrounds[1].fade"></div>
+  <div class="absolute inset-0 bg-black/50"></div>
+  <div class="absolute top-4 left-4 z-10">
+    <img class="h-16 w-auto hidden sm:block drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logo.png" alt="PNSR" />
+    <img class="h-16 w-auto sm:hidden drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" src="assets/images/logos/logoWelBNMini.png" alt="PNSR" />
+  </div>
+  <!-- Contenido principal -->
+  <div class="relative z-10 text-white text-center px-6">
+    <!-- Título -->
+    <h1 id="welcome-title" class="mt-2 text-4xl md:text-6xl font-bold flex items-center justify-center gap-3 flex-wrap">
+      <img src="assets/images/logos/mapa.png" alt="Ícono Geoportal" class="w-12 h-12 md:w-16 md:h-16 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
+      <span class="hover:text-primary transition-colors duration-300">SSCPI</span>
+    </h1>
+    <!-- Subtítulo -->
+    <h2 class="mt-2 text-2xl md:text-4xl font-bold hover:text-primary transition-colors duration-300">
+      Sistema de Seguimiento y Control de Proyectos de Inversión
+    </h2>    
+    <!-- Contenedor de botones -->
+    <div id="main-buttons" class="mt-8 bg-opacity-60 rounded-lg mx-auto p-6 flex flex-wrap justify-center gap-6">
+      <!-- Botón para Iniciar Tour Virtual -->
+      <div id="button-tour" class="flex flex-col items-center group">
+        <!-- Wrapper para el efecto de borde animado -->
+        <div class="animated-border-wrapper group-hover:scale-110 transition-all duration-300">
+          <button (click)="startTourWelcome()"
+            class="flex w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 justify-center items-center bg-primary text-white rounded-full shadow-lg focus:ring-4 focus:bg-secondary focus:ring-primary">
+            <img src="https://cdn-icons-png.freepik.com/512/6554/6554183.png" alt="Iniciar Tour Virtual" class="w-2/3 h-2/3 object-contain" />
+          </button>
+        </div>
+        <span class="mt-2 text-sm md:text-base font-semibold">
+          TOUR VIRTUAL
+        </span>
+      </div>
+      <div *ngFor="let boton of botones" class="flex flex-col items-center group relative pb-4" [id]="'button-' + boton.texto.toLowerCase()">
+        <ng-container *ngIf="{ disabled: (boton.texto === 'REPORTES' || boton.texto === 'REPOSITORIO' || boton.texto === 'METADATA') } as state">
+          <!-- Wrapper para el efecto de borde animado -->
+          <div class="animated-border-wrapper transition-all duration-300" [class.group-hover:scale-110]="!state.disabled">
+            <a [attr.href]="state.disabled ? null : boton.link"
+              (click)="navegar($event, state.disabled, boton.link)"
+              class="flex w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 justify-center items-center text-white rounded-full shadow-lg"
+              [ngClass]="state.disabled
+                ? 'bg-gray-600 opacity-70 cursor-not-allowed'
+                : 'bg-primary focus:ring-4 focus:bg-secondary focus:ring-primary'">
+              <img [src]="boton.icono" [alt]="boton.alt" class="w-2/3 h-2/3 object-contain" />
+            </a>
+          </div>
+          <span class="mt-2 text-sm md:text-base font-semibold" [class.text-gray-400]="state.disabled">
+            {{ boton.texto }}
+          </span>
+          <span *ngIf="state.disabled" class="absolute bottom-0 text-xs text-amber-400 font-semibold">
+            (En elaboración)
+          </span>
+        </ng-container>
+      </div>
+    </div>
+    <!-- Redes Sociales -->
+    <div id="social-media-links" class="mt-8 flex justify-center gap-6 text-2xl">
+      <a href="" target="_blank"
+        class="transition-all duration-300 hover:text-[#1877F2] hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
+        <i class="bi bi-facebook"></i>
+      </a>
+      <a href="" target="_blank" class="transition-all duration-300 hover:text-black hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
+        <i class="bi bi-twitter-x"></i>
+      </a>
+      <a href="" target="_blank"
+        class="transition-all duration-300 hover:text-[#e4405f] hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
+        <i class="bi bi-instagram"></i>
+      </a>
+      <a href="" target="_blank"
+        class="transition-all duration-300 hover:text-[#0077b5] hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
+        <i class="bi bi-linkedin"></i>
+      </a>
+      <a href="" target="_blank" class="transition-all duration-300 hover:text-black hover:drop-shadow-[0_0_4px_rgba(255,255,255,1)]">
+        <i class="bi bi-threads"></i>
+      </a>
+    </div>
+  </div>
+</div>

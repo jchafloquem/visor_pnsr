@@ -101,7 +101,7 @@
         <button type="submit" [disabled]="cargando()"
           class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-white shadow-md shadow-primary/25 transition-all hover:bg-secondary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer">
           @if (cargando()) {
-            <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+            <app-spinner size="h-5 w-5" color="text-white"></app-spinner>
             Verificando…
           } @else {
             <i class="bi bi-box-arrow-in-right"></i>

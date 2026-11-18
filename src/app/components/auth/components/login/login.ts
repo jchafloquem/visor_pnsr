@@ -16,13 +16,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, take } from 'rxjs';
 import { AuthService } from '../../../../services/auth.service';
+import { Spinner } from '../../../../animations/spinner/spinner';
 
 const CLAVE_RECORDADA = 'gmsi_usuario_recordado';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Spinner],
   templateUrl: './login.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './login.css',
