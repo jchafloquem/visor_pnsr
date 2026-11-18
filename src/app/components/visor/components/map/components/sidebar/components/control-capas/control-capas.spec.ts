@@ -64,6 +64,21 @@ describe('ControlCapas', () => {
         },
       ],
     },
+    {
+      id: 'limitesPeru',
+      title: 'LÍMITES DEL PERÚ',
+      expanded: false,
+      items: [
+        {
+          type: 'layer',
+          id: 'limites-peru',
+          label: 'Límites del Perú',
+          visible: true,
+          opacity: 1,
+          showInLegend: true,
+        },
+      ],
+    },
   ]);
   const setLayerVisibility = vi.fn();
 
@@ -85,15 +100,18 @@ describe('ControlCapas', () => {
     fixture.detectChanges();
   });
 
-  it('renders the available rural layer controls', () => {
+  it('renders the available rural and Peru limits layer controls', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('ACCESO A AGUA');
     expect(fixture.nativeElement.textContent).toContain('ACCESO A ALCANTARILLADO');
-    expect(fixture.nativeElement.querySelectorAll('input[type="checkbox"]').length).toBe(4);
+    expect(fixture.nativeElement.textContent).toContain('LÍMITES DEL PERÚ');
+    expect(fixture.nativeElement.querySelectorAll('input[type="checkbox"]').length).toBe(5);
   });
 
   it('updates the layer visibility from its checkbox', () => {
-    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector('input[type="checkbox"]');
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Con acceso a agua"]'
+    );
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change'));
 
@@ -102,5 +120,15 @@ describe('ControlCapas', () => {
       'viviendas-rurales-agua-con-acceso',
       false
     );
+  });
+
+  it('updates Peru limits visibility from its checkbox', () => {
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Límites del Perú"]'
+    );
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change'));
+
+    expect(setLayerVisibility).toHaveBeenCalledWith('limitesPeru', 'limites-peru', false);
   });
 });

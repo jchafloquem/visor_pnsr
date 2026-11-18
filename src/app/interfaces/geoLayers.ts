@@ -25,6 +25,11 @@ export interface WfsResponse {
   type: 'FeatureCollection';
 }
 
+export interface LayerLegendEntry {
+  label: string;
+  url: string;
+}
+
 /** Configuración para la inicialización de capas WMS */
 export interface LayerItem {
   showInLegend: boolean;
@@ -50,6 +55,8 @@ export interface LayerItem {
    * por compatibilidad.
    */
   legendUrls?: string[];
+  /** Simbología dinámica devuelta por servicios que no publican URLs de imagen. */
+  legendEntries?: LayerLegendEntry[];
   /** Color del símbolo cuando la capa vectorial no tiene una leyenda como imagen. */
   legendColor?: string;
 }
@@ -124,7 +131,10 @@ export function capasDeSeccion(seccion: Section): LayerItem[] {
  */
 export function capaAportaSimbologia(capa: LayerItem): boolean {
   if (!capa.visible || capa.showInLegend === false) return false;
-  return (capa.legendUrls?.length ?? 0) > 0 || Boolean(capa.legendUrl) || Boolean(capa.legendColor);
+  return (capa.legendEntries?.length ?? 0) > 0 ||
+    (capa.legendUrls?.length ?? 0) > 0 ||
+    Boolean(capa.legendUrl) ||
+    Boolean(capa.legendColor);
 }
 
 /**

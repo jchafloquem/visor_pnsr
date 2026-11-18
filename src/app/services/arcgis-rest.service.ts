@@ -4,8 +4,10 @@ import EsriJSON from 'ol/format/EsriJSON';
 import type Feature from 'ol/Feature';
 import type Geometry from 'ol/geom/Geometry';
 import { bbox } from 'ol/loadingstrategy';
+import ImageLayer from 'ol/layer/Image';
 import VectorLayer from 'ol/layer/Vector';
 import { get as getProjection } from 'ol/proj';
+import ImageArcGISRest from 'ol/source/ImageArcGISRest';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import VectorSource from 'ol/source/Vector';
 import XYZ, { type Options as XYZOptions } from 'ol/source/XYZ';
@@ -13,6 +15,8 @@ import { Observable, firstValueFrom, map } from 'rxjs';
 
 export const VIVIENDAS_RURALES_FEATURE_SERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/OGEI/Viviendas_Rurales/FeatureServer';
+export const PERU_LIMITS_MAPSERVER_URL =
+  'https://portalgis.vivienda.gob.pe/servergis/rest/services/Limites_Peru/MapServer';
 
 export interface ArcGISRestError {
   code: number;
@@ -26,6 +30,18 @@ export interface ArcGISServiceMetadata {
   layers?: Array<{ id: number; name: string; type?: string }>;
   error?: ArcGISRestError;
   [key: string]: unknown;
+}
+
+export interface ArcGISMapServerLegendResponse {
+  layers?: Array<{
+    layerName: string;
+    legend?: Array<{
+      label?: string;
+      imageData?: string;
+      contentType?: string;
+    }>;
+  }>;
+  error?: ArcGISRestError;
 }
 
 export interface ArcGISFeatureSet<T> {
@@ -60,6 +76,11 @@ export interface ViviendasRuralesLayerOptions {
   zIndex: number;
 }
 
+export interface ArcGISMapServerLayerOptions {
+  title: string;
+  zIndex: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ArcGISRestService {
   private readonly http = inject(HttpClient);
@@ -69,6 +90,15 @@ export class ArcGISRestService {
     const params = new HttpParams().set('f', 'json');
 
     return this.http.get<ArcGISServiceMetadata>(serviceUrl, { params }).pipe(
+      map(response => this.assertSuccess(response))
+    );
+  }
+
+  getMapServerLegend(serviceUrl: string): Observable<ArcGISMapServerLegendResponse> {
+    const url = `${this.normalizeUrl(serviceUrl)}/legend`;
+    const params = new HttpParams().set('f', 'json');
+
+    return this.http.get<ArcGISMapServerLegendResponse>(url, { params }).pipe(
       map(response => this.assertSuccess(response))
     );
   }
@@ -248,6 +278,23 @@ export class ArcGISRestService {
       interpolate: true,
       wrapX: true,
       ...options,
+    });
+  }
+
+  createMapServerLayer(
+    serviceUrl: string,
+    options: ArcGISMapServerLayerOptions
+  ): ImageLayer<ImageArcGISRest> {
+    const source = new ImageArcGISRest({
+      url: this.normalizeUrl(serviceUrl),
+      crossOrigin: 'anonymous',
+    });
+
+    return new ImageLayer({
+      source,
+      properties: { title: options.title },
+      zIndex: options.zIndex,
+      visible: true,
     });
   }
 

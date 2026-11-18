@@ -452,7 +452,7 @@ describe('MapService', () => {
 
   describe('mapa base', () => {
     it('cambia el tipo de mapa base seleccionado', () => {
-      expect(service.baseLayerType()).toBe('streets');
+      expect(service.baseLayerType()).toBe('satellite');
 
       service.cambiarMapaBase('satellite');
       expect(service.baseLayerType()).toBe('satellite');

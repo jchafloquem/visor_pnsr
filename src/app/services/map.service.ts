@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject, NgZone, effect, untracked, Writab
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
-import { ArcGISRestService } from './arcgis-rest.service';
+import { ArcGISRestService, PERU_LIMITS_MAPSERVER_URL } from './arcgis-rest.service';
 import { WmsService } from './wms.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
 import { SIN_AUDITORIA } from '../interceptor/auditoria.interceptor';
@@ -110,7 +110,7 @@ export class MapService {
   private readonly wmsService = inject(WmsService);
   /** Registro de auditoría del uso de los servicios cartográficos (WMS). */
   private readonly auditoria = inject(AuditoriaService);
-  baseLayerType = signal<TipoMapaBase>('streets');
+  baseLayerType = signal<TipoMapaBase>('satellite');
   /** Instancia del mapa OpenLayers */
   private readonly _map = signal<OlMap | undefined>(undefined);
   /** Exposición del mapa como Signal de solo lectura */
@@ -605,6 +605,7 @@ export class MapService {
     this._map.set(olMap);
     olMap.getViewport().style.cursor = 'pointer';
     this.setupInitialWmsLayers();
+    this.setupPeruLimitsLayer();
     this.setupViviendasRuralesLayers();
     this.handleMapResizing(olMap);
     this.setupHighlightLayer();
@@ -806,6 +807,38 @@ export class MapService {
     });
     // Inicializamos las capas catastrales recorriendo la lista
     INITIAL_WMS_LAYERS.forEach(config => this.addWmsLayer(config));
+  }
+  /** Agrega el MapServer REST de límites nacionales al panel de capas. */
+  private setupPeruLimitsLayer(): void {
+    const map = this._map();
+    if (!map) return;
+
+    const layer = this.arcgisRestService.createMapServerLayer(PERU_LIMITS_MAPSERVER_URL, {
+      title: 'Límites del Perú',
+      zIndex: 24,
+    });
+    layer.set('id', 'limites-peru');
+    map.addLayer(layer);
+    this.updateLayerInSectionsSignal('limites-peru', layer);
+
+    this.arcgisRestService.getMapServerLegend(PERU_LIMITS_MAPSERVER_URL).subscribe({
+      next: response => {
+        const legendEntries = (response.layers ?? []).flatMap(serviceLayer =>
+          (serviceLayer.legend ?? [])
+            .filter(entry => Boolean(entry.imageData && entry.contentType?.startsWith('image/')))
+            .map(entry => ({
+              label: entry.label?.trim() || serviceLayer.layerName,
+              url: `data:${entry.contentType};base64,${entry.imageData}`,
+            }))
+        );
+        if (legendEntries.length === 0) {
+          console.warn('El MapServer de límites del Perú no publicó simbología para la leyenda.');
+          return;
+        }
+        this.updateLayerProperties('limites-peru', { legendEntries });
+      },
+      error: error => console.error('No se pudo cargar la leyenda del MapServer de límites del Perú.', error),
+    });
   }
   /** Agrega las capas de viviendas rurales, consultando solo el área visible. */
   private setupViviendasRuralesLayers(): void {

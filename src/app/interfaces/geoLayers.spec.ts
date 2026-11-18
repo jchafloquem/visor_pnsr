@@ -74,6 +74,16 @@ describe('geoLayers · utilidades de simbología', () => {
       ).toBe(true);
     });
 
+    it('es verdadera para una capa con entradas de leyenda dinámicas', () => {
+      expect(
+        capaAportaSimbologia(capa({
+          visible: true,
+          legendUrl: undefined,
+          legendEntries: [{ label: 'Departamentos', url: 'data:image/png;base64,abc' }],
+        }))
+      ).toBe(true);
+    });
+
     it('es verdadera para una capa vectorial visible con color de símbolo', () => {
       expect(
         capaAportaSimbologia(capa({ visible: true, legendUrl: undefined, legendColor: '#16803c' }))

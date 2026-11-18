@@ -84,6 +84,15 @@ export class Leyenda {
       { key: string; label: string; url?: string; color?: string }
     >();
     for (const layer of capasConSimbologiaVisible(this.mapService.panelSections())) {
+      for (const entry of layer.legendEntries ?? []) {
+        if (!uniqueLegends.has(entry.url)) {
+          uniqueLegends.set(entry.url, {
+            key: `image:${entry.url}`,
+            label: entry.label,
+            url: entry.url,
+          });
+        }
+      }
       // Una capa puede aportar varias leyendas (capas compuestas: p. ej. los
       // polígonos de zonificación y sus límites); `legendUrl` es la primera.
       const urls = layer.legendUrls?.length

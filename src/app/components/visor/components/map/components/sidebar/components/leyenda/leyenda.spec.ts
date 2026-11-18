@@ -148,4 +148,37 @@ describe('Leyenda · capas compuestas', () => {
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
     expect(fixture.nativeElement.querySelector('[role="img"]').style.backgroundColor).toBe('rgb(22, 128, 60)');
   });
+
+  it('muestra las entradas de leyenda de un servicio ArcGIS REST', async () => {
+    const sections: Section[] = [
+      {
+        id: 'limitesPeru',
+        title: 'LÍMITES DEL PERÚ',
+        expanded: false,
+        items: [
+          {
+            type: 'layer',
+            id: 'limites-peru',
+            label: 'Límites del Perú',
+            visible: true,
+            opacity: 1,
+            showInLegend: true,
+            legendEntries: [
+              { label: 'Departamentos', url: 'data:image/png;base64,abc' },
+            ],
+          },
+        ],
+      },
+    ];
+    const fixture = await montarConPanel(sections);
+
+    expect(fixture.componentInstance.activeLegends()).toEqual([
+      {
+        key: 'image:data:image/png;base64,abc',
+        label: 'Departamentos',
+        url: 'data:image/png;base64,abc',
+      },
+    ]);
+    expect(fixture.nativeElement.querySelector('img')?.getAttribute('alt')).toBe('Departamentos');
+  });
 });

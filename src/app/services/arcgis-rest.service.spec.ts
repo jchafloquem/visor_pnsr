@@ -40,6 +40,26 @@ describe('ArcGISRestService', () => {
     });
   });
 
+  it('reads the dynamic legend of an ArcGIS MapServer', async () => {
+    const result = firstValueFrom(service.getMapServerLegend('https://gis.example.test/MapServer/'));
+    const request = httpMock.expectOne(req =>
+      req.url === 'https://gis.example.test/MapServer/legend' && req.params.get('f') === 'json'
+    );
+    request.flush({
+      layers: [{
+        layerName: 'Districts',
+        legend: [{ label: '', imageData: 'aW1hZ2U=', contentType: 'image/png' }],
+      }],
+    });
+
+    await expect(result).resolves.toMatchObject({
+      layers: [{
+        layerName: 'Districts',
+        legend: [{ imageData: 'aW1hZ2U=', contentType: 'image/png' }],
+      }],
+    });
+  });
+
   it('queries a layer and passes the requested ArcGIS parameters', async () => {
     const result = firstValueFrom(service.queryFeatures<{ OBJECTID: number }>(
       'https://gis.example.test/FeatureServer',
@@ -183,5 +203,17 @@ describe('ArcGISRestService', () => {
 
     expect(source.getUrls()?.[0]).toContain('/MapServer/tile/{z}/{y}/{x}');
     expect(source.getTileGrid()?.getMaxZoom()).toBe(19);
+  });
+
+  it('creates a dynamic image layer for an ArcGIS MapServer', () => {
+    const layer = service.createMapServerLayer(
+      'https://gis.example.test/MapServer/',
+      { title: 'Límites del Perú', zIndex: 24 }
+    );
+
+    expect(layer.getSource()?.getUrl()).toBe('https://gis.example.test/MapServer');
+    expect(layer.get('title')).toBe('Límites del Perú');
+    expect(layer.getZIndex()).toBe(24);
+    expect(layer.getVisible()).toBe(true);
   });
 });

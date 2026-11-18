@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MapService } from '../../../../../../../../services/map.service';
-import { SubSection } from '../../../../../../../../interfaces/geoLayers';
+import { LayerItem, SubSection } from '../../../../../../../../interfaces/geoLayers';
 
 @Component({
   selector: 'app-control-capas',
@@ -19,12 +19,18 @@ export class ControlCapas {
       ?.items.filter((item): item is SubSection => item.type === 'subsection') ?? []
   );
 
-  onLayerVisibilityChange(layerId: string, event: Event): void {
+  readonly standaloneLayers = computed(() =>
+    this.mapService.panelSections()
+      .find(section => section.id === 'limitesPeru')
+      ?.items.filter((item): item is LayerItem => item.type === 'layer') ?? []
+  );
+
+  onLayerVisibilityChange(layerId: string, event: Event, sectionId = 'viviendasRurales'): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
       throw new TypeError('Layer visibility control must be a checkbox input.');
     }
 
-    this.mapService.setLayerVisibility('viviendasRurales', layerId, target.checked);
+    this.mapService.setLayerVisibility(sectionId, layerId, target.checked);
   }
 }

@@ -1,7 +1,29 @@
 <div class="space-y-4">
   <p class="text-sm text-gray-600">
-    Activa o desactiva las capas de viviendas rurales mostradas en el mapa.
+    Activa o desactiva las capas mostradas en el mapa.
   </p>
+
+  @if (standaloneLayers().length > 0) {
+    <section class="overflow-hidden rounded-lg border border-gray-200">
+      <h3 class="bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600">
+        LÍMITES DEL PERÚ
+      </h3>
+      <div class="divide-y divide-gray-100">
+        @for (layer of standaloneLayers(); track layer.id) {
+          <label class="flex cursor-pointer items-center gap-3 px-3 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50">
+            <input
+              type="checkbox"
+              class="h-4 w-4 accent-primary"
+              [checked]="layer.visible"
+              [attr.aria-label]="layer.label"
+              (change)="onLayerVisibilityChange(layer.id, $event, 'limitesPeru')"
+            />
+            <span>{{ layer.label }}</span>
+          </label>
+        }
+      </div>
+    </section>
+  }
 
   @if (groups().length === 0) {
     <p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">

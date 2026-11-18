@@ -109,6 +109,8 @@ const SECCIONES_PUBLICAS: ReadonlySet<string> = new Set<string>([
   'imaAereas',
   'normativaUrbana',
   'viviendasRurales',
+  // Límites nacionales de referencia disponibles sin iniciar sesión.
+  'limitesPeru',
 ]);
 
 /** Marca como restringidas todas las secciones que no estén exentas en `SECCIONES_PUBLICAS`. */
@@ -120,6 +122,14 @@ const aplicarPoliticaAcceso = (secciones: Section[]): Section[] =>
 /* ------------------------------------------------------------------------- */
 
 const PANEL_BASE: Section[] = [
+  {
+    id: 'limitesPeru',
+    title: 'LÍMITES DEL PERÚ',
+    expanded: false,
+    items: [
+      capa('limites-peru', 'Límites del Perú', { visible: true, showInLegend: true }),
+    ],
+  },
   {
     id: 'viviendasRurales',
     title: 'VIVIENDAS RURALES',
