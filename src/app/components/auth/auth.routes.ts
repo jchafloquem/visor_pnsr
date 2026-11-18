@@ -7,13 +7,18 @@ export default [
 		loadComponent: () => import('./components/login/login').then(m => m.Login),
 	},
 	{
+		path: 'bienvenido',
+		title: 'Bienvenido',
+		loadComponent: () => import('./components/bienvenido/bienvenido').then(m => m.Bienvenido),
+	},
+	{
 		path: '',
-		redirectTo: 'login',
+		redirectTo: 'bienvenido',
 		pathMatch: 'full',
 	},
 	{
 		path: '**',
-		redirectTo: 'login',
+		redirectTo: 'bienvenido',
 		pathMatch: 'full',
 	},
 ] as Routes

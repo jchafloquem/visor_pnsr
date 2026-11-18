@@ -10,6 +10,27 @@
   --color-secondary: #48ade5;
   --font-poppins: "Poppins", sans-serif;
   --font-arial: Arial, Helvetica, sans-serif;
+
+  --color-rojo-nacional: #df1021;
+  --color-rojo-nacional-dark: #b80c1a;
+  --color-azul-institucional: #166cbe;
+  --color-azul-institucional-dark: #0f5299;
+  --color-celeste-agua: #48ade5;
+  --color-celeste-agua-dark: #2c93cc;
+  --color-amarillo-progreso: #fcba40;
+  --color-gris-estructura: #2b3341;
+  --color-verde-eficiencia: #10b981;
+  --font-dm-sans: 'DM Sans', sans-serif;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11pt;
+  }
 }
 
 /* Elimina el cuadro/borde de selección de OpenLayers y mejora la carga */

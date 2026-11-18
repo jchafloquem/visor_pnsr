@@ -1,0 +1,587 @@
+<app-pnsr-header></app-pnsr-header>
+
+<div class="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8 font-dm-sans">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Encabezado y Navegación tipo Migas de Pan -->
+    <nav class="flex items-center space-x-2 text-xs text-gray-500 uppercase tracking-wider" aria-label="Breadcrumb">
+      <a routerLink="/proyectos" class="hover:text-gray-800 underline focus:outline-none focus:ring-2 focus:ring-azul-institucional">
+        Bandeja de proyectos
+      </a>
+      <span aria-hidden="true">/</span>
+      <span class="text-gray-700 font-semibold" aria-current="page">
+        Definir prioridad de proyecto
+      </span>
+    </nav>
+
+    <div class="border-b border-gray-200 pb-4">
+      <h1 class="text-2xl font-bold text-gray-900 tracking-tight">
+        Definir Prioridad de Proyecto — CUI {{ editingCui() }}
+      </h1>
+      <p class="text-sm text-gray-600 mt-1">
+        Programa Nacional de Saneamiento Rural — Asignación de prioridad estratégica en cartera ejecutora 2026. Los datos técnicos y financieros son sincronizados desde el Banco de Inversiones (SSI MEF / SSP).
+      </p>
+    </div>
+
+    <!-- Alertas de Búsqueda CUI / Errores generales -->
+    @if (cuiSearchMessage()) {
+      <div role="alert" class="p-4 bg-amber-50 border-l-4 border-amber-600 text-amber-900 text-sm">
+        <p class="font-semibold">Aviso del sistema:</p>
+        <p>{{ cuiSearchMessage() }}</p>
+      </div>
+    }
+
+    @if (cuiSearchSuccess()) {
+      <div role="alert" class="p-4 bg-emerald-50 border-l-4 border-emerald-600 text-emerald-900 text-sm">
+        <p class="font-semibold">Sincronización satisfactoria:</p>
+        <p>{{ cuiSearchSuccess() }}</p>
+      </div>
+    }
+
+    <!-- Formulario Principal -->
+    <form [formGroup]="projectForm" (ngSubmit)="onSubmit()" novalidate class="space-y-8">
+
+      <!-- SECCIÓN 1: Identificación y Consulta con SSI MEF / SSP -->
+      <section class="bg-white border border-gray-200 rounded-none p-6 shadow-none" aria-labelledby="sec-identificacion-title">
+        <div class="border-b border-gray-200 pb-3 mb-6">
+          <h2 id="sec-identificacion-title" class="text-base font-bold text-gray-900 uppercase tracking-wide">
+            1. Identificación y Consulta Oficial (SSI MEF / SSP)
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Los datos de inversión, devengado y estado administrativo son provistos por el Sistema de Seguimiento de Inversiones (SSI MEF) y el SSP.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Campo CUI -->
+          <div class="space-y-1">
+            <label for="cui" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Código Único de Inversión (CUI) <span class="text-red-700">*</span>
+            </label>
+            <div class="flex items-center space-x-2">
+              <input
+                id="cui"
+                type="text"
+                formControlName="cui"
+                maxlength="7"
+                placeholder="Ej. 2412345"
+                (blur)="onCuiBlur()"
+                aria-describedby="cui-help cui-error"
+                [attr.aria-invalid]="projectForm.get('cui')?.invalid && projectForm.get('cui')?.touched"
+                class="w-full px-3 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-none focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+              />
+            </div>
+            <p id="cui-help" class="text-xs text-gray-500">
+              7 dígitos numéricos oficiales registrados en Banco de Inversiones.
+            </p>
+            @if (projectForm.get('cui')?.invalid && projectForm.get('cui')?.touched) {
+              <p id="cui-error" class="text-xs font-medium text-red-700">
+                El CUI es requerido y debe contener exactamente 7 dígitos numéricos.
+              </p>
+            }
+          </div>
+
+          <!-- Estado Administrativo (Read-only SSI/SSP) -->
+          <div class="space-y-1">
+            <label for="estadoAdministrativo" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Estado Administrativo
+            </label>
+            <input
+              id="estadoAdministrativo"
+              type="text"
+              formControlName="estadoAdministrativo"
+              readonly
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-700 rounded-none cursor-not-allowed focus:outline-none"
+            />
+            <span class="text-xs text-gray-500 italic block">Fuente: SSP (Sistema de Seguimiento de Proyectos)</span>
+          </div>
+
+          <!-- Cartera Ejecutora (Editable) -->
+          <div class="space-y-1">
+            <label for="cartera" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Cartera Ejecutora <span class="text-red-700">*</span>
+            </label>
+            <select
+              id="cartera"
+              formControlName="cartera"
+              aria-describedby="cartera-help"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:border-azul-institucional"
+            >
+              @for (c of carteras; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+            <p id="cartera-help" class="text-xs text-gray-500">
+              Unidad o programa responsable de la cartera.
+            </p>
+          </div>
+        </div>
+
+        <!-- Nombre del Proyecto (Read-only o editable) -->
+        <div class="mt-4 space-y-1">
+          <label for="nombre" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+            Nombre del Proyecto <span class="text-red-700">*</span>
+          </label>
+          <textarea
+            id="nombre"
+            rows="2"
+            formControlName="nombre"
+            aria-describedby="nombre-source nombre-error"
+            class="w-full px-3 py-2 text-sm border border-gray-300 bg-gray-50 text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:border-azul-institucional"
+            placeholder="Denominación oficial del proyecto de inversión pública"
+          ></textarea>
+          <span id="nombre-source" class="text-xs text-gray-500 italic block">Fuente: SSI MEF / Banco de Inversiones</span>
+          @if (projectForm.get('nombre')?.invalid && projectForm.get('nombre')?.touched) {
+            <p id="nombre-error" class="text-xs font-medium text-red-700">
+              El nombre del proyecto es obligatorio.
+            </p>
+          }
+        </div>
+
+        <!-- Costo de Inversión y Devengado Acumulado (Campos financieros SSI) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          <div class="space-y-1">
+            <label for="costoInversion" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Costo de Inversión Vigente (S/)
+            </label>
+            <input
+              id="costoInversion"
+              type="number"
+              formControlName="costoInversion"
+              readonly
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-800 rounded-none cursor-not-allowed focus:outline-none"
+            />
+            <span class="text-xs text-gray-500 italic block">
+              Monto: {{ formatSoles(projectForm.get('costoInversion')?.value) }} — Fuente: SSI MEF
+            </span>
+          </div>
+
+          <div class="space-y-1">
+            <label for="devengadoAcumulado" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Devengado Acumulado (S/)
+            </label>
+            <input
+              id="devengadoAcumulado"
+              type="number"
+              formControlName="devengadoAcumulado"
+              readonly
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-gray-100 text-gray-800 rounded-none cursor-not-allowed focus:outline-none"
+            />
+            <span class="text-xs text-gray-500 italic block">
+              Monto: {{ formatSoles(projectForm.get('devengadoAcumulado')?.value) }} — Fuente: SSI MEF
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 2: Gestión Institucional y Territorial PNSR -->
+      <section class="bg-white border border-gray-200 rounded-none p-6 shadow-none" aria-labelledby="sec-gestion-title">
+        <div class="border-b border-gray-200 pb-3 mb-6">
+          <h2 id="sec-gestion-title" class="text-base font-bold text-gray-900 uppercase tracking-wide">
+            2. Gestión Institucional y Ubicación Territorial
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5">
+            Responsables asignados por el PNSR, priorización operativa y localización geográfica.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Responsable PNSR -->
+          <div class="space-y-1">
+            <label for="responsablePnsr" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Responsable PNSR (Coordinador / Supervisor) <span class="text-red-700">*</span>
+            </label>
+            <input
+              id="responsablePnsr"
+              type="text"
+              formControlName="responsablePnsr"
+              placeholder="Ej. Ing. Carlos Mendoza Ríos"
+              aria-describedby="resp-help resp-error"
+              [attr.aria-invalid]="projectForm.get('responsablePnsr')?.invalid && projectForm.get('responsablePnsr')?.touched"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:border-azul-institucional"
+            />
+            <p id="resp-help" class="text-xs text-gray-500">
+              Especialista o coordinador a cargo del seguimiento del proyecto.
+            </p>
+            @if (projectForm.get('responsablePnsr')?.invalid && projectForm.get('responsablePnsr')?.touched) {
+              <p id="resp-error" class="text-xs font-medium text-red-700">
+                El responsable del PNSR es obligatorio (mínimo 3 caracteres).
+              </p>
+            }
+          </div>
+
+          <!-- Contratista Ejecutor -->
+          <div class="space-y-1">
+            <label for="contratista" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Empresa / Contratista Ejecutor
+            </label>
+            <input
+              id="contratista"
+              type="text"
+              formControlName="contratista"
+              placeholder="Ej. Consorcio Andino S.A.C."
+              aria-describedby="contratista-help"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:border-azul-institucional"
+            />
+            <p id="contratista-help" class="text-xs text-gray-500">
+              Razón social de la contratista o ejecutor de obra.
+            </p>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Definición de Prioridad (Foco Principal del Formulario) -->
+        <div class="mt-6 p-4 rounded-md border-2"
+          [class.border-azul-institucional]="projectForm.get('priorizado2026')?.value"
+          [class.bg-blue-50/50]="projectForm.get('priorizado2026')?.value"
+          [class.border-gray-300]="!projectForm.get('priorizado2026')?.value"
+          [class.bg-gray-50]="!projectForm.get('priorizado2026')?.value"
+        >
+          <div class="flex items-start space-x-4">
+            <button
+              type="button"
+              role="switch"
+              id="priorizado2026-toggle"
+              [attr.aria-checked]="projectForm.get('priorizado2026')?.value"
+              (click)="togglePriorizado()"
+              (keydown.space)="$event.preventDefault(); togglePriorizado()"
+              class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:ring-offset-2 rounded-full"
+              [class.bg-azul-institucional]="projectForm.get('priorizado2026')?.value"
+              [class.bg-gray-300]="!projectForm.get('priorizado2026')?.value"
+              aria-label="Priorizado en Cartera 2026"
+            >
+              <span
+                aria-hidden="true"
+                class="pointer-events-none inline-block h-6 w-6 transform bg-white shadow ring-0 transition duration-200 ease-in-out rounded-full"
+                [class.translate-x-5]="projectForm.get('priorizado2026')?.value"
+                [class.translate-x-0]="!projectForm.get('priorizado2026')?.value"
+              ></span>
+            </button>
+            <div class="flex-1">
+              <label for="priorizado2026-toggle" class="text-sm font-bold text-gray-900 cursor-pointer select-none flex items-center gap-2">
+                <span>Proyecto Priorizado para Cartera 2026</span>
+                @if (projectForm.get('priorizado2026')?.value) {
+                  <span class="px-2 py-0.5 text-[11px] font-bold uppercase rounded bg-blue-100 text-azul-institucional border border-blue-200">
+                    Priorizado
+                  </span>
+                } @else {
+                  <span class="px-2 py-0.5 text-[11px] font-medium rounded bg-gray-200 text-gray-600">
+                    No priorizado
+                  </span>
+                }
+              </label>
+              <p class="text-xs text-gray-600 mt-1">
+                Al definir este proyecto como <strong>Priorizado</strong>, se destacará en el cuadro de mando de Alta Dirección, se incluirá en el filtro rápido de metas 2026 y recibirá seguimiento preferente en asignación presupuestal y mitigación de riesgos.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos Territoriales -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-gray-100">
+          <div class="space-y-1">
+            <label for="departamento" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Departamento <span class="text-red-700">*</span>
+            </label>
+            <input
+              id="departamento"
+              type="text"
+              formControlName="departamento"
+              placeholder="Ej. Cusco"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label for="provincia" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Provincia <span class="text-red-700">*</span>
+            </label>
+            <input
+              id="provincia"
+              type="text"
+              formControlName="provincia"
+              placeholder="Ej. Cusco"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label for="distrito" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Distrito <span class="text-red-700">*</span>
+            </label>
+            <input
+              id="distrito"
+              type="text"
+              formControlName="distrito"
+              placeholder="Ej. San Sebastián"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label for="localidad" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Localidad / Centro Poblado <span class="text-red-700">*</span>
+            </label>
+            <input
+              id="localidad"
+              type="text"
+              formControlName="localidad"
+              placeholder="Ej. San Juan"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+          </div>
+        </div>
+
+        <!-- Coordenadas Geográficas / UTM y botón de visualización en mapa -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 pt-4 border-t border-gray-100 items-end">
+          <div class="space-y-1">
+            <label for="coordenadaX" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Coordenada X (Longitud o Este UTM)
+            </label>
+            <input
+              id="coordenadaX"
+              type="number"
+              step="any"
+              formControlName="coordenadaX"
+              placeholder="Ej. -71.9675 o 285000"
+              aria-describedby="coordX-error coordX-help"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+            <p id="coordX-help" class="text-xs text-gray-500">
+              Longitud decimal (-82 a -68) o Este UTM (100000 a 900000).
+            </p>
+            @if (projectForm.get('coordenadaX')?.hasError('coordXInvalida')) {
+              <p id="coordX-error" class="text-xs text-red-700">
+                {{ projectForm.get('coordenadaX')?.getError('coordXInvalida') }}
+              </p>
+            }
+          </div>
+
+          <div class="space-y-1">
+            <label for="coordenadaY" class="block text-xs font-semibold uppercase tracking-wider text-gray-800">
+              Coordenada Y (Latitud o Norte UTM)
+            </label>
+            <input
+              id="coordenadaY"
+              type="number"
+              step="any"
+              formControlName="coordenadaY"
+              placeholder="Ej. -13.5350 o 8500000"
+              aria-describedby="coordY-error coordY-help"
+              class="w-full px-3 py-2 text-sm border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            />
+            <p id="coordY-help" class="text-xs text-gray-500">
+              Latitud decimal (-19 a 0) o Norte UTM (7800000 a 10000000).
+            </p>
+            @if (projectForm.get('coordenadaY')?.hasError('coordYInvalida')) {
+              <p id="coordY-error" class="text-xs text-red-700">
+                {{ projectForm.get('coordenadaY')?.getError('coordYInvalida') }}
+              </p>
+            }
+          </div>
+
+          <div>
+            <button
+              type="button"
+              (click)="verUbicacionEnMapa()"
+              class="w-full px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-800 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+            >
+              Ver ubicación en el mapa
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 3: Sub-tabla de Hitos (Master-Detail) -->
+      <section class="bg-white border border-gray-200 rounded-none p-6 shadow-none" aria-labelledby="sec-hitos-title">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3 mb-6 gap-3">
+          <div>
+            <h2 id="sec-hitos-title" class="text-base font-bold text-gray-900 uppercase tracking-wide">
+              3. Cronograma e Hitos de Ejecución
+            </h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+              Defina las metas y plazos contractuales. Edición directa sobre cada fila.
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="agregarHito()"
+            class="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-azul-institucional"
+          >
+            + Añadir hito
+          </button>
+        </div>
+
+        @if (hitosArray.length === 0) {
+          <div class="p-8 text-center border border-dashed border-gray-300 bg-gray-50 text-gray-600 text-sm">
+            <p class="font-medium">No se han registrado hitos para este proyecto.</p>
+            <p class="text-xs text-gray-500 mt-1">Presione el botón "+ Añadir hito" para registrar una meta física o contractual.</p>
+          </div>
+        } @else {
+          <div class="overflow-x-auto border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200 text-left text-xs" formArrayName="hitos">
+              <thead class="bg-gray-100 text-gray-800 font-semibold uppercase tracking-wider">
+                <tr>
+                  <th scope="col" class="py-2.5 px-3">Descripción de la meta</th>
+                  <th scope="col" class="py-2.5 px-2 w-32">Inicio prog.</th>
+                  <th scope="col" class="py-2.5 px-2 w-32">Fin prog.</th>
+                  <th scope="col" class="py-2.5 px-2 w-32">Fecha real</th>
+                  <th scope="col" class="py-2.5 px-2 w-20">Avance %</th>
+                  <th scope="col" class="py-2.5 px-2 w-28">Estado</th>
+                  <th scope="col" class="py-2.5 px-2">Responsable</th>
+                  <th scope="col" class="py-2.5 px-2 w-16 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 bg-white">
+                @for (hitoGroup of hitosArray.controls; track $index) {
+                  <tr [formGroupName]="$index" class="hover:bg-gray-50/50">
+                    <!-- Descripción -->
+                    <td class="py-2 px-3 align-top">
+                      <input
+                        type="text"
+                        formControlName="descripcion"
+                        placeholder="Descripción de la meta"
+                        aria-label="Descripción del hito"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                    </td>
+
+                    <!-- Fecha Inicio Programada -->
+                    <td class="py-2 px-2 align-top">
+                      <input
+                        type="date"
+                        formControlName="fechaInicioProgramada"
+                        aria-label="Fecha inicio programada"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                    </td>
+
+                    <!-- Fecha Fin Programada -->
+                    <td class="py-2 px-2 align-top">
+                      <input
+                        type="date"
+                        formControlName="fechaFinProgramada"
+                        aria-label="Fecha fin programada"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                      @if (hitoGroup.hasError('fechaFinInvalida')) {
+                        <span class="text-[10px] text-red-700 block mt-0.5 leading-tight">
+                          La fecha fin debe ser mayor o igual a la de inicio.
+                        </span>
+                      }
+                    </td>
+
+                    <!-- Fecha Real -->
+                    <td class="py-2 px-2 align-top">
+                      <input
+                        type="date"
+                        formControlName="fechaReal"
+                        aria-label="Fecha real cumplida"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                    </td>
+
+                    <!-- Avance Esperado % -->
+                    <td class="py-2 px-2 align-top">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        formControlName="avanceEsperado"
+                        aria-label="Porcentaje de avance esperado"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                    </td>
+
+                    <!-- Estado -->
+                    <td class="py-2 px-2 align-top">
+                      <select
+                        formControlName="estado"
+                        aria-label="Estado del hito"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      >
+                        @for (est of estadosHito; track est) {
+                          <option [value]="est">{{ est }}</option>
+                        }
+                      </select>
+                    </td>
+
+                    <!-- Responsable -->
+                    <td class="py-2 px-2 align-top">
+                      <input
+                        type="text"
+                        formControlName="responsable"
+                        placeholder="Responsable del hito"
+                        aria-label="Responsable del hito"
+                        class="w-full px-2 py-1 text-xs border border-gray-300 bg-white text-gray-900 rounded-none focus:outline-none focus:ring-1 focus:ring-azul-institucional"
+                      />
+                    </td>
+
+                    <!-- Acción Eliminar -->
+                    <td class="py-2 px-2 align-top text-center">
+                      <button
+                        type="button"
+                        (click)="confirmarEliminarHito($index)"
+                        class="text-red-700 hover:text-red-900 px-2 py-1 border border-transparent hover:border-red-300 focus:outline-none focus:ring-1 focus:ring-red-600 font-semibold"
+                        aria-label="Eliminar hito"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Modal o panel de confirmación de eliminación -->
+                  @if (deleteConfirmationIndex() === $index) {
+                    <tr class="bg-red-50">
+                      <td colspan="8" class="p-3 text-xs text-red-900">
+                        <div class="flex items-center justify-between">
+                          <span>¿Confirma la eliminación permanente de este hito?</span>
+                          <div class="space-x-2">
+                            <button
+                              type="button"
+                              (click)="eliminarHito($index)"
+                              class="px-2 py-1 bg-red-700 text-white font-semibold uppercase tracking-wider text-[11px] focus:outline-none focus:ring-1 focus:ring-red-700"
+                            >
+                              Sí, eliminar
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelarEliminarHito()"
+                              class="px-2 py-1 bg-white border border-gray-300 text-gray-800 text-[11px] focus:outline-none focus:ring-1 focus:ring-gray-400"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <!-- SECCIÓN 4: Botonera de Acción Inferior -->
+      <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          (click)="cancelar()"
+          class="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-800 bg-white border border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-azul-institucional hover:bg-azul-institucional-dark focus:outline-none focus:ring-2 focus:ring-azul-institucional focus:ring-offset-2"
+        >
+          Guardar Prioridad
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<app-pnsr-footer></app-pnsr-footer>

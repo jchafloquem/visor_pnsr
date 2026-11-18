@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+.curva-s-draw {
+  animation: curva-s-reveal 850ms cubic-bezier(0.22, 1, 0.36, 1) 100ms both;
+}
+
+.curva-s-area-fade {
+  animation: curva-s-fade 900ms ease-out 250ms both;
+}
+
+@keyframes curva-s-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes curva-s-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.08;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curva-s-draw,
+  .curva-s-area-fade {
+    animation: none !important;
+  }
+}
+
+@media print {
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'DM Sans', Arial, sans-serif !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .curva-s-doc {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 8.5pt !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #64748b !important;
+    padding: 3px 5px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  thead {
+    background-color: var(--color-gris-estructura, #2b3341) !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  svg {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+}

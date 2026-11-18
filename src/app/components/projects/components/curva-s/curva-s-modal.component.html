@@ -1,0 +1,691 @@
+@if (visible() && proyecto()) {
+  <!-- Overlay modal -->
+  <div
+    class="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-center justify-center p-2 sm:p-4 print:static print:bg-white print:p-0"
+    (click)="cerrarModal()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-curva-s"
+  >
+    <div
+      #modalContainer
+      tabindex="-1"
+      class="bg-white rounded-md border border-gray-300 w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden focus:outline-none print:max-h-none print:border-none print:shadow-none"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- Barra superior de acciones (no-print) -->
+      <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50 no-print">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-gris-estructura">
+            Curva S de Avance Físico y Financiero
+          </span>
+          <span class="text-xs text-gray-500 font-mono">
+            (CUI {{ proyecto()!.cui }})
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            (click)="imprimir()"
+            class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white bg-azul-institucional hover:bg-azul-institucional-dark rounded focus:outline-none focus:ring-2 focus:ring-celeste-agua focus:ring-offset-2 transition-colors cursor-pointer"
+          >
+            Imprimir / Guardar como PDF
+          </button>
+          <button
+            type="button"
+            (click)="cerrarModal()"
+            aria-label="Cerrar modal de Curva S"
+            class="px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-gray-900 border border-gray-300 hover:bg-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-celeste-agua transition-colors cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenedor del documento imprimible y visualizable -->
+      <div class="p-4 sm:p-6 overflow-y-auto print:overflow-visible print:p-0 flex-1 bg-gray-50/50 print:bg-white space-y-4">
+        <article #curvaSDoc class="curva-s-doc bg-white text-gray-900 p-5 sm:p-6 border border-slate-200 rounded-md print:border-none print:p-0 space-y-4">
+
+          <!-- ENCABEZADO DE LA CURVA S -->
+          <header class="border-b border-gray-200 pb-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 text-[11px] text-gray-500 uppercase tracking-wider">
+                <span class="font-bold text-azul-institucional">PNSR</span>
+                <span>·</span>
+                <span>Cartera {{ proyecto()!.cartera }}</span>
+                <span>·</span>
+                <span class="font-mono font-bold text-gray-800">CUI {{ proyecto()!.cui }}</span>
+              </div>
+              <h1 id="titulo-curva-s" class="text-base sm:text-lg font-bold text-gris-estructura tracking-tight">
+                {{ proyecto()!.nombre }}
+              </h1>
+              <p class="text-xs text-gray-600">
+                Ubicación: {{ proyecto()!.distrito }}, {{ proyecto()!.provincia }}, {{ proyecto()!.departamento }} · Contratista: {{ proyecto()!.contratista }}
+              </p>
+            </div>
+
+            <div class="text-right shrink-0 bg-gray-50 border border-gray-200 p-2 rounded text-xs space-y-0.5">
+              <div class="text-[10px] uppercase font-bold text-gray-500">Costo de Inversión (SSI MEF)</div>
+              <div class="text-sm font-bold font-mono text-azul-institucional">
+                {{ formatearMoneda(proyecto()!.costoInversion) }}
+              </div>
+              <div class="text-[10px] text-gray-600">
+                Devengado: {{ formatearMoneda(proyecto()!.devengadoAcumulado) }}
+              </div>
+            </div>
+          </header>
+
+          <!-- FRANJA DE RESUMEN DE INDICADORES EN CORTE -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+            <!-- Avance Real -->
+            <div class="p-3 bg-white border border-slate-200 border-t-2 border-t-azul-institucional rounded">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Avance Real (SSP)</div>
+              <div class="text-base font-bold text-azul-institucional mt-0.5 tabular-nums">
+                {{ proyecto()!.avanceFisicoReal.toFixed(2) }}%
+              </div>
+            </div>
+
+            <!-- Avance Programado -->
+            <div class="p-3 bg-white border border-slate-200 border-t-2 border-t-slate-400 rounded">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Programado</div>
+              <div class="text-base font-bold text-gris-estructura mt-0.5 tabular-nums">
+                {{ proyecto()!.avanceFisicoProgramado.toFixed(2) }}%
+              </div>
+            </div>
+
+            <!-- Brecha -->
+            @let brechaPtos = (proyecto()!.avanceFisicoReal - proyecto()!.avanceFisicoProgramado);
+            <div class="p-3 bg-white border border-slate-200 border-t-2 rounded"
+                 [class.border-t-rojo-nacional]="brechaPtos < -5"
+                 [class.border-t-amarillo-progreso]="brechaPtos >= -5 && brechaPtos < 0"
+                 [class.border-t-verde-eficiencia]="brechaPtos >= 0">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Brecha Físico</div>
+              <div class="text-base font-bold mt-0.5 tabular-nums"
+                   [class.text-rojo-nacional]="brechaPtos < -5"
+                   [class.text-amber-800]="brechaPtos >= -5 && brechaPtos < 0"
+                   [class.text-[#047857]]="brechaPtos >= 0">
+                {{ brechaPtos > 0 ? '+' : '' }}{{ brechaPtos.toFixed(1) }} ptos
+              </div>
+            </div>
+
+            <!-- Avance Financiero -->
+            <div class="p-3 bg-white border border-slate-200 border-t-2 border-t-amarillo-progreso rounded">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Financiero</div>
+              <div class="text-base font-bold text-gris-estructura mt-0.5 tabular-nums">
+                {{ proyecto()!.avanceFinanciero.toFixed(1) }}%
+              </div>
+            </div>
+
+            <!-- Índice IDA -->
+            <div class="p-3 bg-white border border-slate-200 border-t-2 rounded"
+                 [class.border-t-verde-eficiencia]="semaforoIDA().color === 'verde'"
+                 [class.border-t-amarillo-progreso]="semaforoIDA().color === 'ambar'"
+                 [class.border-t-rojo-nacional]="semaforoIDA().color === 'critico'">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Índice IDA</div>
+              <div class="text-base font-bold mt-0.5 flex items-center gap-1.5 tabular-nums"
+                   [class.text-[#047857]]="semaforoIDA().color === 'verde'"
+                   [class.text-amber-800]="semaforoIDA().color === 'ambar'"
+                   [class.text-rojo-nacional]="semaforoIDA().color === 'critico'">
+                <span>{{ formatearIDA(ida()) }}</span>
+                <span class="text-[10px] font-medium uppercase text-slate-600">({{ semaforoIDA().texto }})</span>
+              </div>
+            </div>
+
+            <!-- Descalce Financiero -->
+            <div class="p-3 bg-white border border-slate-200 border-t-2 rounded"
+                 [class.border-t-rojo-nacional]="existeDescalce()"
+                 [class.border-t-slate-400]="!existeDescalce()">
+              <div class="text-[10px] uppercase font-bold text-slate-500">Descalce Fin/Fís</div>
+              <div class="text-base font-bold mt-0.5 tabular-nums"
+                   [class.text-rojo-nacional]="existeDescalce()"
+                   [class.text-slate-700]="!existeDescalce()">
+                {{ descalce() }} ptos
+              </div>
+            </div>
+          </div>
+
+          <!-- GRÁFICO VECTORIAL SVG DE LA CURVA S -->
+          <div class="bg-white border border-gray-300 rounded p-4 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-700">
+                  Curva S Individual del Proyecto (Programado vs. Ejecutado)
+                </span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono">
+                  CPI: {{ cpi() }}
+                </span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gris-estructura border border-gray-300 font-mono">
+                  SPI: {{ spi() }}
+                </span>
+              </div>
+
+              <!-- Leyenda Oficial -->
+              <div class="flex flex-wrap items-center gap-4 text-[11px] text-gray-600">
+                <div class="inline-flex items-center gap-1.5">
+                  <span class="w-3.5 h-0.5 border-t-2 border-dashed border-[#64748b] inline-block"></span>
+                  <span>Programado Base</span>
+                </div>
+                <div class="inline-flex items-center gap-1.5">
+                  <span class="w-3.5 h-0.5 bg-azul-institucional inline-block"></span>
+                  <span class="font-bold text-azul-institucional">Real Ejecutado (SSP)</span>
+                </div>
+                <div class="inline-flex items-center gap-1.5">
+                  <span class="w-3.5 h-0.5 bg-[#f59e0b] inline-block"></span>
+                  <span class="font-semibold text-amber-800">Financiero (SSI)</span>
+                </div>
+                <div class="inline-flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rojo-nacional inline-block"></span>
+                  <span class="text-[10px] text-gray-500">Mes de Corte</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contenedor SVG Responsivo -->
+            <div class="relative w-full overflow-x-auto">
+              <svg
+                [attr.viewBox]="'0 0 ' + svgWidth + ' ' + svgHeight"
+                class="w-full h-auto min-w-[620px] select-none"
+                aria-label="Curva S de avance acumulado mensual"
+              >
+                <!-- Rejilla horizontal de porcentajes (0%, 20%, 40%, 60%, 80%, 100%) -->
+                @for (pct of [0, 20, 40, 60, 80, 100]; track pct) {
+                  @let yLine = padTop + (1 - pct / 100) * (svgHeight - padTop - padBottom);
+                  <line
+                    [attr.x1]="padLeft"
+                    [attr.y1]="yLine"
+                    [attr.x2]="svgWidth - padRight"
+                    [attr.y2]="yLine"
+                    stroke="#e2e8f0"
+                    stroke-width="1"
+                    stroke-dasharray="2,2"
+                  />
+                  <text
+                    [attr.x]="padLeft - 8"
+                    [attr.y]="yLine + 4"
+                    font-size="10"
+                    fill="#64748b"
+                    text-anchor="end"
+                    font-family="monospace"
+                  >
+                    {{ pct }}%
+                  </text>
+                }
+
+                <!-- Línea vertical del Mes de Corte Actual -->
+                @if (coordMesCorte(); as cCorte) {
+                  <line
+                    [attr.x1]="cCorte.x"
+                    [attr.y1]="cCorte.top"
+                    [attr.x2]="cCorte.x"
+                    [attr.y2]="cCorte.bottom"
+                    stroke="var(--color-rojo-nacional)"
+                    stroke-width="1.5"
+                    stroke-dasharray="3,3"
+                    opacity="0.8"
+                  />
+                  <text
+                    [attr.x]="cCorte.x"
+                    [attr.y]="cCorte.top - 2"
+                    font-size="9"
+                    fill="var(--color-rojo-nacional)"
+                    font-weight="bold"
+                    text-anchor="middle"
+                  >
+                    Mes de Corte
+                  </text>
+                }
+
+                <!-- Área sombreada bajo la curva ejecutada -->
+                @if (areaSombreadaEjecutado()) {
+                  <path
+                    [attr.d]="areaSombreadaEjecutado()"
+                    fill="var(--color-azul-institucional)"
+                    opacity="0.08"
+                    class="curva-s-area-fade"
+                  />
+                }
+
+                <!-- Línea 1: Curva Programada (Base) -->
+                @if (pathProgramado()) {
+                  <path
+                    [attr.d]="pathProgramado()"
+                    fill="none"
+                    stroke="#64748b"
+                    stroke-width="2"
+                    stroke-dasharray="5,4"
+                    class="curva-s-draw"
+                  />
+                }
+
+                <!-- Línea 2: Curva Financiera -->
+                @if (pathFinanciero()) {
+                  <path
+                    [attr.d]="pathFinanciero()"
+                    fill="none"
+                    stroke="#f59e0b"
+                    stroke-width="2"
+                    class="curva-s-draw"
+                  />
+                }
+
+                <!-- Línea 3: Curva Real Ejecutada -->
+                @if (pathEjecutado()) {
+                  <path
+                    [attr.d]="pathEjecutado()"
+                    fill="none"
+                    stroke="var(--color-azul-institucional)"
+                    stroke-width="2.5"
+                    class="curva-s-draw"
+                  />
+                }
+
+                <!-- Puntos interactivos: Programado -->
+                @for (c of coordsProgramado(); track c.punto.mesNumero) {
+                  <rect
+                    [attr.x]="c.x - 3"
+                    [attr.y]="c.y - 3"
+                    width="6"
+                    height="6"
+                    fill="#ffffff"
+                    stroke="#64748b"
+                    stroke-width="1.5"
+                  />
+                  <!-- Etiqueta del periodo en el eje X -->
+                  <text
+                    [attr.x]="c.x"
+                    [attr.y]="svgHeight - 12"
+                    font-size="10"
+                    fill="#475569"
+                    text-anchor="middle"
+                    [attr.font-weight]="c.punto.esMesCorte ? 'bold' : 'normal'"
+                    [attr.fill]="c.punto.esMesCorte ? 'var(--color-rojo-nacional)' : '#475569'"
+                  >
+                    {{ c.punto.periodo }}
+                  </text>
+                }
+
+                <!-- Puntos interactivos: Financiero -->
+                @for (c of coordsFinanciero(); track c.punto.mesNumero) {
+                  <polygon
+                    [attr.points]="c.x + ',' + (c.y - 4) + ' ' + (c.x + 3.5) + ',' + (c.y + 3) + ' ' + (c.x - 3.5) + ',' + (c.y + 3)"
+                    fill="#f59e0b"
+                    stroke="#ffffff"
+                    stroke-width="1"
+                  />
+                }
+
+                <!-- Puntos interactivos: Real Ejecutado -->
+                @for (c of coordsEjecutado(); track c.punto.mesNumero) {
+                  <circle
+                    [attr.cx]="c.x"
+                    [attr.cy]="c.y"
+                    r="4"
+                    fill="var(--color-azul-institucional)"
+                    stroke="#ffffff"
+                    stroke-width="1.5"
+                    class="cursor-pointer transition-transform hover:scale-150"
+                    (mouseenter)="puntoHover.set(c.punto)"
+                    (mouseleave)="puntoHover.set(null)"
+                  />
+                }
+              </svg>
+            </div>
+
+            <!-- Panel de detalle en Hover/Inspección del punto -->
+            @if (puntoHover(); as pHover) {
+              <div class="p-2.5 bg-blue-50 border border-azul-institucional/30 rounded text-xs flex flex-wrap items-center justify-between gap-3 text-gray-800">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-azul-institucional">{{ pHover.periodo }}:</span>
+                  <span>Programado: <strong class="font-mono">{{ pHover.programadoAcumulado }}%</strong></span>
+                  <span>·</span>
+                  <span>Real: <strong class="font-mono text-azul-institucional">{{ pHover.ejecutadoAcumulado ?? '—' }}%</strong></span>
+                  <span>·</span>
+                  <span>Financiero: <strong class="font-mono text-amber-800">{{ pHover.financieroAcumulado ?? '—' }}%</strong></span>
+                </div>
+                <div>
+                  @if (pHover.brecha !== null) {
+                    <span class="font-semibold" [class.text-rojo-nacional]="pHover.brecha < 0" [class.text-green-800]="pHover.brecha >= 0">
+                      Brecha: {{ pHover.brecha > 0 ? '+' : '' }}{{ pHover.brecha }} ptos
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- TABLA DE CONTROL MENSUAL DETALLADA DE LA CURVA S -->
+          <section aria-label="Tabla de control mensual" class="border border-gray-300 rounded overflow-hidden">
+            <div class="bg-azul-institucional text-white font-bold uppercase text-[11px] tracking-wider px-3 py-1.5 flex items-center justify-between">
+              <span>TABLA DE CONTROL MENSUAL — CRONOGRAMA VALORIZADO VS. EJECUTADO</span>
+              <span class="text-[10px] text-blue-100 font-normal">Cifras acumuladas y variaciones mensuales</span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="bg-gris-estructura text-white text-[10px] uppercase">
+                  <tr>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold w-16 text-center">Mes</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right">Prog. Mensual</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right bg-slate-700">Prog. Acum.</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right">Real Mensual</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right bg-azul-institucional">Real Acum.</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right bg-amber-700">Financiero</th>
+                    <th scope="col" class="py-2 px-2.5 border-r border-gray-600 font-semibold text-right">Brecha</th>
+                    <th scope="col" class="py-2 px-2.5 font-semibold text-center w-28">Condición</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white text-[11px]">
+                  @for (p of puntosCurvaS(); track p.mesNumero) {
+                    <tr
+                      class="hover:bg-blue-50/30 transition-colors"
+                      [class.bg-blue-50/50]="p.esMesCorte"
+                    >
+                      <!-- Mes -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-center font-medium"
+                          [class.font-bold]="p.esMesCorte"
+                          [class.text-rojo-nacional]="p.esMesCorte">
+                        {{ p.periodo }}
+                        @if (p.esMesCorte) {
+                          <span class="block text-[9px] font-bold text-rojo-nacional">Corte</span>
+                        }
+                      </td>
+
+                      <!-- Programado Mensual -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono text-gray-700">
+                        {{ p.programadoMensual.toFixed(1) }}%
+                      </td>
+
+                      <!-- Programado Acumulado -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono font-semibold text-gray-900 bg-gray-50/60">
+                        {{ p.programadoAcumulado.toFixed(1) }}%
+                      </td>
+
+                      <!-- Real Mensual -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono text-gray-700">
+                        {{ p.ejecutadoMensual !== null ? p.ejecutadoMensual.toFixed(1) + '%' : '—' }}
+                      </td>
+
+                      <!-- Real Acumulado -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono font-bold text-azul-institucional bg-blue-50/30">
+                        {{ p.ejecutadoAcumulado !== null ? p.ejecutadoAcumulado.toFixed(1) + '%' : '—' }}
+                      </td>
+
+                      <!-- Financiero Acumulado -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono font-semibold text-amber-900 bg-amber-50/20">
+                        {{ p.financieroAcumulado !== null ? p.financieroAcumulado.toFixed(1) + '%' : '—' }}
+                      </td>
+
+                      <!-- Brecha -->
+                      <td class="py-2 px-2.5 border-r border-gray-200 text-right font-mono font-semibold">
+                        @if (p.brecha !== null) {
+                          <span
+                            [class.text-rojo-nacional]="p.brecha < -5"
+                            [class.text-amber-800]="p.brecha >= -5 && p.brecha < 0"
+                            [class.text-green-800]="p.brecha >= 0"
+                          >
+                            {{ p.brecha > 0 ? '+' : '' }}{{ p.brecha.toFixed(1) }} ptos
+                          </span>
+                        } @else {
+                          <span class="text-gray-400 font-normal">—</span>
+                        }
+                      </td>
+
+                      <!-- Condición -->
+                      <td class="py-2 px-2.5 text-center">
+                        @if (p.ejecutadoAcumulado === null) {
+                          <span class="inline-block px-1.5 py-0.5 text-[10px] bg-gray-100 text-gray-600 rounded">
+                            Proyección
+                          </span>
+                        } @else if (p.brecha !== null && p.brecha < -5) {
+                          <span class="inline-block px-1.5 py-0.5 text-[10px] bg-red-100 text-red-800 font-bold border border-red-200 rounded">
+                            Retraso crítico
+                          </span>
+                        } @else if (p.brecha !== null && p.brecha < 0) {
+                          <span class="inline-block px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-800 font-medium border border-amber-200 rounded">
+                            En alerta
+                          </span>
+                        } @else {
+                          <span class="inline-block px-1.5 py-0.5 text-[10px] bg-green-100 text-green-800 font-medium border border-green-200 rounded">
+                            Conforme
+                          </span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- BLOQUES EJECUTIVOS: ALCANCE TÉCNICO Y DIAGNÓSTICO DE RIESGO MATRIZ 5x5 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <!-- Alcance Técnico y Social -->
+            <div class="border border-gray-300 rounded p-4 bg-white space-y-2.5">
+              <div class="flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                <span class="w-2.5 h-2.5 bg-azul-institucional shrink-0" aria-hidden="true"></span>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-gris-estructura">
+                  Alcance Técnico y Social
+                </h3>
+              </div>
+              <dl class="space-y-2 text-xs">
+                <div class="flex items-center justify-between gap-2">
+                  <dt class="text-gray-500">Estado Situacional:</dt>
+                  <dd class="font-bold text-gray-900">{{ proyecto()!.estado || proyecto()!.estadoAdministrativo }}</dd>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <dt class="text-gray-500">Población Beneficiaria:</dt>
+                  <dd class="font-bold text-gray-900">
+                    {{ proyecto()!.beneficiarios ? (proyecto()!.beneficiarios | number) + ' habitantes' : (proyecto()!.poblacionBeneficiaria || '1,650 habitantes') }}
+                  </dd>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <dt class="text-gray-500">Conexiones / UBS:</dt>
+                  <dd class="font-bold text-gray-900">
+                    {{ proyecto()!.ubs ? (proyecto()!.ubs | number) + ' UBS instaladas' : (proyecto()!.conexionesNuevas || '350 UBS instaladas') }}
+                  </dd>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <dt class="text-gray-500">Estado JASS:</dt>
+                  <dd class="font-bold text-azul-institucional">{{ proyecto()!.jass || 'Constituida y reconocida (ATM)' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Diagnóstico de Riesgo (Matriz 5x5) -->
+            <div class="border rounded p-4 space-y-2.5"
+                 [class.border-red-300]="severidad5x5() >= 15"
+                 [class.bg-red-50/40]="severidad5x5() >= 15"
+                 [class.border-amber-300]="severidad5x5() >= 8 && severidad5x5() < 15"
+                 [class.bg-amber-50/40]="severidad5x5() >= 8 && severidad5x5() < 15"
+                 [class.border-gray-300]="severidad5x5() < 8"
+                 [class.bg-gray-50/40]="severidad5x5() < 8">
+              <div class="flex items-center justify-between gap-2 border-b border-gray-200/80 pb-2">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 shrink-0"
+                        [class.bg-rojo-nacional]="severidad5x5() >= 15"
+                        [class.bg-amarillo-progreso]="severidad5x5() >= 8 && severidad5x5() < 15"
+                        [class.bg-verde-eficiencia]="severidad5x5() < 8"
+                        aria-hidden="true"></span>
+                  <h3 class="text-xs font-bold uppercase tracking-wider"
+                      [class.text-rojo-nacional]="severidad5x5() >= 15"
+                      [class.text-amber-900]="severidad5x5() >= 8 && severidad5x5() < 15"
+                      [class.text-gris-estructura]="severidad5x5() < 8">
+                    Diagnóstico de Riesgo (Matriz 5x5)
+                  </h3>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                      [class.bg-red-100]="severidad5x5() >= 15"
+                      [class.text-rojo-nacional]="severidad5x5() >= 15"
+                      [class.border-red-200]="severidad5x5() >= 15"
+                      [class.bg-amber-100]="severidad5x5() >= 8 && severidad5x5() < 15"
+                      [class.text-amber-900]="severidad5x5() >= 8 && severidad5x5() < 15"
+                      [class.border-amber-200]="severidad5x5() >= 8 && severidad5x5() < 15"
+                      [class.bg-green-100]="severidad5x5() < 8"
+                      [class.text-green-900]="severidad5x5() < 8"
+                      [class.border-green-200]="severidad5x5() < 8">
+                  {{ nivelRiesgo5x5() }}
+                </span>
+              </div>
+              <div class="space-y-1.5 text-xs">
+                <div class="flex items-start justify-between gap-2">
+                  <span class="text-gray-600 shrink-0">Categoría:</span>
+                  <strong class="text-gray-900 text-right">
+                    {{ proyecto()!.riesgoCategoria || proyecto()!.riesgos[0]?.categoria || 'Técnico' }} — {{ proyecto()!.riesgoFactor || proyecto()!.riesgos[0]?.causaRaiz || 'Seguimiento técnico' }}
+                  </strong>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-gray-600">Evaluación (Prob × Imp):</span>
+                  <strong class="font-mono"
+                          [class.text-rojo-nacional]="severidad5x5() >= 15"
+                          [class.text-amber-900]="severidad5x5() >= 8 && severidad5x5() < 15"
+                          [class.text-green-800]="severidad5x5() < 8">
+                    Prob. {{ prob5x5() }} × Imp. {{ imp5x5() }} (Severidad: {{ severidad5x5() }})
+                  </strong>
+                </div>
+                <p class="text-[11px] text-gray-700 pt-1.5 border-t border-gray-200/70 leading-relaxed">
+                  {{ proyecto()!.riesgoDetalle || proyecto()!.riesgos[0]?.identificacionCompleta || 'Monitoreo continuo por equipo territorial PNSR.' }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PLAN DE MITIGACIÓN Y ACUERDOS EJECUTIVOS -->
+          <section aria-label="Plan de mitigación y acuerdos ejecutivos" class="border border-gray-300 rounded p-4 bg-gray-50/70 space-y-3 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 bg-verde-eficiencia shrink-0" aria-hidden="true"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-gris-estructura">
+                Plan de Mitigación y Acuerdos Ejecutivos
+              </h3>
+            </div>
+            <p class="text-xs text-gray-800 font-medium bg-white p-3 rounded border border-gray-200">
+              {{ proyecto()!.mitigacion || proyecto()!.riesgos[0]?.acciones?.[0]?.descripcion || 'Seguimiento técnico semanal en campo por la Unidad de Gestión Territorial.' }}
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div class="bg-white p-2.5 rounded border border-gray-200">
+                <span class="text-gray-500 block text-[10px] uppercase font-bold">Responsable UGT</span>
+                <strong class="text-gray-900 mt-0.5 block">{{ proyecto()!.responsable || proyecto()!.responsablePnsr }}</strong>
+              </div>
+              <div class="bg-white p-2.5 rounded border border-gray-200">
+                <span class="text-gray-500 block text-[10px] uppercase font-bold">Hito Próximo</span>
+                <strong class="text-azul-institucional mt-0.5 block">{{ proyecto()!.hito || proyecto()!.hitos[0]?.descripcion || 'Control de avance físico mensual' }}</strong>
+              </div>
+              <div class="bg-white p-2.5 rounded border border-gray-200">
+                <span class="text-gray-500 block text-[10px] uppercase font-bold">Fecha Compromiso</span>
+                <strong class="text-green-800 font-mono mt-0.5 block">{{ proyecto()!.fechaHito || '15 Dic 2026' }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <!-- EVALUACIÓN PREDICTIVA DE VIABILIDAD Y META (DIAGNÓSTICO AUTOMATIZADO) -->
+          @if (evaluacionIA(); as evalIA) {
+            <section aria-label="Evaluación predictiva de viabilidad y meta" class="border border-azul-institucional/40 rounded p-4 bg-blue-50/30 space-y-3 text-xs">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/70 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded bg-azul-institucional text-white flex items-center justify-center shrink-0" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                  </span>
+                  <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-gris-estructura">
+                      Evaluación Predictiva de Viabilidad y Meta (Diagnóstico Ejecutivo)
+                    </h3>
+                    <p class="text-[11px] text-gray-600">
+                      Diagnóstico técnico automatizado basado en Curva S, SPI/CPI, matriz de riesgos 5x5 y contexto rural
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  (click)="recalcularConIA()"
+                  [disabled]="evaluandoIA()"
+                  class="no-print inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-azul-institucional hover:bg-azul-institucional-dark disabled:opacity-60 text-white text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-celeste-agua cursor-pointer"
+                >
+                  <svg aria-hidden="true" class="w-3.5 h-3.5" [class.animate-spin]="evaluandoIA()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  <span>{{ evaluandoIA() ? 'Analizando...' : 'Recalcular diagnóstico' }}</span>
+                </button>
+              </div>
+
+              @if (evaluandoIA()) {
+                <div class="py-5 text-center space-y-1.5 text-xs text-gray-700" aria-live="polite">
+                  <p class="font-semibold text-azul-institucional">Analizando desempeño físico-financiero, Curva S y matriz de riesgos...</p>
+                  <p class="text-[11px] text-gray-500">Generando dictamen ejecutivo de viabilidad y cumplimiento de meta</p>
+                </div>
+              } @else {
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="bg-white p-3 rounded border border-gray-200 flex items-center justify-between gap-2">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Dictamen de Viabilidad</span>
+                      <strong class="text-xs sm:text-sm font-bold text-gris-estructura mt-0.5 block">{{ evalIA.viabilidadTexto }}</strong>
+                    </div>
+                    <span class="px-2.5 py-1 rounded text-[10px] font-bold border shrink-0"
+                          [class.bg-green-100]="evalIA.viabilidadEstado === 'VIABLE'"
+                          [class.text-green-900]="evalIA.viabilidadEstado === 'VIABLE'"
+                          [class.border-green-300]="evalIA.viabilidadEstado === 'VIABLE'"
+                          [class.bg-amber-100]="evalIA.viabilidadEstado === 'VIABLE CONDICIONADO'"
+                          [class.text-amber-900]="evalIA.viabilidadEstado === 'VIABLE CONDICIONADO'"
+                          [class.border-amber-300]="evalIA.viabilidadEstado === 'VIABLE CONDICIONADO'"
+                          [class.bg-red-100]="evalIA.viabilidadEstado === 'NO VIABLE EN PLAZO'"
+                          [class.text-rojo-nacional]="evalIA.viabilidadEstado === 'NO VIABLE EN PLAZO'"
+                          [class.border-red-300]="evalIA.viabilidadEstado === 'NO VIABLE EN PLAZO'">
+                      {{ evalIA.viabilidadEstado }}
+                    </span>
+                  </div>
+
+                  <div class="bg-white p-3 rounded border border-gray-200 flex items-center justify-between gap-2">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Cumplimiento Meta Ejecución</span>
+                      <strong class="text-xs sm:text-sm font-bold text-gris-estructura mt-0.5 block">{{ evalIA.metaTexto }}</strong>
+                    </div>
+                    <span class="px-2.5 py-1 rounded text-[10px] font-bold border shrink-0 font-mono"
+                          [class.bg-green-100]="evalIA.metaEstado === 'CUMPLE META'"
+                          [class.text-green-900]="evalIA.metaEstado === 'CUMPLE META'"
+                          [class.border-green-300]="evalIA.metaEstado === 'CUMPLE META'"
+                          [class.bg-amber-100]="evalIA.metaEstado === 'EN RIESGO'"
+                          [class.text-amber-900]="evalIA.metaEstado === 'EN RIESGO'"
+                          [class.border-amber-300]="evalIA.metaEstado === 'EN RIESGO'"
+                          [class.bg-red-100]="evalIA.metaEstado === 'NO CUMPLE META'"
+                          [class.text-rojo-nacional]="evalIA.metaEstado === 'NO CUMPLE META'"
+                          [class.border-red-300]="evalIA.metaEstado === 'NO CUMPLE META'">
+                      {{ evalIA.probabilidadMeta }}% prob. ({{ evalIA.metaEstado }})
+                    </span>
+                  </div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded border border-gray-200 space-y-2.5">
+                  <p class="text-xs text-gray-800 leading-relaxed">
+                    {{ evalIA.resumenEjecutivo }}
+                  </p>
+                  <div class="pt-2 border-t border-gray-100">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-azul-institucional block mb-1.5">
+                      Acciones Prioritarias Recomendadas:
+                    </span>
+                    <ul class="space-y-1 text-xs text-gray-700 list-disc pl-4">
+                      @for (rec of evalIA.recomendaciones; track rec) {
+                        <li>{{ rec }}</li>
+                      }
+                    </ul>
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          <!-- PIE DE LA CURVA S -->
+          <footer class="pt-3 border-t border-gray-200 text-[10px] text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-1">
+            <span>
+              Fuentes oficiales: Sistema de Seguimiento de Proyectos (SSP) y Sistema de Seguimiento de Inversiones (SSI MEF).
+            </span>
+            <span class="font-mono text-gray-600">
+              Programa Nacional de Saneamiento Rural — PNSR 2026
+            </span>
+          </footer>
+
+        </article>
+      </div>
+
+    </div>
+  </div>
+}
