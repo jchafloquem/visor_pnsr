@@ -2,7 +2,6 @@ import { Injectable, signal, computed, inject, NgZone, effect, untracked, Writab
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
-import { ApisService } from './apis.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
 import { SIN_AUDITORIA } from '../interceptor/auditoria.interceptor';
 import { environment } from '../../environments/environment';
@@ -23,11 +22,6 @@ import {
   LayerItem,
   WfsResponse,
   GeoJSONGeometry,
-  TitularCatastral,
-  DenominacionLoteResultado,
-  ViaNumero,
-  CucResultado,
-  CodPredialResultado,
   ViaSugerencia,
   ViaApi,
   TipoMapaBase,
@@ -107,8 +101,6 @@ export class MapService {
   private readonly zone = inject(NgZone);
   private readonly drawMeasureService = inject(DrawMeasureService);
   private readonly authService = inject(AuthService);
-  /** API del Geovisor municipal (endpoints WSGEOVISOR centralizados). */
-  private readonly apisService = inject(ApisService);
   /** Registro de auditoría del uso de los servicios cartográficos (WMS). */
   private readonly auditoria = inject(AuditoriaService);
   baseLayerType = signal<TipoMapaBase>('streets');
@@ -979,17 +971,6 @@ export class MapService {
   }
 
   /**
-   * Consulta los datos resumidos del lote indicado en el API del Geovisor
-   * (`listar-datos-lote`). Delegado en `ApisService`, que centraliza los
-   * endpoints y la estrategia de reintentos del Geovisor.
-   * @param codlote Código catastral del lote (id_lote / codlote).
-   * @returns Observable con los datos del lote o `null` si no se encontró.
-   */  
-  listarDatosLote(codlote: string): Observable<LoteDatosHover | null> {
-    return this.apisService.listarDatosLote(codlote);
-  }
-
-  /**
    * Registra el evento `pointermove` del mapa: al pasar sobre la capa de lote
    * muestra un popup flotante junto al cursor.
    *
@@ -1164,7 +1145,6 @@ export class MapService {
   /**
    * Muestra (o actualiza) el popup del lote indicado: mueve la posición junto
    * al cursor y consulta los datos del API solo la primera vez por lote
-   * (`loteDatosCache` evita repetir la llamada a listar-datos-lote).
    */
   private mostrarHoverDeLote(codigo: string, x: number, y: number): void {
     if (this.areaLoteActivo()) return;
@@ -1186,14 +1166,7 @@ export class MapService {
       this.loteHoverCargando.set(false);
     } else {
       this.loteHoverDatos.set(null);
-      this.loteHoverCargando.set(true);
-      this.listarDatosLote(codigo).pipe(take(1)).subscribe(datos => {
-        if (datos) this.loteDatosCache.set(codigo, datos);
-        if (this.hoverCodActual === codigo) {
-          this.loteHoverDatos.set(datos);
-          this.loteHoverCargando.set(false);
-        }
-      });
+      this.loteHoverCargando.set(false);
     }
     // Ocultamos automáticamente tras 8 s; reaparece al cambiar de lote.
     if (this.hoverHideTimer) clearTimeout(this.hoverHideTimer);
@@ -2636,26 +2609,6 @@ export class MapService {
     );
   }
   /**
-   * Busca predios por Código Único Catastral (CUC) (`busqueda-cuc`).
-   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
-   * de reintentos del Geovisor.
-   * @param cuc Código Único Catastral (8 dígitos).
-   * @returns Observable con la lista de coincidencias `{ txtcuc, txtpropietario, codlote, ... }`.
-   */
-  buscarPorCuc(cuc: string): Observable<CucResultado[]> {
-    return this.apisService.buscarPorCuc(cuc);
-  }
-  /**
-   * Busca predios por Código Predial (`busqueda-codpredial`).
-   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
-   * de reintentos del Geovisor.
-   * @param codigoPredial Código de predio (ej. '270543112').
-   * @returns Observable con la lista de coincidencias `{ txtcodipredrent, txtcuc, txttitular, codlote, ... }`.
-   */
-  buscarPorCodPredial(codigoPredial: string): Observable<CodPredialResultado[]> {
-    return this.apisService.buscarPorCodPredial(codigoPredial);
-  }
-  /**
    * Busca y devuelve una capa de OpenLayers por su ID asignado en la configuración.
    * @param id El identificador de la capa.
    * @returns La instancia de la capa de OpenLayers o `undefined` si no se encuentra.
@@ -2684,39 +2637,6 @@ export class MapService {
     }
     return undefined;
   }
-  /**
-   * Lista los números de vía (numeraciones) para un código de vía dado
-   * (`listar-via-numero`). Delegado en `ApisService`, que centraliza los
-   * endpoints y la estrategia de reintentos del Geovisor.
-   * @param codVia El código de la vía (ej. 'L271170').
-   * @returns Un Observable con un array de registros `{ numero, codlote, codlotenumero }`.
-   */
-  listarViaNumeros(codVia: string): Observable<ViaNumero[]> {
-    return this.apisService.listarViaNumeros(codVia);
-  }
-
-  /**
-   * Busca titulares catastrales por apellido o razón social
-   * (`busqueda-titular-catastral`). Delegado en `ApisService`, que centraliza
-   * los endpoints y la estrategia de reintentos del Geovisor.
-   * @param razonSocial Apellido o razón social (búsqueda parcial).
-   * @returns Observable con la lista de coincidencias `{ txttitular, codlote }`.
-   */
-  buscarTitularCatastral(razonSocial: string): Observable<TitularCatastral[]> {
-    return this.apisService.buscarTitularCatastral(razonSocial);
-  }
-
-  /**
-   * Busca predios por Denominación del Predio (`busqueda-denominacion-lote`).
-   * Delegado en `ApisService`, que centraliza los endpoints y la estrategia
-   * de reintentos del Geovisor.
-   * @param denominacion Denominación del predio (búsqueda parcial).
-   * @returns Observable con la lista de coincidencias `{ codlote, txtdenominacion, txtdirecprincipal, ... }`.
-   */
-  buscarDenominacionLote(denominacion: string): Observable<DenominacionLoteResultado[]> {
-    return this.apisService.buscarDenominacionLote(denominacion);
-  }
-
   /**
    * Busca vías en el servicio WFS. Puede buscar por nombre parcial (para autocompletar)
    * o por nombre exacto (para obtener la geometría).
@@ -2766,7 +2686,7 @@ export class MapService {
    * eso la búsqueda por dirección consulta primero el API (fuente de verdad de
    * los nombres) y luego usa estos códigos para resaltar la vía en la gráfica.
    *
-   * @param vias Vías devueltas por `ApisService.listarVias`.
+   * @param vias Vías devueltas por el servicio de vías.
    * @returns Observable con los features de la vía (varios segmentos), o `null`
    *   si ninguna de las vías indicadas tiene geometría en la cartografía.
    */

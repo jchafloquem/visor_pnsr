@@ -1,21 +1,49 @@
 @keyframes zoomInOut {
-  0%, 100% { transform: scale(1); }
-  25%, 75% { transform: scale(1.2); }
-  50% { transform: scale(1.4); }
+  0%, 100% { transform: scale(1.02); }
+  25%, 75% { transform: scale(1.06); }
+  50% { transform: scale(1.1); }
+}
+
+.bienvenido-screen {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100%;
 }
 
 .background-image {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #111827;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   animation: zoomInOut 20s ease-in-out infinite;
   transform-origin: center center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
   opacity: 1;
   transition: opacity 1.5s ease-in-out;
 }
 
 .background-image.fade-out {
   opacity: 0;
+}
+
+@media (max-aspect-ratio: 4 / 5) {
+  .background-image {
+    background-position: center 42%;
+  }
+}
+
+@media (max-width: 640px) {
+  .bienvenido-screen {
+    min-height: 100svh;
+  }
+
+  .background-image {
+    animation-duration: 28s;
+  }
 }
