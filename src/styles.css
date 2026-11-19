@@ -8,19 +8,39 @@
   /* Tema compartido por los estilos globales y las utilidades de Tailwind. */
   --color-primary: #df1021;
   --color-secondary: #48ade5;
-  --font-poppins: "Poppins", sans-serif;
-  --font-arial: Arial, Helvetica, sans-serif;
-
   --color-rojo-nacional: #df1021;
   --color-rojo-nacional-dark: #b80c1a;
-  --color-azul-institucional: #166cbe;
-  --color-azul-institucional-dark: #0f5299;
+  --color-azul-institucional: #0b6ac2;
+  --color-azul-institucional-dark: #084f91;
+  --color-azul-soft: #e8f2fc;
   --color-celeste-agua: #48ade5;
   --color-celeste-agua-dark: #2c93cc;
   --color-amarillo-progreso: #fcba40;
   --color-gris-estructura: #2b3341;
-  --color-verde-eficiencia: #10b981;
-  --font-dm-sans: 'DM Sans', sans-serif;
+  --color-verde-eficiencia: #2e9b62;
+
+  /* Superficies y bordes (unificados) */
+  --color-ink-muted: #5b6575;
+  --color-surface-bg: #f3f6fa;
+  --color-surface-subtle: #f7f9fc;
+  --color-surface-card: #ffffff;
+  --color-border-base: #dce3ec;
+  --color-border-strong: #c9d3df;
+
+  /* Semáforo de riesgos (unificado) */
+  --color-risk-crit: #7a0712;
+  --color-risk-high-bg: #fde3e5;
+  --color-risk-high-text: #a50c18;
+  --color-risk-mid: #e9a21f;
+  --color-risk-mid-bg: #fff0cf;
+  --color-risk-mid-text: #7a4e00;
+  --color-risk-low-bg: #dcf2e5;
+  --color-risk-low-text: #145c38;
+
+  /* Tipografía estándar del repositorio */
+  --font-poppins: "Poppins", sans-serif;
+  --font-arial: Arial, Helvetica, sans-serif;
+  --font-dm-sans: "DM Sans", sans-serif;
 }
 
 @media print {
