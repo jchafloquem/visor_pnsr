@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-visor',
+  standalone: true,
   imports: [RouterOutlet],
   templateUrl: './visor.html',
   changeDetection: ChangeDetectionStrategy.Eager,
