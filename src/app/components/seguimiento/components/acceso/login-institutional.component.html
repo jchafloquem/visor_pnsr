@@ -1,0 +1,130 @@
+<div class="ssp-login fixed inset-0 z-50 flex items-end justify-start overflow-auto bg-azul-soft font-dm-sans text-gris-estructura">
+  <!-- Fondo fotográfico responsive con <picture> (login-h.jpg en horizontal / login-v.jpg en portrait) -->
+  <div
+    class="ssp-login-bg fixed inset-0 overflow-hidden pointer-events-none"
+    role="img"
+    aria-label="Vivienda. Hagamos que suceda: comunidad rural con su sistema de agua"
+  >
+    <picture>
+      <source
+        media="(max-width: 1000px) and (orientation: portrait)"
+        srcset="assets/images/wallpapers/login_seguimiento_mobile.jpg"
+      />
+      <img
+        src="assets/images/wallpapers/login_seguimiento_desktop.jpg"
+        alt="Comunidad rural con su sistema de agua potable"
+        class="ssp-login-img h-full w-full object-cover"
+      />
+    </picture>
+    <div class="ssp-login-overlay absolute inset-0"></div>
+  </div>
+
+  <!-- Tarjeta de autenticación (.lgbox del prototipo) -->
+  <form
+    [formGroup]="loginForm"
+    (ngSubmit)="enviar()"
+    novalidate
+    class="ssp-login-box relative z-10 flex w-full max-w-[400px] flex-col gap-3.5 rounded-[18px] border border-border-base bg-surface-card/95 p-7 shadow-xl backdrop-blur-xs"
+  >
+    <img
+      src="assets/images/logo_mvcs.png"
+      alt="Perú · Ministerio de Vivienda, Construcción y Saneamiento"
+      width="135"
+      height="30"
+      class="h-[30px] w-[135px] object-contain"
+    />
+
+    <div>
+      <div class="text-xs font-semibold tracking-[.04em] text-ink-muted">
+        PROGRAMA NACIONAL DE SANEAMIENTO RURAL
+      </div>
+      <h1 class="mt-1.5 mb-0 text-2xl font-bold text-gris-estructura leading-tight">
+        Sistema de Seguimiento de Proyectos de Inversión
+      </h1>
+    </div>
+
+    @if (error()) {
+      <div
+        id="login-error"
+        role="alert"
+        aria-live="assertive"
+        class="flex items-start gap-2 rounded-[10px] border border-rojo-nacional/30 bg-risk-high-bg px-3.5 py-2.5 text-xs font-semibold text-risk-high-text"
+      >
+        <app-icon name="alert-triangle" [size]="16" class="mt-0.5 shrink-0" />
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <label for="lgMail" class="flex flex-col gap-1.5 text-xs font-semibold text-ink-muted">
+      <span>Correo institucional</span>
+      <input
+        id="lgMail"
+        type="email"
+        formControlName="correo"
+        autocomplete="username"
+        placeholder="usuario@vivienda.gob.pe"
+        [attr.aria-invalid]="loginForm.controls.correo.invalid && loginForm.controls.correo.touched"
+        [attr.aria-describedby]="error() ? 'login-error' : null"
+        class="w-full rounded-[10px] border border-border-strong bg-surface-card px-3 py-2.5 text-sm font-normal text-gris-estructura outline-none transition-colors placeholder:text-ink-muted/60 focus:border-azul-institucional focus:ring-2 focus:ring-azul-institucional/20"
+      />
+    </label>
+
+    <label for="lgPass" class="flex flex-col gap-1.5 text-xs font-semibold text-ink-muted">
+      <span>Contraseña</span>
+      <div class="relative">
+        <input
+          id="lgPass"
+          [type]="mostrarClave() ? 'text' : 'password'"
+          formControlName="clave"
+          autocomplete="current-password"
+          placeholder="Ingrese su contraseña"
+          [attr.aria-invalid]="loginForm.controls.clave.invalid && loginForm.controls.clave.touched"
+          class="w-full rounded-[10px] border border-border-strong bg-surface-card py-2.5 pl-3 pr-10 text-sm font-normal text-gris-estructura outline-none transition-colors placeholder:text-ink-muted/60 focus:border-azul-institucional focus:ring-2 focus:ring-azul-institucional/20"
+        />
+        <button
+          type="button"
+          (click)="toggleClave()"
+          [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+          [attr.aria-pressed]="mostrarClave()"
+          class="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-muted transition-colors hover:text-azul-institucional cursor-pointer"
+        >
+          <app-icon [name]="mostrarClave() ? 'eye-off' : 'eye'" [size]="18" />
+        </button>
+      </div>
+    </label>
+
+    <button
+      type="submit"
+      class="inline-flex min-h-[46px] w-full items-center justify-center rounded-[10px] border border-azul-institucional bg-azul-institucional px-4 text-sm font-semibold text-surface-card transition-colors hover:bg-azul-institucional-dark cursor-pointer"
+    >
+      Ingresar
+    </button>
+
+    @if (demoEnabled) {
+      <details class="ssp-login-details">
+        <summary class="flex min-h-[32px] cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-azul-institucional select-none">
+          <span>Entrar como otro usuario de prueba</span>
+        </summary>
+        <div class="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          @for (u of sspAuth.visibleUsers(); track u.id) {
+            <button
+              type="button"
+              (click)="entrarComoDemo(u)"
+              class="flex items-center gap-2.5 rounded-[10px] border border-border-base bg-surface-card px-2.5 py-2 text-left text-[13px] text-gris-estructura transition-colors hover:border-azul-institucional hover:bg-azul-soft cursor-pointer"
+            >
+              <span class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-azul-institucional text-[11px] font-bold text-surface-card">
+                {{ sspAuth.getInitials(u.nombre) }}
+              </span>
+              <span class="min-w-0 flex-1">
+                <b class="block truncate">{{ u.nombre }}</b>
+                <span class="block truncate text-xs text-ink-muted">
+                  {{ u.rol === 'dir' ? 'Dirección Ejecutiva' : u.cargo + ' · ' + sspAuth.formatAreaLabel(u.area) }}
+                </span>
+              </span>
+            </button>
+          }
+        </div>
+      </details>
+    }
+  </form>
+</div>

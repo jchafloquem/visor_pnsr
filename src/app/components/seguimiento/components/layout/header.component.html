@@ -1,0 +1,241 @@
+<header
+  class="no-print sticky top-0 z-30 flex flex-wrap items-center gap-3.5 border-b border-border-base bg-surface-card px-5 py-2.5 font-dm-sans"
+>
+  <!-- Botón mostrar menú cuando está en modo oculto -->
+  @if (layout.navMode() === 'oculto') {
+    <button
+      type="button"
+      (click)="layout.setNavPeek(!layout.navPeek())"
+      aria-label="Mostrar menú"
+      title="Mostrar menú"
+      class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border-base bg-surface-card text-gris-estructura transition-colors hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+    >
+      <app-icon name="menu" [size]="20" />
+    </button>
+  }
+
+  <!-- Marca institucional (.brand) -->
+  <a
+    routerLink="/seguimiento/dashboard"
+    class="flex min-w-0 items-center gap-2.5 no-underline text-gris-estructura"
+  >
+    <img
+      src="assets/images/logo_mvcs.png"
+      [alt]="config.ministryName"
+      width="135"
+      height="30"
+      class="h-[30px] w-[135px] object-contain"
+    />
+    <span class="hidden sm:block h-[30px] w-px bg-border-base" aria-hidden="true"></span>
+    <div class="hidden sm:block">
+      <div class="text-[11px] text-ink-muted">{{ config.programShortName }}</div>
+      <div class="text-sm font-bold whitespace-nowrap text-gris-estructura">
+        {{ config.systemHeaderSubtitle }}
+      </div>
+    </div>
+  </a>
+
+  <!-- Buscador global accesible (combobox) -->
+  <div data-search-root class="relative flex-1 min-w-[240px] max-w-[520px]">
+    <app-icon
+      name="search"
+      [size]="18"
+      class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
+    />
+    <input
+      type="search"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-controls="global-search-results"
+      [attr.aria-expanded]="searchOpen()"
+      [attr.aria-activedescendant]="
+        activeIndex() >= 0 ? 'sres-item-' + activeIndex() : null
+      "
+      [value]="query()"
+      (input)="onQueryInput($event)"
+      (keydown)="onSearchKeydown($event)"
+      placeholder="Buscar proyecto, CUI, riesgo o compromiso…"
+      aria-label="Buscar en el sistema"
+      autocomplete="off"
+      class="w-full rounded-full border border-border-base bg-surface-bg py-2.5 pl-10 pr-4 text-sm text-gris-estructura outline-none transition-colors focus:border-azul-institucional focus:bg-surface-card focus:ring-2 focus:ring-azul-institucional/20"
+    />
+
+    @if (searchOpen()) {
+      <div
+        id="global-search-results"
+        role="listbox"
+        class="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-[360px] overflow-y-auto rounded-xl border border-border-base bg-surface-card shadow-xl"
+      >
+        @for (item of filteredResults(); track item.kind + '-' + item.id; let idx = $index) {
+          <button
+            type="button"
+            role="option"
+            [id]="'sres-item-' + idx"
+            [attr.aria-selected]="activeIndex() === idx"
+            (click)="selectResult(item)"
+            class="flex w-full items-center gap-2.5 border-0 px-3.5 py-2.5 text-left text-[13px] text-gris-estructura transition-colors hover:bg-azul-soft cursor-pointer"
+            [class.bg-azul-soft]="activeIndex() === idx"
+          >
+            <app-icon [name]="item.icon" [size]="18" class="text-azul-institucional" />
+            <span class="min-w-0 flex-1">
+              <b class="block truncate">{{ item.title }}</b>
+              <span class="block truncate text-xs text-ink-muted">{{ item.subtitle }}</span>
+            </span>
+          </button>
+        } @empty {
+          <div class="p-6 text-center text-xs text-ink-muted">Sin resultados</div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Acciones derechas: Campana de alertas y Usuario -->
+  <div class="ml-auto flex items-center gap-2.5">
+    <!-- Campana -->
+    <div data-popover-root class="relative">
+      <button
+        type="button"
+        (click)="layout.togglePopover('bell')"
+        aria-label="Alertas"
+        [attr.aria-expanded]="layout.activePopover() === 'bell'"
+        class="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-border-base bg-surface-card text-gris-estructura transition-colors hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+      >
+        <app-icon name="bell-ring" [size]="20" />
+        <span
+          class="absolute -right-1 -top-1 rounded-full border-2 border-surface-card bg-rojo-nacional px-1.5 py-0.5 text-[11px] font-bold leading-none text-surface-card"
+        >
+          {{ criticalAlertsCount() }}
+        </span>
+      </button>
+
+      @if (layout.activePopover() === 'bell') {
+        <div
+          role="dialog"
+          aria-label="Alertas recientes"
+          class="absolute right-0 top-[54px] z-40 w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-border-base bg-surface-card shadow-2xl"
+        >
+          <h4 class="m-0 border-b border-border-base px-4 py-3.5 text-sm font-bold text-gris-estructura">
+            Alertas {{ auth.currentUser().rol === 'reg' ? 'de ' + auth.formatAreaLabel(auth.currentUser().area) : '' }}
+          </h4>
+          <div class="max-h-[320px] overflow-y-auto">
+            @for (al of topAlerts(); track al.id) {
+              <button
+                type="button"
+                (click)="onAlertClick(al)"
+                class="flex w-full items-start gap-2.5 border-0 border-b border-border-base bg-surface-card px-4 py-3 text-left text-[13px] text-gris-estructura transition-colors hover:bg-azul-soft cursor-pointer"
+              >
+                <span
+                  class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                  [class.bg-rojo-nacional]="al.severity === 'Crítica'"
+                  [class.bg-risk-mid]="al.severity === 'Alta'"
+                  [class.bg-azul-institucional]="al.severity === 'Media'"
+                ></span>
+                <span class="min-w-0 flex-1">
+                  <b class="block truncate">{{ al.title }}</b>
+                  <span class="block text-xs text-ink-muted">{{ al.subtitle }}</span>
+                </span>
+              </button>
+            } @empty {
+              <div class="p-6 text-center text-xs text-ink-muted">Sin alertas</div>
+            }
+          </div>
+          <div class="px-4 py-2.5 text-right">
+            <a
+              routerLink="/seguimiento/alertas"
+              (click)="layout.closePopovers()"
+              class="text-xs font-bold text-azul-institucional hover:underline"
+            >
+              Ver todas las alertas →
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Menú de usuario -->
+    <div data-popover-root class="relative">
+      <button
+        type="button"
+        (click)="layout.togglePopover('user')"
+        aria-label="Menú de usuario"
+        [attr.aria-expanded]="layout.activePopover() === 'user'"
+        class="flex items-center gap-2.5 rounded-full border border-border-base bg-surface-card py-1 pl-1 pr-3.5 text-left transition-colors hover:border-azul-institucional cursor-pointer"
+      >
+        <span
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-azul-institucional text-[13px] font-bold text-surface-card"
+        >
+          {{ auth.userInitials() }}
+        </span>
+        <span class="hidden sm:block">
+          <span class="block text-[13px] font-bold leading-tight text-gris-estructura">
+            {{ auth.currentUser().nombre }}
+          </span>
+          <span class="block text-[11px] leading-tight text-ink-muted">
+            {{ auth.userRoleSubtitle() }}
+          </span>
+        </span>
+      </button>
+
+      @if (layout.activePopover() === 'user') {
+        <div
+          role="dialog"
+          aria-label="Opciones de usuario"
+          class="absolute right-0 top-[54px] z-40 w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-border-base bg-surface-card shadow-2xl"
+        >
+          <div class="border-b border-border-base px-4 py-3.5">
+            <div class="text-sm font-bold text-gris-estructura">{{ auth.currentUser().nombre }}</div>
+            <div class="text-xs text-ink-muted">
+              {{ auth.currentUser().cargo }} · {{ auth.currentUser().sub }}
+            </div>
+          </div>
+
+          @if (config.demoMode) {
+            <div class="px-4 pt-2.5 pb-1 text-xs text-ink-muted">
+              Cambiar de usuario (modo demostración)
+            </div>
+            <div class="max-h-[260px] overflow-y-auto">
+              @for (u of auth.visibleUsers(); track u.id) {
+                <button
+                  type="button"
+                  (click)="switchUser(u)"
+                  class="flex w-full items-center gap-2.5 border-0 border-b border-border-base bg-surface-card px-4 py-2.5 text-left text-[13px] text-gris-estructura transition-colors hover:bg-azul-soft cursor-pointer"
+                >
+                  <span
+                    class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-surface-card"
+                    [class.bg-azul-institucional]="u.id === auth.currentUser().id"
+                    [class.bg-ink-muted]="u.id !== auth.currentUser().id"
+                  >
+                    {{ auth.getInitials(u.nombre) }}
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <b class="block truncate">{{ u.nombre }}</b>
+                    <span class="block truncate text-xs text-ink-muted">
+                      {{ u.rol === 'dir' ? 'Despacho' : u.cargo + ' · ' + auth.formatAreaLabel(u.area) }}
+                    </span>
+                  </span>
+                </button>
+              }
+            </div>
+          }
+
+          <div class="flex items-center justify-between gap-2 px-4 py-2.5">
+            <button
+              type="button"
+              (click)="onResetData()"
+              class="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-azul-institucional transition-colors hover:bg-azul-soft cursor-pointer"
+            >
+              Restablecer datos de ejemplo
+            </button>
+            <button
+              type="button"
+              (click)="onLogout()"
+              class="rounded-lg border border-azul-institucional bg-surface-card px-3 py-1.5 text-xs font-semibold text-azul-institucional transition-colors hover:bg-azul-soft cursor-pointer"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</header>

@@ -1,0 +1,169 @@
+<!-- Zona sensible en el borde izquierdo para abrir menú en modo oculto -->
+@if (layout.navMode() === 'oculto') {
+  <div
+    class="no-print hidden md:block fixed left-0 top-[66px] bottom-0 z-30 w-3.5 bg-gradient-to-r from-azul-institucional/10 to-transparent"
+    aria-hidden="true"
+    (mouseenter)="layout.setNavPeek(true)"
+  ></div>
+}
+
+<nav
+  aria-label="Menú principal"
+  (mouseenter)="isHovered.set(true)"
+  (mouseleave)="onMouseLeave()"
+  class="no-print ssp-sidebar flex flex-col gap-1 border-b md:border-b-0 md:border-r border-border-base bg-surface-card p-2 md:py-4 md:px-3 font-dm-sans transition-all duration-200"
+  [class.md:w-[230px]]="layout.navMode() === 'fijo' || isExpandedOverlay()"
+  [class.md:w-[72px]]="layout.navMode() === 'iconos' && !isExpandedOverlay()"
+  [class.md:fixed]="layout.navMode() !== 'fijo'"
+  [class.md:left-0]="layout.navMode() !== 'fijo'"
+  [class.md:top-[66px]]="layout.navMode() !== 'fijo'"
+  [class.md:bottom-0]="layout.navMode() !== 'fijo'"
+  [class.md:z-40]="layout.navMode() !== 'fijo'"
+  [class.md:shadow-2xl]="layout.navMode() !== 'fijo' && isExpandedOverlay()"
+  [class.md:-translate-x-full]="layout.navMode() === 'oculto' && !layout.navPeek()"
+>
+  <!-- Cabecera del menú lateral (.navtop) -->
+  <div
+    class="hidden md:flex min-h-[36px] items-center justify-between gap-2 pb-1.5"
+    [class.px-3]="!isCompactIcons()"
+    [class.justify-center]="isCompactIcons()"
+  >
+    @if (!isCompactIcons()) {
+      <span class="text-[11px] font-bold tracking-[.08em] text-ink-muted">
+        MENÚ
+      </span>
+    }
+    <button
+      type="button"
+      data-popover-root
+      (click)="layout.togglePopover('navMode')"
+      aria-label="Cómo mostrar el menú"
+      title="Menú fijo, solo íconos u oculto"
+      [attr.aria-expanded]="layout.activePopover() === 'navMode'"
+      class="grid h-9 w-9 shrink-0 place-items-center rounded-[9px] border border-border-base bg-surface-card text-gris-estructura transition-colors hover:border-azul-institucional hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+    >
+      <app-icon name="sidebar-layout" [size]="18" />
+    </button>
+  </div>
+
+  <!-- Popover de selección de modo del menú (#navPop) -->
+  @if (layout.activePopover() === 'navMode') {
+    <div
+      data-popover-root
+      role="menu"
+      aria-label="Cómo mostrar el menú"
+      class="fixed left-3.5 top-[120px] z-50 w-[280px] rounded-[14px] border border-border-base bg-surface-card p-2 shadow-2xl"
+    >
+      <h5 class="mx-2 my-1 text-xs font-bold tracking-[.04em] text-ink-muted">
+        CÓMO VER EL MENÚ
+      </h5>
+      @for (m of navModes; track m.value) {
+        <button
+          type="button"
+          role="menuitemradio"
+          [attr.aria-checked]="layout.navMode() === m.value"
+          (click)="setMode(m.value)"
+          class="flex w-full items-start gap-3 rounded-[10px] border-0 p-2.5 text-left text-[13px] transition-colors cursor-pointer"
+          [class.bg-azul-soft]="layout.navMode() === m.value"
+          [class.text-azul-institucional]="layout.navMode() === m.value"
+          [class.text-gris-estructura]="layout.navMode() !== m.value"
+          [class.hover:bg-surface-bg]="layout.navMode() !== m.value"
+        >
+          <app-icon [name]="m.icon" [size]="22" class="mt-0.5 shrink-0" />
+          <span>
+            <b class="block text-sm">{{ m.title }}</b>
+            <span>{{ m.description }}</span>
+          </span>
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Enlaces de navegación por sección -->
+  <div class="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+    @for (section of sections; track section.title; let sIdx = $index) {
+      @if (!isCompactIcons()) {
+        <div
+          class="hidden md:block px-3 pt-1 pb-1.5 text-[11px] font-bold tracking-[.08em] text-ink-muted"
+          [class.mt-2.5]="sIdx > 0"
+        >
+          {{ section.title }}
+        </div>
+      }
+
+      @for (item of section.items; track item.path) {
+        @if (!item.uppOnly || auth.currentUser().rol === 'upp') {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="ssp-nav-active bg-azul-institucional text-surface-card font-semibold"
+            #rla="routerLinkActive"
+            [attr.aria-current]="rla.isActive ? 'page' : null"
+            [title]="item.label"
+            (click)="layout.setNavPeek(false)"
+            class="relative flex shrink-0 md:shrink items-center gap-3 rounded-[10px] px-3 py-2.5 min-h-[40px] md:min-h-[46px] text-sm font-medium no-underline transition-colors"
+            [class.justify-center]="isCompactIcons()"
+            [class.px-0]="isCompactIcons()"
+            [class.text-gris-estructura]="!rla.isActive"
+            [class.hover:bg-azul-soft]="!rla.isActive"
+            [class.hover:text-azul-institucional]="!rla.isActive"
+          >
+            <app-icon
+              [name]="item.icon"
+              [size]="20"
+              [class]="!rla.isActive && item.iconColorClass ? item.iconColorClass : ''"
+            />
+
+            @if (!isCompactIcons()) {
+              <span class="whitespace-nowrap">{{ item.label }}</span>
+            }
+
+            @if (item.badgeType === 'seg') {
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-bold leading-tight"
+                [class.ml-auto]="!isCompactIcons()"
+                [class.absolute]="isCompactIcons()"
+                [class.right-1.5]="isCompactIcons()"
+                [class.top-1]="isCompactIcons()"
+                [class.bg-surface-card]="rla.isActive"
+                [class.text-rojo-nacional]="rla.isActive"
+                [class.bg-rojo-nacional]="!rla.isActive"
+                [class.text-surface-card]="!rla.isActive"
+              >
+                {{ pendingSegCount() }}
+              </span>
+            }
+
+            @if (item.badgeType === 'alertas') {
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-bold leading-tight"
+                [class.ml-auto]="!isCompactIcons()"
+                [class.absolute]="isCompactIcons()"
+                [class.right-1.5]="isCompactIcons()"
+                [class.top-1]="isCompactIcons()"
+                [class.bg-surface-card]="rla.isActive"
+                [class.text-rojo-nacional]="rla.isActive"
+                [class.bg-rojo-nacional]="!rla.isActive"
+                [class.text-surface-card]="!rla.isActive"
+              >
+                {{ criticalAlertsCount() }}
+              </span>
+            }
+          </a>
+        }
+      }
+    }
+  </div>
+
+  <!-- Tarjeta de ayuda inferior (.help) — solo en modo fijo desktop -->
+  @if (layout.navMode() === 'fijo') {
+    <div class="hidden md:block mt-auto rounded-[10px] bg-azul-soft p-3 text-xs text-azul-institucional-dark">
+      <img
+        src="assets/images/sidebar_seguimiento.jpg"
+        alt=""
+        class="mb-2 block w-full rounded-lg object-cover"
+      />
+      <b>¿Por dónde empiezo?</b><br />
+      Todo lo que se resalta en azul al pasar el mouse se puede abrir. Para registrar, usa el botón azul de abajo a la derecha.
+    </div>
+  }
+</nav>

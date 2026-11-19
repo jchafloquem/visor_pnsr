@@ -1,0 +1,158 @@
+@if (risks().length === 0) {
+  <div class="text-center py-[26px] px-3 text-ink-muted">
+    No hay riesgos con estos filtros.
+  </div>
+} @else {
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13.5px]">
+      <thead>
+        <tr>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Nivel
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Riesgo
+          </th>
+          @if (showProject()) {
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+            >
+              Proyecto
+            </th>
+          }
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Plan de acción
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Responsable
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Fecha límite
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Estado
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          ></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of enrichedRows(); track row.r.id) {
+          <tr
+            class="cursor-pointer hover:bg-azul-soft/50 group transition-colors"
+            (click)="openRisk(row.r.id)"
+          >
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <span
+                class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+                [class]="getBadgeClass(row.level)"
+              >
+                {{ row.level }}
+              </span>
+              <div class="text-[12px] text-ink-muted mt-[3px]">
+                {{ row.score.toFixed(3) }}
+              </div>
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top min-w-[240px] max-w-[380px]"
+            >
+              <b>{{ row.r.id }}</b> · Podría ocurrir {{ row.r.evento }}
+              <div class="text-[12px] text-ink-muted">
+                {{ row.r.cats.join(' · ') }}{{ row.hitoLabel ? ' · Hito: ' + row.hitoLabel : '' }}
+              </div>
+            </td>
+            @if (showProject()) {
+              <td class="py-[11px] px-3 border-b border-border-base align-top">
+                <b>{{ row.projectCorto }}</b>
+                <div class="text-[12px] text-ink-muted">{{ row.uoLabel }}</div>
+              </td>
+            }
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top min-w-[120px]"
+            >
+              @if (row.r.acc.length > 0) {
+                <div class="text-[12px]">
+                  {{ row.doneCount }} de {{ row.r.acc.length }} atendidas
+                </div>
+                <svg
+                  class="h-2 rounded-[4px] bg-border-base overflow-hidden mt-1 block w-full"
+                  role="img"
+                  [attr.aria-label]="row.doneCount + ' de ' + row.r.acc.length + ' atendidas'"
+                >
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="row.progressPct + '%'"
+                    height="8"
+                    rx="4"
+                    ry="4"
+                    fill="var(--color-azul-institucional)"
+                  />
+                </svg>
+              } @else {
+                <span
+                  class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-high-bg text-risk-high-text"
+                >
+                  SIN PLAN
+                </span>
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top text-[12px]">
+              {{ row.r.resp }}
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top whitespace-nowrap"
+            >
+              {{ row.flimFormatted }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <span
+                class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+                [class]="getEstadoBadgeClass(row.r.estado)"
+              >
+                {{ row.r.estado.toUpperCase() }}
+              </span>
+              @if (row.isActive && row.r.val === 'Por validar') {
+                <div class="mt-1">
+                  <span
+                    class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-mid-bg text-risk-mid-text"
+                  >
+                    POR VALIDAR
+                  </span>
+                </div>
+              } @else if (row.isActive && row.r.val === 'Observado') {
+                <div class="mt-1">
+                  <span
+                    class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-high-bg text-risk-high-text"
+                  >
+                    OBSERVADO
+                  </span>
+                </div>
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <span
+                class="text-azul-institucional font-bold text-[12.5px] whitespace-nowrap opacity-65 group-hover:opacity-100"
+              >
+                Abrir →
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

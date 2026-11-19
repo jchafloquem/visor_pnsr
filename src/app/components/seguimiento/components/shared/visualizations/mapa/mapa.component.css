@@ -1,0 +1,3 @@
+:host ::ng-deep .ssp-ol-map .ol-viewport {
+  background-color: var(--color-azul-soft) !important;
+}

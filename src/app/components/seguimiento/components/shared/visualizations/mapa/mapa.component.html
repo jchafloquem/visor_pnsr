@@ -1,0 +1,144 @@
+<div class="flex flex-col gap-3">
+  <!-- Controles superiores: filtro de severidad + tipo de mapa base + enlace al Geovisor -->
+  <div class="flex items-center justify-between gap-2 flex-wrap">
+    <div
+      class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card"
+      role="group"
+      aria-label="Mostrar proyectos por riesgo"
+    >
+      @for (opt of filterOptions; track opt.value) {
+        <button
+          type="button"
+          class="px-[11px] py-[6px] text-[12.5px] font-semibold border-0 cursor-pointer transition-colors"
+          [class.bg-azul-institucional]="severityFilter() === opt.value"
+          [class.text-white]="severityFilter() === opt.value"
+          [class.bg-transparent]="severityFilter() !== opt.value"
+          [class.text-ink-muted]="severityFilter() !== opt.value"
+          (click)="severityFilter.set(opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+
+    <div class="flex items-center gap-2 flex-wrap">
+      <div
+        class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card"
+        role="group"
+        aria-label="Mapa base"
+      >
+        <button
+          type="button"
+          class="px-2.5 py-[5px] text-[12px] font-semibold border-0 cursor-pointer transition-colors"
+          [class.bg-azul-institucional]="baseMode() === 'topo'"
+          [class.text-white]="baseMode() === 'topo'"
+          [class.bg-transparent]="baseMode() !== 'topo'"
+          [class.text-ink-muted]="baseMode() !== 'topo'"
+          (click)="setBaseMode('topo')"
+        >
+          Topográfico
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-[5px] text-[12px] font-semibold border-0 cursor-pointer transition-colors"
+          [class.bg-azul-institucional]="baseMode() === 'sat'"
+          [class.text-white]="baseMode() === 'sat'"
+          [class.bg-transparent]="baseMode() !== 'sat'"
+          [class.text-ink-muted]="baseMode() !== 'sat'"
+          (click)="setBaseMode('sat')"
+        >
+          Satelital
+        </button>
+      </div>
+
+      <a
+        routerLink="/visor"
+        class="px-2.5 py-[5px] text-[12px] font-semibold rounded-[7px] border border-border-strong bg-surface-card text-azul-institucional no-underline hover:bg-azul-soft transition-colors"
+      >
+        Abrir Geovisor →
+      </a>
+    </div>
+  </div>
+
+  <!-- Contenedor OpenLayers -->
+  <div
+    #mapWrap
+    class="ssp-ol-map relative w-full h-[360px] rounded-[8px] border border-border-base overflow-hidden bg-azul-soft"
+    (mouseleave)="clearHover()"
+  >
+    <div
+      #olTarget
+      class="w-full h-full"
+      role="application"
+      aria-label="Mapa interactivo del Perú con proyectos y riesgos"
+    ></div>
+
+    <!-- Botones de Zoom (+/-) -->
+    <div
+      class="absolute top-3 left-3 z-10 flex flex-col bg-surface-card border border-border-base rounded-[8px] shadow-[0_2px_8px_rgba(15,35,60,0.12)] overflow-hidden"
+    >
+      <button
+        type="button"
+        class="w-8 h-8 grid place-items-center text-[16px] font-bold text-gris-estructura bg-surface-card border-0 border-b border-border-base cursor-pointer hover:bg-azul-soft/50"
+        aria-label="Acercar mapa"
+        title="Acercar"
+        (click)="zoomBy(1)"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        class="w-8 h-8 grid place-items-center text-[16px] font-bold text-gris-estructura bg-surface-card border-0 cursor-pointer hover:bg-azul-soft/50"
+        aria-label="Alejar mapa"
+        title="Alejar"
+        (click)="zoomBy(-1)"
+      >
+        −
+      </button>
+    </div>
+
+    <!-- Botón Vista Nacional -->
+    <button
+      type="button"
+      class="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-[8px] bg-surface-card border border-border-base text-[12px] font-semibold text-gris-estructura shadow-[0_2px_8px_rgba(15,35,60,0.12)] cursor-pointer hover:bg-azul-soft/50"
+      (click)="resetNationalView()"
+    >
+      Vista Nacional
+    </button>
+
+    <!-- Tooltip flotante -->
+    @if (hoveredProject(); as tip) {
+      <div
+        class="pointer-events-none absolute bg-gris-estructura text-white px-[11px] py-[9px] rounded-[7px] text-[12px] max-w-[260px] shadow-[0_8px_20px_rgba(0,0,0,0.28)] z-20 leading-[1.35]"
+        [style.left.px]="tooltipX()"
+        [style.top.px]="tooltipY()"
+      >
+        <b>{{ tip.corto }}</b><br />
+        {{ tip.dist }}, {{ tip.dep }} · {{ tip.uoLabel }}<br />
+        Riesgo: <b>{{ tip.riskLevel || 'sin registro' }}</b> · {{ tip.activeRiskCount }} activo(s)<br />
+        <span class="opacity-80">Clic para abrir ficha</span>
+      </div>
+    }
+  </div>
+
+  <!-- Leyenda con conteos -->
+  <div class="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[12.5px] pt-0.5">
+    @for (item of legendCounts(); track item.key) {
+      <span class="inline-flex items-center gap-1.5">
+        <span
+          class="w-[10px] h-[10px] rounded-full shrink-0"
+          [style.background]="item.colorVar"
+        ></span>
+        <span>{{ item.label }}</span>
+        <b class="text-gris-estructura">({{ item.count }})</b>
+      </span>
+    }
+    <span class="inline-flex items-center gap-1.5">
+      <span
+        class="w-[10px] h-[10px] rounded-full shrink-0 bg-ink-muted"
+      ></span>
+      <span>Sin riesgos</span>
+      <b class="text-gris-estructura">({{ noRiskCount() }})</b>
+    </span>
+  </div>
+</div>

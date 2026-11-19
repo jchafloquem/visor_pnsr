@@ -1,0 +1,37 @@
+<svg
+  [attr.width]="size()"
+  [attr.height]="size()"
+  [attr.viewBox]="definition().viewBox || '0 0 24 24'"
+  fill="none"
+  stroke="currentColor"
+  [attr.stroke-width]="definition().strokeWidth || 2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  [attr.aria-hidden]="ariaLabel() ? null : 'true'"
+  [attr.aria-label]="ariaLabel() || null"
+  [attr.role]="ariaLabel() ? 'img' : null"
+>
+  @for (node of definition().nodes; track $index) {
+    @switch (node.kind) {
+      @case ('path') {
+        <path [attr.d]="node.d" [attr.fill]="node.fill || 'none'" />
+      }
+      @case ('rect') {
+        <rect
+          [attr.x]="node.x"
+          [attr.y]="node.y"
+          [attr.width]="node.width"
+          [attr.height]="node.height"
+          [attr.rx]="node.rx ?? null"
+        />
+      }
+      @case ('circle') {
+        <circle
+          [attr.cx]="node.cx"
+          [attr.cy]="node.cy"
+          [attr.r]="node.r"
+        />
+      }
+    }
+  }
+</svg>

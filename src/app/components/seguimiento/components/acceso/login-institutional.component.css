@@ -1,0 +1,69 @@
+:host {
+  display: block;
+}
+
+.ssp-login {
+  padding: 4vh 4vw;
+}
+
+.ssp-login-img {
+  object-position: center;
+}
+
+.ssp-login-overlay {
+  background: linear-gradient(0deg, rgba(8, 40, 80, 0.18), rgba(8, 40, 80, 0) 45%);
+}
+
+.ssp-login-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ssp-login-details summary::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  margin-right: 2px;
+}
+
+.ssp-login-details[open] summary::before {
+  transform: rotate(45deg);
+}
+
+@media (max-width: 1000px) and (orientation: portrait) {
+  .ssp-login {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 14px 24px;
+  }
+
+  .ssp-login::before {
+    content: "";
+    flex: 0 0 auto;
+    height: max(56vh, calc(100vw * 0.93));
+    display: block;
+  }
+
+  .ssp-login-img {
+    object-position: center top;
+  }
+
+  .ssp-login-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 45%,
+      rgba(232, 242, 252, 0.55) 75%,
+      rgba(232, 242, 252, 0.85)
+    );
+  }
+
+  .ssp-login-box {
+    max-width: 560px;
+    padding: 22px;
+  }
+}

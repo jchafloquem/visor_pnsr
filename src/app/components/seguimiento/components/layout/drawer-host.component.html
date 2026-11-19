@@ -1,0 +1,46 @@
+@if (layout.isDrawerOpen() && layout.currentDrawer(); as cur) {
+  <!-- Backdrop (.ov) -->
+  <div
+    class="fixed inset-0 bg-gris-estructura/45 z-90 backdrop-blur-[2px]"
+    (click)="layout.closeDrawer()"
+  ></div>
+
+  <!-- Modal / Drawer (.drawer) -->
+  <aside
+    class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(940px,95vw)] max-h-[90vh] bg-surface-card z-100 flex flex-col rounded-[8px] shadow-[0_24px_60px_rgba(8,25,48,0.32)] overflow-hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Detalle"
+  >
+    @switch (cur.kind) {
+      @case ('proj') {
+        <app-project-drawer
+          [cui]="cur.cui || cur.key"
+          [initialTab]="cur.tab || 'res'"
+        />
+      }
+      @case ('seg') {
+        <app-seguimiento-drawer [cui]="cur.cui || cur.key" />
+      }
+      @case ('risk') {
+        <app-riesgo-drawer
+          [riskId]="cur.id ?? undefined"
+          [initialCui]="cur.cui"
+          [initialHitoId]="cur.hitoId"
+        />
+      }
+      @case ('comp') {
+        <app-compromiso-drawer
+          [compId]="cur.id ?? undefined"
+          [initialCui]="cur.cui"
+        />
+      }
+      @case ('pri') {
+        <app-priorizado-drawer
+          [initialCui]="cur.cui"
+          [modo]="cur.modo || 'nuevo'"
+        />
+      }
+    }
+  </aside>
+}

@@ -1,0 +1,539 @@
+@if (!points() || points()!.length === 0) {
+  <div class="rounded-xl border border-border-base bg-surface-card p-4">
+    <h4 class="m-0 mb-2 text-sm font-bold text-azul-institucional">
+      Avance por entregables
+    </h4>
+    <div class="text-xs text-ink-muted">
+      En {{ etapa().toLowerCase() }} el avance se sigue por entregables y hitos, no por porcentaje de obra. La curva S aparece cuando el proyecto pasa a ejecución de obra.
+    </div>
+  </div>
+} @else {
+  <div class="flex flex-col gap-3 rounded-xl border border-border-base bg-surface-card p-4">
+    <!-- Cabecera con título e indicadores CPI / SPI -->
+    <div class="flex flex-wrap items-center justify-between gap-2.5">
+      <h4 class="m-0 flex items-center gap-2 text-[15px] font-bold uppercase tracking-[.02em] text-azul-institucional-dark">
+        <app-icon name="trend-up" [size]="18" />
+        <span>Curva S del proyecto (programado vs. ejecutado)</span>
+      </h4>
+
+      @if (lastPoint(); as last) {
+        <div class="flex gap-2">
+          <span
+            class="rounded-lg border px-2.5 py-1 text-[13px] font-bold cursor-help"
+            [class.bg-risk-low-bg]="cpiStatus() === 'ok'"
+            [class.text-risk-low-text]="cpiStatus() === 'ok'"
+            [class.border-verde-eficiencia/35]="cpiStatus() === 'ok'"
+            [class.bg-risk-mid-bg]="cpiStatus() === 'mid'"
+            [class.text-risk-mid-text]="cpiStatus() === 'mid'"
+            [class.border-risk-mid/40]="cpiStatus() === 'mid'"
+            [class.bg-risk-high-bg]="cpiStatus() === 'bad'"
+            [class.text-risk-high-text]="cpiStatus() === 'bad'"
+            [class.border-rojo-nacional/30]="cpiStatus() === 'bad'"
+            title="Índice de costo (CPI) = avance físico ÷ avance financiero. Si es 1 o más, lo gastado está respaldado por avance de obra."
+          >
+            CPI: {{ formatComma(cpiValue(), 2) }}
+          </span>
+          <span
+            class="rounded-lg border px-2.5 py-1 text-[13px] font-bold cursor-help"
+            [class.bg-risk-low-bg]="spiStatus() === 'ok'"
+            [class.text-risk-low-text]="spiStatus() === 'ok'"
+            [class.border-verde-eficiencia/35]="spiStatus() === 'ok'"
+            [class.bg-risk-mid-bg]="spiStatus() === 'mid'"
+            [class.text-risk-mid-text]="spiStatus() === 'mid'"
+            [class.border-risk-mid/40]="spiStatus() === 'mid'"
+            [class.bg-risk-high-bg]="spiStatus() === 'bad'"
+            [class.text-risk-high-text]="spiStatus() === 'bad'"
+            [class.border-rojo-nacional/30]="spiStatus() === 'bad'"
+            [title]="'Índice de plazo (SPI) = avance físico real ÷ avance programado. Menos de 1 significa atraso: ' + formatComma(spiValue(), 2) + ' es avanzar al ' + spiPct() + ' % de lo previsto.'"
+          >
+            SPI: {{ formatComma(spiValue(), 2) }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- Controles de agrupación, presets y rango de fechas -->
+    <div class="flex flex-wrap items-end gap-x-3.5 gap-y-2.5">
+      <div
+        role="group"
+        aria-label="Agrupar por"
+        class="inline-flex gap-0.5 rounded-[10px] bg-border-base p-0.5"
+      >
+        <button
+          type="button"
+          (click)="setGranularity('m')"
+          class="rounded-lg border-0 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          [class.bg-surface-card]="granularity() === 'm'"
+          [class.text-gris-estructura]="granularity() === 'm'"
+          [class.shadow-xs]="granularity() === 'm'"
+          [class.bg-transparent]="granularity() !== 'm'"
+          [class.text-ink-muted]="granularity() !== 'm'"
+        >
+          Mensual
+        </button>
+        <button
+          type="button"
+          (click)="setGranularity('s')"
+          class="rounded-lg border-0 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+          [class.bg-surface-card]="granularity() === 's'"
+          [class.text-gris-estructura]="granularity() === 's'"
+          [class.shadow-xs]="granularity() === 's'"
+          [class.bg-transparent]="granularity() !== 's'"
+          [class.text-ink-muted]="granularity() !== 's'"
+        >
+          Semanal
+        </button>
+      </div>
+
+      <div role="group" aria-label="Periodo" class="flex flex-wrap gap-1.5">
+        @for (pr of presets; track pr.key) {
+          <button
+            type="button"
+            (click)="applyPreset(pr.key)"
+            class="rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors cursor-pointer"
+            [class.bg-azul-institucional]="preset() === pr.key"
+            [class.border-azul-institucional]="preset() === pr.key"
+            [class.text-surface-card]="preset() === pr.key"
+            [class.font-semibold]="preset() === pr.key"
+            [class.bg-surface-card]="preset() !== pr.key"
+            [class.border-border-strong]="preset() !== pr.key"
+            [class.text-gris-estructura]="preset() !== pr.key"
+            [class.hover:border-azul-institucional]="preset() !== pr.key"
+          >
+            {{ pr.label }}
+          </button>
+        }
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <label class="flex flex-col gap-0.5 text-xs font-semibold text-ink-muted">
+          <span>Desde</span>
+          <input
+            type="date"
+            min="2026-01-01"
+            [max]="corteFecha()"
+            [value]="dateFrom()"
+            (change)="onDateChange('d1', $event)"
+            class="min-h-[36px] rounded-[9px] border border-border-strong bg-surface-card px-2 py-1 text-[13px] font-normal text-gris-estructura"
+          />
+        </label>
+        <label class="flex flex-col gap-0.5 text-xs font-semibold text-ink-muted">
+          <span>Hasta</span>
+          <input
+            type="date"
+            min="2026-01-01"
+            [max]="corteFecha()"
+            [value]="dateTo()"
+            (change)="onDateChange('d2', $event)"
+            class="min-h-[36px] rounded-[9px] border border-border-strong bg-surface-card px-2 py-1 text-[13px] font-normal text-gris-estructura"
+          />
+        </label>
+      </div>
+    </div>
+
+    @if (displayPoints().length === 0) {
+      <div class="p-7 text-center text-sm text-ink-muted">
+        No hay cortes semanales entre el {{ formatDate(dateFrom()) }} y el {{ formatDate(dateTo()) }}. Elige otro periodo.
+      </div>
+    } @else {
+      <!-- Lienzo SVG interactivo -->
+      <div class="relative rounded-xl border border-border-base bg-surface-card px-1.5 pt-1.5">
+        <svg
+          #svgEl
+          [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH"
+          role="img"
+          [attr.aria-label]="'Curva S: avance programado, físico real y financiero acumulados de ' + projectName()"
+          class="block h-auto w-full cursor-crosshair select-none touch-pan-y"
+          (pointermove)="onPointerMove($event)"
+          (pointerdown)="onPointerDown($event)"
+          (pointerleave)="onPointerLeave()"
+          (click)="onChartClick()"
+        >
+          <!-- Grilla horizontal -->
+          @for (g of yTicks; track g.pct) {
+            <line
+              [attr.x1]="padL"
+              [attr.x2]="svgW - padR"
+              [attr.y1]="g.y"
+              [attr.y2]="g.y"
+              stroke="var(--color-border-base)"
+              stroke-width="1"
+            />
+            <text
+              [attr.x]="padL - 8"
+              [attr.y]="g.y + 4"
+              text-anchor="end"
+              class="fill-ink-muted text-xs"
+            >
+              {{ g.pct }}%
+            </text>
+          }
+
+          <!-- Títulos de ejes -->
+          <text
+            [attr.transform]="'translate(13,' + (padT + innerH / 2) + ') rotate(-90)'"
+            text-anchor="middle"
+            class="fill-ink-muted text-xs font-semibold"
+          >
+            Avance acumulado (%)
+          </text>
+          <text
+            [attr.x]="padL + innerW / 2"
+            [attr.y]="svgH - 6"
+            text-anchor="middle"
+            class="fill-ink-muted text-xs font-semibold"
+          >
+            {{ granularity() === 'm' ? 'Mes (2026)' : 'Semana de corte (2026)' }}
+          </text>
+
+          <!-- Curvas con animación inicial -->
+          <g class="curva-s-animated-group">
+            @if (!hiddenSeries()['fis'] && areaPathFis()) {
+              <path
+                [attr.d]="areaPathFis()"
+                fill="var(--color-azul-institucional)"
+                opacity="0.09"
+              />
+            }
+
+            @if (!hiddenSeries()['prog'] && linePathProg()) {
+              <path
+                [attr.d]="linePathProg()"
+                fill="none"
+                stroke="var(--color-ink-muted)"
+                stroke-width="2.4"
+                stroke-dasharray="7 6"
+              />
+              @if (displayPoints().length <= 24) {
+                @for (pt of displayPoints(); track pt.f) {
+                  <circle
+                    [attr.cx]="pt.xCoord"
+                    [attr.cy]="pt.yProg"
+                    r="4"
+                    fill="var(--color-surface-card)"
+                    stroke="var(--color-ink-muted)"
+                    stroke-width="2.2"
+                  />
+                }
+              }
+            }
+
+            @if (!hiddenSeries()['fin'] && linePathFin()) {
+              <path
+                [attr.d]="linePathFin()"
+                fill="none"
+                stroke="var(--color-verde-eficiencia)"
+                stroke-width="2.4"
+              />
+              @if (displayPoints().length <= 24) {
+                @for (pt of displayPoints(); track pt.f) {
+                  <circle
+                    [attr.cx]="pt.xCoord"
+                    [attr.cy]="pt.yFin"
+                    r="4"
+                    fill="var(--color-surface-card)"
+                    stroke="var(--color-verde-eficiencia)"
+                    stroke-width="2.2"
+                  />
+                }
+              }
+            }
+
+            @if (!hiddenSeries()['fis'] && linePathFis()) {
+              <path
+                [attr.d]="linePathFis()"
+                fill="none"
+                stroke="var(--color-azul-institucional)"
+                stroke-width="3"
+              />
+              @if (displayPoints().length <= 24) {
+                @for (pt of displayPoints(); track pt.f) {
+                  <circle
+                    [attr.cx]="pt.xCoord"
+                    [attr.cy]="pt.yFis"
+                    r="4"
+                    fill="var(--color-surface-card)"
+                    stroke="var(--color-azul-institucional)"
+                    stroke-width="2.2"
+                  />
+                }
+              }
+            }
+          </g>
+
+          <!-- Etiquetas eje X -->
+          @for (pt of displayPoints(); track pt.f; let idx = $index) {
+            @if (idx % labelStep() === 0 || idx === displayPoints().length - 1) {
+              <text
+                [attr.x]="pt.xCoord"
+                [attr.y]="padT + innerH + 18"
+                text-anchor="middle"
+                class="fill-ink-muted text-xs"
+              >
+                {{ pt.lab }}
+              </text>
+            }
+          }
+
+          <!-- Guía vertical y puntos activos en hover -->
+          @if (hoveredPoint(); as hPt) {
+            <line
+              [attr.x1]="hPt.xCoord"
+              [attr.x2]="hPt.xCoord"
+              [attr.y1]="padT"
+              [attr.y2]="padT + innerH"
+              stroke="var(--color-ink-muted)"
+              stroke-width="1.2"
+              stroke-dasharray="3 3"
+            />
+            @if (!hiddenSeries()['prog']) {
+              <circle
+                [attr.cx]="hPt.xCoord"
+                [attr.cy]="hPt.yProg"
+                r="6"
+                fill="var(--color-ink-muted)"
+                stroke="var(--color-surface-card)"
+                stroke-width="2"
+              />
+            }
+            @if (!hiddenSeries()['fis']) {
+              <circle
+                [attr.cx]="hPt.xCoord"
+                [attr.cy]="hPt.yFis"
+                r="6"
+                fill="var(--color-azul-institucional)"
+                stroke="var(--color-surface-card)"
+                stroke-width="2"
+              />
+            }
+            @if (!hiddenSeries()['fin']) {
+              <circle
+                [attr.cx]="hPt.xCoord"
+                [attr.cy]="hPt.yFin"
+                r="6"
+                fill="var(--color-verde-eficiencia)"
+                stroke="var(--color-surface-card)"
+                stroke-width="2"
+              />
+            }
+          }
+        </svg>
+
+        <!-- Tooltip flotante -->
+        @if (hoveredPoint(); as hPt) {
+          <div
+            class="pointer-events-none absolute z-10 min-w-[190px] rounded-[10px] bg-gris-estructura px-3 py-2.5 text-[13px] leading-[1.55] text-surface-card shadow-2xl"
+            [style.left.%]="tooltipLeftPct()"
+            [style.top.%]="tooltipTopPct()"
+            [class.translate-x-4]="tooltipLeftPct() <= 60"
+            [class.-translate-x-[calc(100%+16px)]]="tooltipLeftPct() > 60"
+          >
+            <div class="mb-1 font-bold">{{ hPt.tt }}</div>
+            <div class="flex items-center gap-1.5 whitespace-nowrap">
+              <span class="inline-block h-2.5 w-2.5 rounded-xs border border-surface-card/60 bg-series-prog"></span>
+              <span>Programado: <b>{{ formatComma(hPt.prog, 1) }} %</b></span>
+            </div>
+            <div class="flex items-center gap-1.5 whitespace-nowrap">
+              <span class="inline-block h-2.5 w-2.5 rounded-xs border border-surface-card/60 bg-series-fis"></span>
+              <span>Físico real: <b>{{ formatComma(hPt.fis, 1) }} %</b></span>
+            </div>
+            <div class="flex items-center gap-1.5 whitespace-nowrap">
+              <span class="inline-block h-2.5 w-2.5 rounded-xs border border-surface-card/60 bg-series-fin"></span>
+              <span>Financiero: <b>{{ formatComma(hPt.fin, 1) }} %</b></span>
+            </div>
+            <div class="flex items-center gap-1.5 whitespace-nowrap">
+              <span
+                class="inline-block h-2.5 w-2.5 rounded-xs border border-surface-card/60"
+                [class.bg-rojo-nacional]="hPt.deviationFis < 0"
+                [class.bg-series-fin]="hPt.deviationFis >= 0"
+              ></span>
+              <span>
+                Desviación física:
+                <b>{{ (hPt.deviationFis > 0 ? '+' : '') + formatComma(hPt.deviationFis, 1) }} pts</b>
+              </span>
+            </div>
+            @if (granularity() === 'm') {
+              <div class="mt-1.5 border-t border-surface-card/20 pt-1 text-[11.5px] text-border-base">
+                Clic: ver las semanas de este mes
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Leyenda interactiva (.cvleg) -->
+      <div class="flex flex-wrap justify-center gap-2">
+        @for (s of seriesDefs; track s.key) {
+          <button
+            type="button"
+            (click)="toggleSeries(s.key)"
+            [attr.aria-pressed]="!hiddenSeries()[s.key]"
+            title="Clic para mostrar u ocultar"
+            class="inline-flex items-center gap-2 rounded-full border border-border-base bg-surface-card px-3 py-1 text-[13px] text-gris-estructura transition-opacity cursor-pointer"
+            [class.opacity-45]="hiddenSeries()[s.key]"
+            [class.line-through]="hiddenSeries()[s.key]"
+          >
+            <span
+              class="inline-block w-[22px] border-t-[3px]"
+              [class.border-dashed]="s.dashed"
+              [class.border-series-prog]="s.key === 'prog'"
+              [class.border-series-fis]="s.key === 'fis'"
+              [class.border-series-fin]="s.key === 'fin'"
+            ></span>
+            <span>{{ s.label }}</span>
+          </button>
+        }
+      </div>
+
+      <!-- Resumen del periodo (.cvsum) -->
+      @if (periodSummary(); as sum) {
+        <div class="flex flex-wrap gap-x-4 gap-y-1.5 rounded-[10px] bg-surface-subtle px-3 py-2.5 text-[13px] text-gris-estructura">
+          <span>Del {{ sum.fromLabel }} al {{ sum.toLabel }}:</span>
+          <span>físico <b>+{{ sum.deltaFis }} pts</b></span>
+          <span>programado <b>+{{ sum.deltaProg }} pts</b></span>
+          <span>financiero <b>+{{ sum.deltaFin }} pts</b></span>
+          <span>
+            desviación al cierre
+            <b
+              [class.text-risk-high-text]="sum.deviationNum < 0"
+              [class.text-risk-low-text]="sum.deviationNum >= 0"
+            >
+              {{ (sum.deviationNum > 0 ? '+' : '') + sum.deviation }} pts
+            </b>
+          </span>
+        </div>
+      }
+
+      <!-- Tabla Mensual o Semanal -->
+      @if (granularity() === 'm') {
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px] tabular-nums">
+            <thead>
+              <tr class="bg-surface-subtle text-ink-muted">
+                <th class="border-b border-border-base px-2 py-2 text-left font-bold whitespace-nowrap">
+                  Indicador (%)
+                </th>
+                @for (pt of displayPoints(); track pt.f) {
+                  <th class="border-b border-border-base px-2 py-2 text-center font-bold whitespace-nowrap">
+                    <button
+                      type="button"
+                      (click)="drillIntoMonth(pt.m!)"
+                      [title]="'Ver las semanas de ' + getMonthLongName(pt.m!)"
+                      class="rounded-md border-0 bg-transparent px-1.5 py-0.5 font-bold text-azul-institucional hover:bg-azul-soft hover:underline cursor-pointer"
+                    >
+                      {{ pt.lab }}
+                    </button>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="border-b border-border-base px-2 py-2 text-left font-semibold text-ink-muted whitespace-nowrap">
+                  Programado acum.
+                </th>
+                @for (pt of displayPoints(); track pt.f) {
+                  <td class="border-b border-border-base px-2 py-2 text-center whitespace-nowrap">
+                    {{ formatOneDec(pt.prog) }}%
+                  </td>
+                }
+              </tr>
+              <tr class="font-bold text-azul-institucional">
+                <th scope="row" class="border-b border-border-base px-2 py-2 text-left whitespace-nowrap">
+                  Físico real acum.
+                </th>
+                @for (pt of displayPoints(); track pt.f) {
+                  <td class="border-b border-border-base px-2 py-2 text-center whitespace-nowrap">
+                    {{ formatOneDec(pt.fis) }}%
+                  </td>
+                }
+              </tr>
+              <tr class="text-series-fin">
+                <th scope="row" class="border-b border-border-base px-2 py-2 text-left font-semibold whitespace-nowrap">
+                  Financiero acum.
+                </th>
+                @for (pt of displayPoints(); track pt.f) {
+                  <td class="border-b border-border-base px-2 py-2 text-center whitespace-nowrap">
+                    {{ formatOneDec(pt.fin) }}%
+                  </td>
+                }
+              </tr>
+              <tr>
+                <th scope="row" class="border-b border-border-base px-2 py-2 text-left font-semibold text-ink-muted whitespace-nowrap">
+                  Desviación física
+                </th>
+                @for (pt of displayPoints(); track pt.f) {
+                  <td
+                    class="border-b border-border-base px-2 py-2 text-center font-bold whitespace-nowrap"
+                    [class.text-risk-high-text]="pt.deviationFis < 0"
+                    [class.text-risk-low-text]="pt.deviationFis >= 0"
+                  >
+                    {{ (pt.deviationFis > 0 ? '+' : '') + formatOneDec(pt.deviationFis) }}%
+                  </td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-xs text-ink-muted">
+          Clic en un mes (en la curva o en la tabla) para ver su avance semana a semana.
+        </div>
+      } @else {
+        <h4 class="mt-1.5 mb-0 text-sm font-bold text-gris-estructura">
+          Avance semanal del {{ formatDate(displayPoints()[0].f) }} al {{ formatDate(lastPoint()!.f) }}
+        </h4>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px] tabular-nums">
+            <thead>
+              <tr class="bg-surface-subtle text-ink-muted text-xs">
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Semana al</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Programado</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Físico real</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Avance de la semana</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Financiero</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Desviación</th>
+                <th class="border-b border-border-base px-3 py-2.5 text-left font-semibold">Registrado por</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pt of reversedWeeklyPoints(); track pt.f) {
+                <tr class="border-b border-border-base">
+                  <td class="px-3 py-2.5 font-bold">{{ formatDate(pt.f) }}</td>
+                  <td class="px-3 py-2.5">{{ formatOneDec(pt.prog) }} %</td>
+                  <td class="px-3 py-2.5 font-bold">{{ formatOneDec(pt.fis) }} %</td>
+                  <td class="px-3 py-2.5">
+                    <span
+                      class="inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                      [class.bg-risk-low-bg]="pt.weeklyDeltaFis >= 1"
+                      [class.text-risk-low-text]="pt.weeklyDeltaFis >= 1"
+                      [class.bg-azul-soft]="pt.weeklyDeltaFis > 0 && pt.weeklyDeltaFis < 1"
+                      [class.text-azul-institucional-dark]="pt.weeklyDeltaFis > 0 && pt.weeklyDeltaFis < 1"
+                      [class.bg-surface-subtle]="pt.weeklyDeltaFis <= 0"
+                      [class.text-ink-muted]="pt.weeklyDeltaFis <= 0"
+                    >
+                      {{ (pt.weeklyDeltaFis > 0 ? '+' : '') + formatOneDec(pt.weeklyDeltaFis) }} pts
+                    </span>
+                  </td>
+                  <td class="px-3 py-2.5">{{ formatOneDec(pt.fin) }} %</td>
+                  <td
+                    class="px-3 py-2.5 font-bold"
+                    [class.text-risk-high-text]="pt.deviationFis < 0"
+                    [class.text-risk-low-text]="pt.deviationFis >= 0"
+                  >
+                    {{ (pt.deviationFis > 0 ? '+' : '') + formatOneDec(pt.deviationFis) }}
+                  </td>
+                  <td class="px-3 py-2.5 text-xs">
+                    {{ pt.recordedBy || assignedUserName() }}
+                    @if (pt.detail) {
+                      <div class="text-ink-muted">{{ pt.detail }}</div>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+}

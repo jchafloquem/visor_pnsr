@@ -1,0 +1,92 @@
+<div class="min-h-screen flex flex-col bg-surface-bg text-gris-estructura font-dm-sans">
+  <!-- Header institucional sticky -->
+  <app-ssp-header
+    [searchCorpus]="searchCorpus()"
+    [topAlerts]="topBellAlerts()"
+    [criticalAlertsCount]="store.criticalAlertsCount()"
+    (selectSearchItem)="onSelectSearchItem($event)"
+    (selectAlertItem)="onSelectAlertItem($event)"
+    (userSwitched)="onUserSwitched($event)"
+    (resetDemoData)="onResetDemoData()"
+  />
+
+  <!-- Cuerpo: Sidebar + Main -->
+  <div class="flex flex-1 flex-col md:flex-row items-stretch">
+    <app-ssp-sidebar
+      [pendingSegCount]="store.pendingSegCount()"
+      [criticalAlertsCount]="store.criticalAlertsCount()"
+    />
+
+    <div
+      class="flex flex-1 flex-col min-w-0"
+      [class.md:ml-[72px]]="layout.navMode() === 'iconos'"
+    >
+      <main
+        id="main-content"
+        class="flex-1 px-3.5 pt-4 pb-24 md:px-6.5 md:pt-5.5 md:pb-24 flex flex-col gap-4.5"
+      >
+        <router-outlet />
+      </main>
+
+      <app-ssp-footer />
+    </div>
+  </div>
+
+  <!-- Botón flotante "+ Registrar" (.fab + .fabmenu) -->
+  <div data-popover-root class="no-print fixed bottom-6 right-6 z-25">
+    @if (layout.fabOpen()) {
+      <div
+        role="menu"
+        aria-label="Opciones de registro rápido"
+        class="mb-3 flex min-w-[220px] flex-col overflow-hidden rounded-[14px] border border-border-base bg-surface-card shadow-2xl"
+      >
+        @if (auth.currentUser().rol === 'reg') {
+          <button
+            type="button"
+            role="menuitem"
+            (click)="onFabAction('seg')"
+            class="border-0 border-b border-border-base bg-surface-card px-4 py-3 text-left text-sm font-semibold text-gris-estructura transition-colors hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+          >
+            Avance de la semana
+          </button>
+        }
+        @if (auth.currentUser().rol === 'reg' || auth.currentUser().rol === 'upp') {
+          <button
+            type="button"
+            role="menuitem"
+            (click)="onFabAction('risk')"
+            class="border-0 border-b border-border-base bg-surface-card px-4 py-3 text-left text-sm font-semibold text-gris-estructura transition-colors hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+          >
+            Un riesgo
+          </button>
+        }
+        @if (auth.currentUser().rol !== 'reg') {
+          <button
+            type="button"
+            role="menuitem"
+            (click)="onFabAction('comp')"
+            class="border-0 bg-surface-card px-4 py-3 text-left text-sm font-semibold text-gris-estructura transition-colors hover:bg-azul-soft hover:text-azul-institucional cursor-pointer"
+          >
+            Un compromiso
+          </button>
+        }
+      </div>
+    }
+
+    <button
+      type="button"
+      (click)="layout.toggleFab()"
+      [attr.aria-expanded]="layout.fabOpen()"
+      class="inline-flex min-h-[54px] items-center gap-2 rounded-full border border-azul-institucional bg-azul-institucional px-5.5 text-[15px] font-semibold text-surface-card shadow-lg transition-colors hover:bg-azul-institucional-dark cursor-pointer"
+    >
+      <app-icon name="plus" [size]="18" />
+      <span>Registrar</span>
+    </button>
+  </div>
+
+  <!-- Drawer Host centralizado -->
+  <app-drawer-host />
+
+  <!-- Toast global accesible -->
+  <app-ssp-toast />
+</div>

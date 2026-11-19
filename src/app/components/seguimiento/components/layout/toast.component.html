@@ -1,0 +1,11 @@
+<div
+  role="status"
+  aria-live="polite"
+  class="fixed bottom-6 left-1/2 z-[70] -translate-x-1/2 rounded-xl bg-gris-estructura px-4.5 py-3 text-[13px] text-surface-card shadow-lg transition-all duration-200 pointer-events-none"
+  [class.opacity-100]="layout.toastVisible()"
+  [class.translate-y-0]="layout.toastVisible()"
+  [class.opacity-0]="!layout.toastVisible()"
+  [class.translate-y-5]="!layout.toastVisible()"
+>
+  {{ layout.toastMessage() }}
+</div>

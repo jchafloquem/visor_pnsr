@@ -1,0 +1,16 @@
+<input
+  type="text"
+  class="w-full border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card disabled:bg-surface-bg disabled:text-ink-muted"
+  [attr.list]="listId"
+  [value]="displayValue()"
+  [disabled]="disabled()"
+  placeholder="Escribe el CUI o el nombre"
+  autocomplete="off"
+  title="Escribe el CUI o el nombre y elige de la lista"
+  (change)="onValueChange($event)"
+/>
+<datalist [id]="listId">
+  @for (p of projects(); track p.cui) {
+    <option [value]="p.cui + ' · ' + p.corto">{{ p.dist }}, {{ p.dep }}</option>
+  }
+</datalist>
