@@ -1,0 +1,693 @@
+@if (project(); as p) {
+  <!-- Drawer Header (.dh) -->
+  <div
+    class="bg-[linear-gradient(110deg,var(--color-azul-institucional-dark)_0%,var(--color-azul-institucional)_72%,var(--color-celeste-agua)_100%)] text-white pt-[18px] px-6 pb-4 flex justify-between gap-[14px] items-start border-b-[3px] border-rojo-nacional"
+  >
+    <div>
+      @if (previousDrawer(); as prev) {
+        <button
+          type="button"
+          class="inline-flex items-center gap-[5px] bg-white/16 border border-white/28 text-white py-[5px] px-[11px] rounded-[7px] text-[12.5px] font-semibold cursor-pointer mb-2 hover:bg-white/26"
+          (click)="goBack()"
+        >
+          <app-icon name="chevron-left" [size]="16" />
+          {{ prev.label }}
+        </button>
+      }
+      <div class="text-[12px] opacity-90">
+        {{ auth.formatAreaLabel(p.uo) }} · {{ p.etapa }} · CUI {{ p.cui }}
+      </div>
+      <h3 class="m-0 mt-1 text-[21px] leading-[1.2] font-bold">
+        {{ p.corto }}
+      </h3>
+      <div class="text-[12px] opacity-90 mt-1 flex items-center gap-1.5 flex-wrap">
+        <span>{{ p.dist }}, {{ p.dep }} ·</span>
+        <span
+          class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+          [class]="getRiskBadgeClass(riskLevel())"
+        >
+          {{ riskLevel() || 'SIN RIESGOS' }}
+        </span>
+        @if (p.pri === 'Compromiso') {
+          <span
+            class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-mid-bg text-risk-mid-text"
+          >
+            <app-icon name="star" [size]="12" /> PRIORIZADO
+          </span>
+        } @else if (p.pri === 'Contingencia') {
+          <span
+            class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-mid-bg text-risk-mid-text"
+          >
+            <app-icon name="star-outline" [size]="12" /> CONTINGENCIA
+          </span>
+        }
+      </div>
+    </div>
+
+    <div class="flex gap-2 items-center shrink-0">
+      <button
+        type="button"
+        class="min-h-[44px] py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-rojo-nacional text-white border-0 whitespace-nowrap hover:opacity-95"
+        (click)="activeTab.set('am')"
+      >
+        Ayuda memoria
+      </button>
+      <button
+        type="button"
+        class="bg-white/15 border-0 text-white w-9 h-9 rounded-[7px] cursor-pointer text-[20px] flex items-center justify-center hover:bg-white/25"
+        aria-label="Cerrar"
+        (click)="close()"
+      >
+        <app-icon name="close" [size]="18" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs (.tabs) -->
+  <div
+    class="flex gap-1 pt-[10px] px-6 pb-0 border-b border-border-base bg-surface-subtle flex-wrap"
+    role="tablist"
+  >
+    @for (t of tabs(); track t.key) {
+      <button
+        type="button"
+        role="tab"
+        class="bg-transparent border-0 border-b-[3px] py-[10px] px-[14px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] transition-colors"
+        [class.text-azul-institucional]="activeTab() === t.key"
+        [class.border-azul-institucional]="activeTab() === t.key"
+        [class.font-bold]="activeTab() === t.key"
+        [class.text-ink-muted]="activeTab() !== t.key"
+        [class.border-transparent]="activeTab() !== t.key"
+        (click)="activeTab.set(t.key)"
+      >
+        {{ t.label }}
+      </button>
+    }
+  </div>
+
+  <!-- Drawer Body (.db) -->
+  <div class="py-5 px-6 overflow-y-auto flex-1 min-h-0 flex flex-col gap-4">
+    @switch (activeTab()) {
+      <!-- TAB 1: RESUMEN -->
+      @case ('res') {
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(175px,1fr))] gap-3">
+          @for (kpi of summaryKpis(); track kpi.label) {
+            <div
+              class="bg-surface-card border border-border-base rounded-[8px] p-[14px] flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+            >
+              <span class="text-[12.5px] text-ink-muted font-semibold">{{ kpi.label }}</span>
+              <span class="text-[17px] font-bold text-gris-estructura">{{ kpi.value }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-card">
+          <h4 class="m-0 mb-2 text-[14px] font-bold">Situación</h4>
+          <div class="text-[12px] leading-[1.5]">
+            {{ p.nombre }}<br />
+            {{ p.dist }}, {{ p.prov }}, {{ p.dep }} · {{ p.mod }} · <b>{{ p.estado }}</b>
+            @if (currentSeg(); as sg) {
+              @if (sg.det) {
+                <div class="mt-2 pt-2 border-t border-border-base">
+                  {{ sg.det }}
+                  <div class="text-ink-muted">
+                    Registrado por {{ auth.getUserById(sg.u).nombre }} · {{ formatDate(sg.f) }}
+                  </div>
+                </div>
+              }
+            }
+          </div>
+          @if (canEditProject()) {
+            <button
+              type="button"
+              class="mt-[10px] py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+              (click)="openSeguimientoDrawer()"
+            >
+              Registrar avance de la semana
+            </button>
+          }
+        </div>
+
+        <!-- Proyección al 31/12/2026 -->
+        <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-card">
+          <div class="flex justify-between gap-[10px] flex-wrap items-center mb-3">
+            <h4 class="!m-0 text-[14px] font-bold">Proyección al 31/12/2026</h4>
+            <span class="text-[12px] text-ink-muted">Ritmo de las últimas 4 semanas</span>
+          </div>
+
+          @if (proyeccion(); as o) {
+            @if (o.fisFin != null && p.fis != null) {
+              <div class="mb-[14px]">
+                <div class="flex justify-between text-[13px] mb-1">
+                  <span>Avance físico</span>
+                  <span>
+                    Hoy <b>{{ p.fis.toFixed(0) }} %</b> → 31/12
+                    <b [class]="o.llega ? 'text-verde-eficiencia' : 'text-rojo-nacional'">
+                      {{ o.fisFin.toFixed(0) }} %
+                    </b>
+                  </span>
+                </div>
+                <svg
+                  class="block w-full h-[14px] rounded-[7px] overflow-hidden bg-border-base"
+                  role="img"
+                  aria-label="Avance físico"
+                >
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="o.fisFin + '%'"
+                    height="14"
+                    [attr.fill]="o.llega ? 'var(--color-verde-eficiencia)' : 'var(--color-rojo-nacional)'"
+                    opacity="0.3"
+                  />
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="p.fis + '%'"
+                    height="14"
+                    [attr.fill]="o.llega ? 'var(--color-verde-eficiencia)' : 'var(--color-rojo-nacional)'"
+                  />
+                  <rect
+                    x="100%"
+                    y="0"
+                    width="2"
+                    height="14"
+                    fill="var(--color-gris-estructura)"
+                    transform="translate(-1,0)"
+                  >
+                    <title>Meta</title>
+                  </rect>
+                </svg>
+              </div>
+
+              @if (p.culm === 'Sí' && !o.llega) {
+                <div
+                  class="bg-risk-high-bg border border-rojo-nacional/30 text-risk-high-text rounded-[8px] py-[10px] px-[14px] flex items-center justify-between gap-[10px] flex-wrap text-[13px] mb-3"
+                >
+                  <span>
+                    <b>Ojo:</b> el área respondió que <b>sí</b> culmina en 2026, pero al ritmo
+                    actual no llega.
+                  </span>
+                </div>
+              }
+              @if (p.culm === 'No' && o.llega) {
+                <div
+                  class="bg-risk-mid-bg border border-risk-mid/40 text-risk-mid-text rounded-[8px] py-[10px] px-[14px] flex items-center justify-between gap-[10px] flex-wrap text-[13px] mb-3"
+                >
+                  <span>
+                    El área respondió «No», pero al ritmo actual sí llegaría. Conviene confirmar.
+                  </span>
+                </div>
+              }
+
+              <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 mb-3">
+                <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+                  <div class="text-[12px] text-ink-muted">Terminaría el</div>
+                  <b [class]="o.llega ? 'text-risk-low-text' : 'text-risk-high-text'">
+                    {{ o.fecha ? formatDate(o.fecha) : 'Sin fecha (obra detenida)' }}
+                  </b>
+                </div>
+                <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+                  <div class="text-[12px] text-ink-muted">Ritmo actual</div>
+                  <b class="text-gris-estructura">{{ p.ritmo }} % por semana</b>
+                </div>
+                <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+                  <div class="text-[12px] text-ink-muted">Ritmo necesario para 2026</div>
+                  <b [class]="o.llega ? 'text-risk-low-text' : 'text-risk-high-text'">
+                    {{ o.llega ? 'Ya alcanza' : (o.ritNec ?? 0).toFixed(1) + ' % por semana' }}
+                  </b>
+                </div>
+              </div>
+            } @else {
+              <p class="text-[12px] text-ink-muted mt-0 mb-3">
+                Etapa de {{ p.etapa.toLowerCase() }}: la proyección física se hace por
+                entregables, no por porcentaje.
+              </p>
+            }
+
+            <!-- Budget execution projection bar -->
+            <div class="mb-[14px]">
+              <div class="flex justify-between text-[13px] mb-1">
+                <span>Ejecución presupuestal (devengado / PIM)</span>
+                <span>
+                  Hoy <b>{{ ((p.dev / p.pim) * 100).toFixed(0) }} %</b> → 31/12
+                  <b
+                    [class]="
+                      o.devPct >= 90
+                        ? 'text-verde-eficiencia'
+                        : o.devPct >= 80
+                          ? 'text-risk-mid'
+                          : 'text-rojo-nacional'
+                    "
+                  >
+                    {{ o.devPct.toFixed(0) }} %
+                  </b>
+                </span>
+              </div>
+              <svg
+                class="block w-full h-[14px] rounded-[7px] overflow-hidden bg-border-base"
+                role="img"
+                aria-label="Ejecución presupuestal (devengado / PIM)"
+              >
+                <rect
+                  x="0"
+                  y="0"
+                  [attr.width]="o.devPct + '%'"
+                  height="14"
+                  [attr.fill]="
+                    o.devPct >= 90
+                      ? 'var(--color-verde-eficiencia)'
+                      : o.devPct >= 80
+                        ? 'var(--color-risk-mid)'
+                        : 'var(--color-rojo-nacional)'
+                  "
+                  opacity="0.3"
+                />
+                <rect
+                  x="0"
+                  y="0"
+                  [attr.width]="(p.dev / p.pim) * 100 + '%'"
+                  height="14"
+                  [attr.fill]="
+                    o.devPct >= 90
+                      ? 'var(--color-verde-eficiencia)'
+                      : o.devPct >= 80
+                        ? 'var(--color-risk-mid)'
+                        : 'var(--color-rojo-nacional)'
+                  "
+                />
+                <rect
+                  x="90%"
+                  y="0"
+                  width="2"
+                  height="14"
+                  fill="var(--color-gris-estructura)"
+                  transform="translate(-1,0)"
+                >
+                  <title>Meta</title>
+                </rect>
+              </svg>
+            </div>
+            <div class="text-[12px] text-ink-muted">
+              Línea negra: meta. Parte clara: lo que se proyecta avanzar hasta el 31/12.
+              Devengado promedio: {{ formatSoles(p.devMes) }} por mes.
+            </div>
+            @if (p.hist.length > 1) {
+              <div class="mt-3 pt-3 border-t border-border-base">
+                <div class="text-[12px] font-semibold text-ink-muted mb-1">
+                  Tendencia de las últimas 10 semanas
+                </div>
+                <app-sparkline [points]="p.hist" [currentFis]="p.fis" />
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Lectura del proyecto (IA) -->
+        @if (iaLectura(); as ia) {
+          <div
+            class="border border-azul-institucional/30 rounded-[8px] p-[14px] bg-[linear-gradient(135deg,var(--color-azul-soft),var(--color-surface-card))]"
+          >
+            <div class="flex justify-between gap-[10px] flex-wrap items-center mb-[10px]">
+              <h4 class="!m-0 text-[14px] font-bold">Lectura del proyecto (IA)</h4>
+              <span
+                class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-azul-soft text-azul-institucional-dark"
+              >
+                EJEMPLO · HOY SE ARMA CON REGLAS
+              </span>
+            </div>
+            <p class="mt-0 mb-[10px] leading-[1.55]">{{ ia.t }}</p>
+            @if (ia.acc.length > 0) {
+              <div class="text-[12px] font-bold text-azul-institucional-dark mb-1">
+                Acciones sugeridas
+              </div>
+              <ul class="m-0 pl-[18px] text-[13px] leading-[1.6]">
+                @for (a of ia.acc; track a) {
+                  <li>{{ a }}</li>
+                }
+              </ul>
+            }
+            <p class="text-[12px] text-ink-muted mt-[10px] mb-0">
+              En el sistema este texto lo redactará la IA local del PNSR. La IA sugiere; decide
+              el responsable.
+            </p>
+          </div>
+        }
+      }
+
+      <!-- TAB 2: AVANCE (CURVA S) -->
+      @case ('av') {
+        <app-curva-s
+          [projectName]="p.corto"
+          [etapa]="p.etapa"
+          [assignedUserName]="assignedUserName()"
+          [corteFecha]="corte"
+          [points]="curvaSPoints()"
+        />
+      }
+
+      <!-- TAB 3: HITOS -->
+      @case ('hitos') {
+        <div class="flex flex-col">
+          @for (item of enrichedHitos(); track item.h.id) {
+            <div
+              class="grid grid-cols-[18px_1fr] gap-3 py-[10px] relative before:content-[''] before:w-3 before:h-3 before:rounded-full before:mt-1 before:z-10 after:content-[''] after:absolute after:left-[5px] after:top-[22px] after:-bottom-[6px] after:w-[2px] after:bg-border-base last:after:hidden"
+              [class]="item.dotBeforeClass"
+            >
+              <div class="flex justify-between gap-[10px] flex-wrap items-center">
+                <div>
+                  <b>{{ item.h.h }}</b>
+                  <div class="text-[12px] text-ink-muted">
+                    {{ item.h.t === 'T' ? 'Técnico' : 'Presupuestal' }} · programado
+                    {{ formatDate(item.h.f) }}{{ item.h.real ? ' · real ' + formatDate(item.h.real) : '' }}
+                  </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <span
+                    class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+                    [class]="item.badgeClass"
+                  >
+                    {{ item.badgeText }}
+                  </span>
+                  @if (item.linkedRisk; as rk) {
+                    <button
+                      type="button"
+                      class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                      (click)="openRiskDrawer(rk.id)"
+                    >
+                      {{ rk.id }}
+                    </button>
+                  } @else if (!item.done && canEditProject()) {
+                    <button
+                      type="button"
+                      class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong inline-flex items-center gap-1 hover:bg-azul-soft/50"
+                      (click)="openNewRiskForHito(item.h.id)"
+                    >
+                      <app-icon name="plus" [size]="12" /> Riesgo
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- TAB 4: PRESUPUESTO Y CONTRATO -->
+      @case ('pc') {
+        <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-card">
+          <h4 class="m-0 mb-2 text-[14px] font-bold">Presupuesto 2026</h4>
+          @for (st of budgetRows(); track st.label) {
+            <div class="grid grid-cols-[120px_1fr_130px] gap-[10px] items-center text-[13px] mb-2">
+              <span>{{ st.label }}</span>
+              <div class="h-[14px] rounded-[6px] bg-border-base overflow-hidden">
+                <svg
+                  class="w-full h-full block"
+                  role="img"
+                  [attr.aria-label]="st.label + ' ' + formatSoles(st.amount)"
+                >
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="st.pct + '%'"
+                    height="14"
+                    [attr.fill]="
+                      st.label === 'Devengado'
+                        ? 'var(--color-verde-eficiencia)'
+                        : 'var(--color-azul-institucional)'
+                    "
+                    [attr.opacity]="st.label === 'Devengado' ? '1' : '0.75'"
+                  />
+                </svg>
+              </div>
+              <b class="text-right">{{ formatSoles(st.amount) }}</b>
+            </div>
+          }
+          <div class="text-[12px] text-ink-muted mt-1">
+            Saldo por devengar: <b>{{ formatSoles(p.pres.pim - p.pres.dev) }}</b> · Fuente en el
+            sistema: SIAF / SSI.
+          </div>
+        </div>
+
+        <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-card">
+          <h4 class="m-0 mb-2 text-[14px] font-bold">Contrato</h4>
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Ejecutor</div>
+              <b>{{ p.contrato.ejecutor }}</b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Supervisión / inspección</div>
+              <b>{{ p.contrato.supervisor }}</b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Monto contratado</div>
+              <b>{{ formatSoles(p.contrato.monto) }}</b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Inicio</div>
+              <b>{{ formatDate(p.contrato.inicio) }}</b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Término</div>
+              <b class="inline-flex items-center gap-1.5 flex-wrap">
+                {{ formatDate(p.contrato.fin) }}
+                @if (contractDueDays(); as cd) {
+                  <span
+                    class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold bg-risk-mid-bg text-risk-mid-text"
+                  >
+                    VENCE EN {{ cd }} D
+                  </span>
+                }
+              </b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Adicionales</div>
+              <b>{{ p.contrato.adic }}</b>
+            </div>
+            <div class="bg-surface-subtle rounded-[10px] py-[10px] px-3">
+              <div class="text-[12px] text-ink-muted">Carta fianza vence</div>
+              <b class="inline-flex items-center gap-1.5 flex-wrap">
+                {{ p.contrato.garantia ? formatDate(p.contrato.garantia) : 'No aplica' }}
+                @if (garantiaDueSoon()) {
+                  <span
+                    class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold bg-risk-high-bg text-risk-high-text"
+                  >
+                    POR VENCER
+                  </span>
+                }
+              </b>
+            </div>
+          </div>
+          <div class="text-[12px] text-ink-muted mt-2">
+            Fuente en el sistema: SEACE y registro del administrador de contrato.
+          </div>
+        </div>
+      }
+
+      <!-- TAB 5: RIESGOS -->
+      @case ('riesgos') {
+        @if (auth.isUpp()) {
+          <div
+            class="bg-risk-mid-bg border border-risk-mid/40 text-risk-mid-text rounded-[8px] py-[10px] px-[14px] flex items-center justify-between gap-[10px] flex-wrap text-[13px]"
+          >
+            <span>
+              Como UPP puedes <b>notificar</b> un riesgo (por ejemplo, presupuestal).
+              {{ auth.formatAreaLabel(p.uo) }} lo acepta o lo rechaza con su motivo.
+            </span>
+            <button
+              type="button"
+              class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-azul-institucional text-white border-0"
+              (click)="openNewRiskForHito('')"
+            >
+              Notificar riesgo
+            </button>
+          </div>
+        }
+
+        @if (canEditProject()) {
+          <div class="flex justify-between gap-2 flex-wrap">
+            <button
+              type="button"
+              class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+              (click)="markRisksReviewed()"
+            >
+              Riesgos revisados, sin cambios
+            </button>
+            <button
+              type="button"
+              class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+              (click)="openNewRiskForHito('')"
+            >
+              <app-icon name="plus" [size]="15" /> Registrar riesgo
+            </button>
+          </div>
+        }
+
+        <div class="text-[12px] text-ink-muted">
+          Última revisión: {{ formatDate(store.revisiones()[p.cui]) }}
+        </div>
+
+        <app-risk-table [risks]="projectRisks()" [showProject]="false" />
+
+        @if (canEditProject() && frequentSuggestions().length > 0) {
+          <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-card">
+            <h4 class="m-0 mb-[2px] text-[14px] font-bold">
+              Riesgos frecuentes que aún no están registrados
+            </h4>
+            <div class="text-[12px] text-ink-muted mb-[10px]">
+              Según la etapa ({{ p.etapa.toLowerCase() }}) y la zona ({{ projectZona().toLowerCase() }}).
+              Catálogo inicial [por validar con UPP].
+            </div>
+            @for (sug of frequentSuggestions(); track sug.k) {
+              <div
+                class="flex items-center justify-between gap-[10px] py-[9px] border-b border-border-base last:border-b-0 text-[13px]"
+              >
+                <span class="flex-1">
+                  <span
+                    class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold mr-1.5"
+                    [class]="getRiskBadgeClass(getSuggestionLevel(sug.p, sug.i))"
+                  >
+                    {{ getSuggestionLevel(sug.p, sug.i) }}
+                  </span>
+                  Podría ocurrir {{ sug.evento }}
+                  <div class="text-[12px] text-ink-muted">Debido a {{ sug.causa }}</div>
+                </span>
+                <button
+                  type="button"
+                  class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                  (click)="openNewRiskWithSuggestion(sug.k)"
+                >
+                  Registrar
+                </button>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- TAB 6: COMPROMISOS -->
+      @case ('comp') {
+        @if (!auth.isRegistrador()) {
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+              (click)="openNewCommitment()"
+            >
+              <app-icon name="plus" [size]="15" /> Nuevo compromiso
+            </button>
+          </div>
+        }
+
+        @if (projectCommitments().length === 0) {
+          <div class="text-center py-[26px] px-3 text-ink-muted">
+            Sin compromisos registrados.
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            @for (c of projectCommitments(); track c.id) {
+              <button
+                type="button"
+                class="flex items-center gap-3 py-[11px] px-[14px] border border-border-base rounded-[12px] bg-transparent w-full text-left cursor-pointer hover:bg-azul-soft/50"
+                (click)="openCommitmentDrawer(c.id)"
+              >
+                <span
+                  class="w-[10px] h-[10px] rounded-full shrink-0"
+                  [class]="getCommitmentDotClass(c.est, c.f)"
+                ></span>
+                <span class="flex-1">
+                  <b>{{ c.dec }}</b>
+                  <div class="text-[12px] text-ink-muted">{{ c.prob }} · {{ c.resp }}</div>
+                </span>
+                <span class="text-[12px] text-right">
+                  {{ formatDate(c.f) }}<br />
+                  <b>{{ c.est }}</b>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      }
+
+      <!-- TAB 7: AYUDA MEMORIA -->
+      @case ('am') {
+        <div class="flex justify-between gap-[10px] items-center flex-wrap">
+          <div
+            class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card"
+            role="group"
+            aria-label="Tipo de ayuda memoria"
+          >
+            <button
+              type="button"
+              class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+              [class.bg-azul-institucional]="amType() === 'ej'"
+              [class.text-white]="amType() === 'ej'"
+              [class.bg-transparent]="amType() !== 'ej'"
+              [class.text-ink-muted]="amType() !== 'ej'"
+              (click)="amType.set('ej')"
+            >
+              Ejecutiva
+            </button>
+            <button
+              type="button"
+              class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+              [class.bg-azul-institucional]="amType() === 'rg'"
+              [class.text-white]="amType() === 'rg'"
+              [class.bg-transparent]="amType() !== 'rg'"
+              [class.text-ink-muted]="amType() !== 'rg'"
+              (click)="amType.set('rg')"
+            >
+              De riesgos
+            </button>
+          </div>
+
+          @if (auth.canExportProject(p.uo)) {
+            <div class="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                title="Copiar el texto plano de la ayuda memoria"
+                (click)="copyAyudaMemoriaText()"
+              >
+                <app-icon name="copy" [size]="16" /> Copiar texto
+              </button>
+              @if (auth.canExportWordDraft()) {
+                <button
+                  type="button"
+                  class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                  title="Para ajustar el texto antes de emitirlo"
+                  (click)="exportWordDraft()"
+                >
+                  <app-icon name="file-text" [size]="16" /> Word editable (borrador)
+                </button>
+              }
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+                (click)="exportOfficialPdf()"
+              >
+                <app-icon name="download" [size]="16" /> Descargar PDF
+              </button>
+            </div>
+          } @else {
+            <span class="text-[12px] text-ink-muted">
+              Solo {{ auth.formatAreaLabel(p.uo) }}, UPP y la Dirección Ejecutiva pueden
+              exportarla.
+            </span>
+          }
+        </div>
+
+        @if (amDocument(); as doc) {
+          <app-ayuda-memoria-preview [doc]="doc" />
+        }
+
+        <p class="text-[12px] text-ink-muted m-0">
+          Se arma sola con lo registrado, con el formato estándar de la Dirección. El
+          <b>PDF</b> es la versión oficial: lleva el nombre de quien lo genera, la fecha, la hora
+          y un código de verificación. El Word es solo un borrador para quien redacta.
+        </p>
+      }
+    }
+  </div>
+}

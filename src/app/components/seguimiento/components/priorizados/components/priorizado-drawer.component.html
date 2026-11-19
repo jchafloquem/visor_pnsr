@@ -1,0 +1,163 @@
+<!-- Drawer Header (.dh) -->
+<div
+  class="bg-[linear-gradient(110deg,var(--color-azul-institucional-dark)_0%,var(--color-azul-institucional)_72%,var(--color-celeste-agua)_100%)] text-white pt-[18px] px-6 pb-4 flex justify-between gap-[14px] items-start border-b-[3px] border-rojo-nacional"
+>
+  <div>
+    @if (previousDrawer(); as prev) {
+      <button
+        type="button"
+        class="inline-flex items-center gap-[5px] bg-white/16 border border-white/28 text-white py-[5px] px-[11px] rounded-[7px] text-[12.5px] font-semibold cursor-pointer mb-2 hover:bg-white/26"
+        (click)="goBack()"
+      >
+        <app-icon name="chevron-left" [size]="16" />
+        {{ prev.label }}
+      </button>
+    }
+    <div class="text-[12px] opacity-90">Cartera priorizada</div>
+    <h3 class="m-0 mt-1 text-[21px] leading-[1.2] font-bold">
+      {{ title() }}
+    </h3>
+  </div>
+
+  <button
+    type="button"
+    class="bg-white/15 border-0 text-white w-9 h-9 rounded-[7px] cursor-pointer text-[20px] flex items-center justify-center hover:bg-white/25"
+    aria-label="Cerrar"
+    (click)="close()"
+  >
+    <app-icon name="close" [size]="18" />
+  </button>
+</div>
+
+<!-- Drawer Body (.db) -->
+<div class="py-5 px-6 overflow-y-auto flex-1 min-h-0 flex flex-col gap-4">
+  <div
+    class="bg-azul-soft/60 border border-azul-institucional/25 rounded-[8px] py-[10px] px-3 flex items-center gap-[10px] text-[13px]"
+  >
+    <span
+      class="w-[34px] h-[34px] rounded-full bg-azul-institucional text-white grid place-items-center font-bold text-[13px] shrink-0"
+    >
+      {{ auth.userInitials() }}
+    </span>
+    <span>
+      Lo registra <b>{{ auth.currentUser().nombre }}</b> ({{
+        auth.isDirector() ? 'Dirección Ejecutiva' : auth.formatAreaLabel(auth.currentUser().area)
+      }}). Quedará en el historial.
+    </span>
+  </div>
+
+  @if (modo() === 'nuevo') {
+    <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+      Proyecto
+      <app-project-picker
+        [projects]="nonPrioritizedProjects()"
+        [selectedCui]="selectedCui()"
+        (cuiChange)="selectedCui.set($event)"
+      />
+    </label>
+  }
+
+  @if (modo() !== 'out') {
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Tipo
+        <select
+          class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+          [value]="tipo()"
+          (change)="onTipoChange($event)"
+        >
+          <option value="Compromiso">Compromiso 2026</option>
+          <option value="Contingencia">Contingencia</option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Meta comprometida
+        <select
+          class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+          [value]="meta()"
+          (change)="onMetaChange($event)"
+        >
+          @for (m of metasList; track m) {
+            <option [value]="m">{{ m }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Fecha meta
+        <input
+          type="date"
+          class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+          [value]="fm()"
+          (change)="onFmChange($event)"
+        />
+      </label>
+    </div>
+
+    <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+      Sustento (acta, oficio o presentación)
+      <input
+        type="text"
+        class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+        [value]="sust()"
+        placeholder="Ej.: Acta de reunión DE – Viceministerio del 12/11"
+        (input)="onSustInput($event)"
+      />
+    </label>
+  } @else {
+    <div
+      class="border border-rojo-nacional/30 rounded-[8px] p-[14px] bg-risk-high-bg/50 text-[13.5px]"
+    >
+      <b>{{ projectCorto() }}</b> dejará de contar en la meta de priorizados. Sus datos, riesgos
+      e historial se conservan.
+    </div>
+  }
+
+  <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+    Motivo {{ modo() === 'nuevo' ? '(opcional)' : '(obligatorio)' }}
+    <textarea
+      rows="3"
+      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card min-h-[70px] resize-y"
+      [value]="mot()"
+      placeholder="¿Por qué se hace este cambio?"
+      (input)="onMotInput($event)"
+    ></textarea>
+  </label>
+
+  <div>
+    @if (ev()) {
+      <span class="inline-flex items-center gap-1.5 text-[13px]">
+        <app-icon name="check" [size]="16" />
+        <b>{{ ev() }}</b>
+      </span>
+    } @else {
+      <label
+        class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer inline-flex items-center gap-1.5 bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+      >
+        Adjuntar documento de sustento
+        <input
+          type="file"
+          class="hidden"
+          (change)="onFileSelected($event)"
+        />
+      </label>
+    }
+  </div>
+</div>
+
+<!-- Drawer Footer (.df) -->
+<div
+  class="py-[14px] px-6 border-t border-border-base flex justify-between gap-[10px] bg-surface-subtle flex-wrap items-center"
+>
+  <span></span>
+  <button
+    type="button"
+    class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer text-white border-0"
+    [class.bg-rojo-nacional]="modo() === 'out'"
+    [class.bg-azul-institucional]="modo() !== 'out'"
+    (click)="savePriorizado()"
+  >
+    {{ modo() === 'out' ? 'Retirar' : 'Guardar' }}
+  </button>
+</div>

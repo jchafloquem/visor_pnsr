@@ -1,0 +1,297 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Cartera priorizada
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Cartera priorizada
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      Los proyectos que la Alta Dirección comprometió ante el Viceministerio para 2026. La
+      Dirección Ejecutiva decide y UPP lo registra; cualquiera de los dos puede incluir, retirar
+      o cambiar el tipo. Todo cambio queda en el historial con su motivo.
+    </p>
+  </div>
+  @if (auth.canPrioritize()) {
+    <button
+      type="button"
+      class="py-[9px] px-[14px] rounded-[10px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+      (click)="openPriorizadoDrawer(undefined, 'nuevo')"
+    >
+      <app-icon name="star" [size]="15" /> Incluir proyecto
+    </button>
+  }
+</div>
+
+<!-- 4 KPI Cards -->
+<div class="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-[14px]">
+  <div
+    class="bg-surface-card border border-border-base rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12px] text-ink-muted font-semibold">Compromisos 2026</span>
+    <span class="text-[30px] font-bold leading-[1.1] text-risk-mid-text">
+      {{ kpis().compromisosCount }}
+    </span>
+    <span class="text-[12px] text-ink-muted">meta del año</span>
+  </div>
+
+  <div
+    class="bg-surface-card border border-border-base rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12.5px] text-ink-muted font-semibold">Contingencias</span>
+    <span class="text-[28px] font-bold leading-[1.05] text-risk-mid-text">
+      {{ kpis().contingenciasCount }}
+    </span>
+    <span class="text-[12px] text-ink-muted">reemplazan si un compromiso cae</span>
+  </div>
+
+  <div
+    class="bg-surface-card border border-border-base rounded-[8px] p-[14px] flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12.5px] text-ink-muted font-semibold">
+      Ejecución de los compromisos
+    </span>
+    <span class="text-[28px] font-bold leading-[1.05] text-risk-low-text">
+      {{ kpis().execPct }} %
+    </span>
+    <span class="text-[12px] text-ink-muted">
+      {{ formatMillions(kpis().dev) }} de {{ formatMillions(kpis().pim) }}
+    </span>
+  </div>
+
+  <div
+    class="bg-surface-card border border-border-base rounded-[8px] p-[14px] flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12.5px] text-ink-muted font-semibold">No llegarían a su meta</span>
+    <span class="text-[28px] font-bold leading-[1.05] text-risk-high-text">
+      {{ kpis().noLleganCount }}
+    </span>
+    <span class="text-[12px] text-ink-muted">según el ritmo actual</span>
+  </div>
+</div>
+
+<!-- Prioritized Projects Table -->
+<section
+  class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+>
+  <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-2">
+    <h2 class="m-0 text-[16px] font-bold">
+      Proyectos priorizados ({{ prioritizedRows().length }})
+    </h2>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13.5px]">
+      <thead>
+        <tr>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Proyecto
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Tipo
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Meta comprometida
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Fecha meta
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            ¿Llega?
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Sustento
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Desde
+          </th>
+          @if (auth.canPrioritize()) {
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+            ></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of prioritizedRows(); track row.p.cui) {
+          <tr class="hover:bg-azul-soft/50 transition-colors">
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <button
+                type="button"
+                class="bg-transparent border-0 p-0 font-bold text-gris-estructura text-left cursor-pointer hover:text-azul-institucional hover:underline"
+                (click)="openProject(row.p.cui)"
+              >
+                {{ row.p.corto }}
+              </button>
+              <div class="text-[12px] text-ink-muted">
+                {{ auth.formatAreaLabel(row.p.uo) }} · CUI {{ row.p.cui }}
+              </div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              @if (row.p.pri === 'Compromiso') {
+                <span
+                  class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-mid-bg text-risk-mid-text"
+                >
+                  <app-icon name="star" [size]="12" /> PRIORIZADO
+                </span>
+              } @else {
+                <span
+                  class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-mid-bg text-risk-mid-text"
+                >
+                  <app-icon name="star-outline" [size]="12" /> CONTINGENCIA
+                </span>
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              {{ row.priX.meta }}
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top whitespace-nowrap"
+            >
+              {{ formatDate(row.priX.fm) }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              @if (row.llega === null) {
+                <span
+                  class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-surface-subtle text-ink-muted"
+                >
+                  POR HITOS
+                </span>
+              } @else if (row.llega) {
+                <span
+                  class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-risk-low-bg text-risk-low-text"
+                >
+                  SÍ
+                </span>
+              } @else {
+                <span
+                  class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-risk-high-bg text-risk-high-text"
+                >
+                  NO{{ row.projFecha ? ' · ' + formatDate(row.projFecha) : '' }}
+                </span>
+              }
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top text-[12px] max-w-[220px]"
+            >
+              {{ row.priX.sust }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top text-[12px]">
+              {{ formatDate(row.priX.desde) }}
+              <div class="text-ink-muted">{{ auth.getUserById(row.priX.u).nombre }}</div>
+            </td>
+            @if (auth.canPrioritize()) {
+              <td
+                class="py-[11px] px-3 border-b border-border-base align-top whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50 mr-1"
+                  (click)="openPriorizadoDrawer(row.p.cui, 'edit')"
+                >
+                  Cambiar
+                </button>
+                <button
+                  type="button"
+                  class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-transparent text-azul-institucional border-0 hover:bg-azul-soft/50"
+                  (click)="openPriorizadoDrawer(row.p.cui, 'out')"
+                >
+                  Retirar
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- History & Non-Prioritized Row -->
+<div class="flex gap-[14px] flex-wrap items-stretch">
+  <!-- Timeline History -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex-[1_1_380px] overflow-hidden"
+  >
+    <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-1">
+      <h2 class="m-0 text-[16px] font-bold">Historial de cambios</h2>
+    </div>
+    <div class="pt-1 px-[18px] pb-[14px] max-h-[420px] overflow-y-auto">
+      @for (item of sortedHistory(); track $index) {
+        <div
+          class="grid grid-cols-[18px_1fr] gap-3 py-[10px] relative before:content-[''] before:w-3 before:h-3 before:rounded-full before:mt-1 before:z-10 after:content-[''] after:absolute after:left-[5px] after:top-[22px] after:-bottom-[6px] after:w-[2px] after:bg-border-base last:after:hidden"
+          [class]="item.dotClass"
+        >
+          <div>
+            <b>{{ item.h.acc }}</b> · {{ item.projectCorto }}
+            @if (item.h.acc === 'Cambio de tipo') {
+              · {{ item.h.de }} → {{ item.h.a }}
+            } @else if (item.h.acc === 'Inclusión') {
+              · {{ item.h.a }}
+            }
+            <div class="text-[12px]">{{ item.h.mot }}</div>
+            <div class="text-[12px] text-ink-muted">
+              {{ formatDate(item.h.f) }} · {{ auth.getUserById(item.h.u).nombre }}
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Non-prioritized list -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex-[1_1_380px] overflow-hidden"
+  >
+    <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-1">
+      <h2 class="m-0 text-[16px] font-bold">
+        No priorizados ({{ nonPrioritizedProjects().length }})
+      </h2>
+    </div>
+    @if (nonPrioritizedProjects().length === 0) {
+      <div class="text-center py-[26px] px-3 text-ink-muted">
+        Toda la cartera está priorizada.
+      </div>
+    } @else {
+      <div class="max-h-[420px] overflow-y-auto">
+        @for (p of nonPrioritizedProjects().slice(0, 60); track p.cui) {
+          <div
+            class="flex items-center gap-3 py-[10px] px-[18px] border-b border-border-base last:border-b-0"
+          >
+            <span class="flex-1 min-w-0">
+              <b class="block truncate">{{ p.corto }}</b>
+              <div class="text-[12px] text-ink-muted">
+                {{ auth.formatAreaLabel(p.uo) }} · {{ p.etapa }}
+              </div>
+            </span>
+            @if (auth.canPrioritize()) {
+              <button
+                type="button"
+                class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer inline-flex items-center gap-1 bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                (click)="openPriorizadoDrawer(p.cui, 'nuevo')"
+              >
+                <app-icon name="star" [size]="12" /> Incluir
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </section>
+</div>

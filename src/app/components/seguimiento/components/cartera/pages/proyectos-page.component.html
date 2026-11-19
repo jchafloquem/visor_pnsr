@@ -1,0 +1,825 @@
+<!-- Page Header (.ph) -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Proyectos
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Proyectos
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      {{ pageSubtitle() }} Busca por CUI o nombre, o filtra por región, etapa o riesgo.
+    </p>
+  </div>
+</div>
+
+<!-- Filter Bar Card (.pfbar) -->
+<section
+  class="bg-surface-card border border-border-base rounded-[14px] py-[14px] px-4 shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-col gap-3"
+>
+  <div class="flex gap-[10px] items-center flex-wrap">
+    <!-- Search -->
+    <div class="relative flex-[1_1_280px] min-w-[200px]">
+      <app-icon
+        name="search"
+        [size]="18"
+        class="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none"
+      />
+      <input
+        type="search"
+        [value]="filters().q"
+        placeholder="Buscar por CUI, nombre del proyecto o localidad"
+        aria-label="Buscar proyectos"
+        class="w-full py-[10px] pr-3 pl-[38px] border border-border-strong rounded-[7px] text-[14px] bg-surface-card text-gris-estructura outline-none focus:border-azul-institucional focus:ring-2 focus:ring-azul-institucional/15"
+        (input)="onFilterEvent('q', $event)"
+      />
+    </div>
+
+    <!-- Sort -->
+    <label class="flex items-center gap-[6px] text-[12.5px] font-semibold text-ink-muted">
+      Ordenar
+      <select
+        class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+        [value]="filters().sort"
+        (change)="onFilterEvent('sort', $event)"
+      >
+        @for (opt of sortOptions; track opt.value) {
+          <option [value]="opt.value">{{ opt.label }}</option>
+        }
+      </select>
+    </label>
+
+    <!-- View Mode Toggle -->
+    <div
+      class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card"
+      role="group"
+      aria-label="Vista"
+    >
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="store.projectViewMode() === 'tabla'"
+        [class.text-white]="store.projectViewMode() === 'tabla'"
+        [class.bg-transparent]="store.projectViewMode() !== 'tabla'"
+        [class.text-ink-muted]="store.projectViewMode() !== 'tabla'"
+        (click)="store.setProjectViewMode('tabla')"
+      >
+        Tabla
+      </button>
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="store.projectViewMode() === 'cards'"
+        [class.text-white]="store.projectViewMode() === 'cards'"
+        [class.bg-transparent]="store.projectViewMode() !== 'cards'"
+        [class.text-ink-muted]="store.projectViewMode() !== 'cards'"
+        (click)="store.setProjectViewMode('cards')"
+      >
+        Tarjetas
+      </button>
+    </div>
+  </div>
+
+  <!-- Scope toggle for non-validator registradores -->
+  @if (auth.isRegistrador() && !auth.currentUser().valida) {
+    <div
+      class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card self-start"
+      role="group"
+      aria-label="Alcance"
+    >
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="filters().mine === '1'"
+        [class.text-white]="filters().mine === '1'"
+        [class.bg-transparent]="filters().mine !== '1'"
+        [class.text-ink-muted]="filters().mine !== '1'"
+        (click)="store.updateProjectFilter('mine', '1')"
+      >
+        Mis proyectos ({{ myAssignedCount() }})
+      </button>
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="filters().mine === '0'"
+        [class.text-white]="filters().mine === '0'"
+        [class.bg-transparent]="filters().mine !== '0'"
+        [class.text-ink-muted]="filters().mine !== '0'"
+        (click)="store.updateProjectFilter('mine', '0')"
+      >
+        Toda {{ auth.currentUser().area === 'UTP' ? 'la UTP' : auth.formatAreaLabel(auth.currentUser().area) }}
+        ({{ myUnitCount() }})
+      </button>
+    </div>
+  }
+
+  <!-- Collapsible Filters (.pfdet) -->
+  <details
+    [open]="store.projectFiltersOpen()"
+    (toggle)="onDetailsToggle($event)"
+  >
+    <summary
+      class="cursor-pointer font-bold text-[13px] text-ink-muted select-none py-1 inline-flex items-center gap-[6px]"
+    >
+      Filtros
+      @if (activeFilterCount() > 0) {
+        <span
+          class="bg-azul-institucional text-white rounded-full py-[1px] px-[7px] text-[11px] font-bold"
+        >
+          {{ activeFilterCount() }}
+        </span>
+      }
+    </summary>
+
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-[10px] mt-[10px]">
+      @if (!auth.isRegistrador()) {
+        <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+          Unidad
+          <select
+            class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+            [value]="filters().uo"
+            (change)="onFilterEvent('uo', $event)"
+          >
+            <option value="">Todos</option>
+            @for (u of unidades; track u) {
+              <option [value]="u">{{ auth.formatAreaLabel(u) }}</option>
+            }
+          </select>
+        </label>
+      }
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Región
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+          [value]="filters().dep"
+          (change)="onFilterEvent('dep', $event)"
+        >
+          <option value="">Todos</option>
+          @for (dep of depOptions(); track dep) {
+            <option [value]="dep">{{ dep }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Provincia
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card disabled:bg-surface-bg disabled:text-ink-muted"
+          [value]="filters().prov"
+          [disabled]="!filters().dep"
+          (change)="onFilterEvent('prov', $event)"
+        >
+          <option value="">{{ !filters().dep ? 'Elige antes la región' : 'Todos' }}</option>
+          @for (prov of provOptions(); track prov) {
+            <option [value]="prov">{{ prov }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Distrito
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card disabled:bg-surface-bg disabled:text-ink-muted"
+          [value]="filters().dist"
+          [disabled]="!filters().prov"
+          (change)="onFilterEvent('dist', $event)"
+        >
+          <option value="">{{ !filters().prov ? 'Elige antes la provincia' : 'Todos' }}</option>
+          @for (dist of distOptions(); track dist) {
+            <option [value]="dist">{{ dist }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Etapa
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+          [value]="filters().etapa"
+          (change)="onFilterEvent('etapa', $event)"
+        >
+          <option value="">Todos</option>
+          @for (et of etapaOptions(); track et) {
+            <option [value]="et">{{ et }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Estado
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+          [value]="filters().est"
+          (change)="onFilterEvent('est', $event)"
+        >
+          <option value="">Todos</option>
+          @for (es of estadoOptions(); track es) {
+            <option [value]="es">{{ es }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        Riesgo
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+          [value]="filters().niv"
+          (change)="onFilterEvent('niv', $event)"
+        >
+          <option value="">Todos</option>
+          @for (nv of nivelFilterOptions; track nv.value) {
+            <option [value]="nv.value">{{ nv.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+        ¿Culmina en 2026?
+        <select
+          class="border border-border-strong rounded-[7px] py-2 px-[10px] font-dm-sans text-[13px] text-gris-estructura bg-surface-card"
+          [value]="filters().culm"
+          (change)="onFilterEvent('culm', $event)"
+        >
+          <option value="">Todos</option>
+          <option value="Sí">Sí</option>
+          <option value="Duda">Duda</option>
+          <option value="No">No</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="mt-3 pt-[10px] border-t border-border-base">
+      <div class="flex gap-[6px] flex-wrap" role="group" aria-label="Priorización">
+        @for (opt of priOptions; track opt.value) {
+          <button
+            type="button"
+            class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer inline-flex items-center gap-1.5"
+            [class.bg-azul-institucional]="store.priFilter() === opt.value && !opt.value"
+            [class.border-azul-institucional]="store.priFilter() === opt.value && !opt.value"
+            [class.bg-risk-mid]="store.priFilter() === opt.value && !!opt.value"
+            [class.border-risk-mid]="store.priFilter() === opt.value && !!opt.value"
+            [class.text-white]="store.priFilter() === opt.value"
+            [class.bg-surface-card]="store.priFilter() !== opt.value"
+            [class.border-border-base]="store.priFilter() !== opt.value"
+            [class.text-ink-muted]="store.priFilter() !== opt.value"
+            (click)="setPriFilter(opt.value)"
+          >
+            @if (opt.value === 'todos') {
+              <app-icon name="star" [size]="13" />
+            }
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- Active Filter Pills (.pfact) -->
+@if (activeFilterPills().length > 0) {
+  <div class="flex gap-[6px] flex-wrap items-center -mt-1">
+    @for (pill of activeFilterPills(); track pill.key) {
+      <button
+        type="button"
+        class="bg-azul-soft border border-azul-institucional/30 text-azul-institucional-dark rounded-full py-1 px-[10px] text-[12px] font-semibold cursor-pointer inline-flex items-center gap-1 hover:bg-azul-soft"
+        (click)="removeFilterPill(pill.key)"
+      >
+        {{ pill.label }} ×
+      </button>
+    }
+    <button
+      type="button"
+      class="bg-transparent border-0 text-azul-institucional font-bold text-[12px] cursor-pointer py-1 px-[6px] hover:underline"
+      (click)="store.clearAllProjectFilters()"
+    >
+      Limpiar todo
+    </button>
+  </div>
+}
+
+<!-- Results Count & Stage Quick-Facets (.pfres) -->
+<div class="flex gap-2 items-center flex-wrap text-[13px] text-ink-muted">
+  <span>
+    <b class="text-gris-estructura">{{ sortedProjects().length }}</b>
+    proyecto{{ sortedProjects().length === 1 ? '' : 's' }}
+    @if (sortedProjects().length !== baseProjects().length) {
+      de {{ baseProjects().length }}
+    }
+  </span>
+  @for (fac of stageFacets(); track fac.etapa) {
+    <button
+      type="button"
+      class="border rounded-full py-1 px-[10px] text-[12px] cursor-pointer inline-flex gap-[5px] items-center transition-colors"
+      [class.bg-azul-institucional]="filters().etapa === fac.etapa"
+      [class.border-azul-institucional]="filters().etapa === fac.etapa"
+      [class.text-white]="filters().etapa === fac.etapa"
+      [class.bg-surface-card]="filters().etapa !== fac.etapa"
+      [class.border-border-base]="filters().etapa !== fac.etapa"
+      [class.text-gris-estructura]="filters().etapa !== fac.etapa"
+      (click)="toggleStageFacet(fac.etapa)"
+    >
+      {{ fac.etapa }} <b>{{ fac.count }}</b>
+    </button>
+  }
+</div>
+
+<!-- Empty State -->
+@if (sortedProjects().length === 0) {
+  <div class="text-center py-[26px] px-3 text-ink-muted">
+    No hay proyectos con estos filtros.<br />
+    <button
+      type="button"
+      class="mt-[10px] py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong"
+      (click)="store.clearAllProjectFilters()"
+    >
+      Limpiar filtros
+    </button>
+  </div>
+} @else {
+  <!-- TABLE VIEW -->
+  @if (store.projectViewMode() === 'tabla') {
+    <div
+      class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+    >
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead>
+            <tr>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="bg-transparent border-0 p-0 font-bold cursor-pointer inline-flex items-center gap-[3px]"
+                  [class.text-azul-institucional]="filters().sort === 'cui'"
+                  (click)="store.updateProjectFilter('sort', 'cui')"
+                >
+                  CUI {{ filters().sort === 'cui' ? '↓' : '↕' }}
+                </button>
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="bg-transparent border-0 p-0 font-bold cursor-pointer inline-flex items-center gap-[3px]"
+                  [class.text-azul-institucional]="filters().sort === 'nombre'"
+                  (click)="store.updateProjectFilter('sort', 'nombre')"
+                >
+                  Proyecto {{ filters().sort === 'nombre' ? '↓' : '↕' }}
+                </button>
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                Región
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                Unidad · etapa
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="bg-transparent border-0 p-0 font-bold cursor-pointer inline-flex items-center gap-[3px]"
+                  [class.text-azul-institucional]="filters().sort === 'avance'"
+                  (click)="store.updateProjectFilter('sort', 'avance')"
+                >
+                  Avance físico {{ filters().sort === 'avance' ? '↓' : '↕' }}
+                </button>
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="bg-transparent border-0 p-0 font-bold cursor-pointer inline-flex items-center gap-[3px]"
+                  [class.text-azul-institucional]="filters().sort === 'ejec'"
+                  (click)="store.updateProjectFilter('sort', 'ejec')"
+                >
+                  Ejecución {{ filters().sort === 'ejec' ? '↓' : '↕' }}
+                </button>
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  class="bg-transparent border-0 p-0 font-bold cursor-pointer inline-flex items-center gap-[3px]"
+                  [class.text-azul-institucional]="filters().sort === 'riesgo'"
+                  (click)="store.updateProjectFilter('sort', 'riesgo')"
+                >
+                  Riesgo {{ filters().sort === 'riesgo' ? '↓' : '↕' }}
+                </button>
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                Alertas críticas
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                Culmina 2026
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+              >
+                <span class="sr-only">Ayuda memoria</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of pagedRows(); track row.p.cui) {
+              <tr
+                class="cursor-pointer hover:bg-azul-soft/50 transition-colors"
+                tabindex="0"
+                role="button"
+                (click)="openProject(row.p.cui)"
+                (keydown.enter)="openProject(row.p.cui)"
+              >
+                <td
+                  class="py-[11px] px-3 border-b border-border-base text-[12px] whitespace-nowrap align-middle"
+                >
+                  {{ row.p.cui }}
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  <b>{{ row.p.corto }}</b>
+                  @if (row.p.pri) {
+                    <span
+                      class="text-[11.5px] font-semibold text-risk-mid-text inline-flex items-center gap-[3px] ml-1.5"
+                      [title]="row.p.pri + ' 2026'"
+                    >
+                      <app-icon
+                        [name]="row.p.pri === 'Compromiso' ? 'star' : 'star-outline'"
+                        [size]="12"
+                      />
+                      {{ row.p.pri === 'Compromiso' ? 'Priorizado' : 'Contingencia' }}
+                    </span>
+                  }
+                  <div class="text-[12px] text-ink-muted">{{ row.p.dist }}</div>
+                </td>
+                <td
+                  class="py-[11px] px-3 border-b border-border-base text-[12px] align-middle"
+                >
+                  {{ row.p.dep }}
+                  <div class="text-ink-muted">{{ row.p.prov }}</div>
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  {{ auth.formatAreaLabel(row.p.uo) }}
+                  <div class="text-[12px] text-ink-muted">{{ row.p.etapa }}</div>
+                  @if (row.p.estado === 'Paralizada' || row.p.estado === 'Suspendida') {
+                    <span
+                      class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold bg-risk-high-bg text-risk-high-text mt-0.5"
+                    >
+                      {{ row.p.estado.toUpperCase() }}
+                    </span>
+                  }
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  @if (row.p.fis != null) {
+                    <b [class]="row.atras ? 'text-risk-high-text' : 'text-inherit'">
+                      {{ row.p.fis }} %
+                    </b>
+                    <span class="text-[12px] text-ink-muted"> de {{ row.p.prog }} %</span>
+                    <svg
+                      class="block w-[90px] h-[5px] mt-[5px] overflow-visible"
+                      role="img"
+                      [attr.aria-label]="'Avance ' + row.p.fis + '%'"
+                    >
+                      <rect
+                        x="0"
+                        y="0"
+                        width="100%"
+                        height="5"
+                        rx="2.5"
+                        ry="2.5"
+                        fill="var(--color-border-base)"
+                      />
+                      <rect
+                        x="0"
+                        y="0"
+                        [attr.width]="row.p.fis + '%'"
+                        height="5"
+                        rx="2.5"
+                        ry="2.5"
+                        [attr.fill]="
+                          row.atras ? 'var(--color-rojo-nacional)' : 'var(--color-azul-institucional)'
+                        "
+                      />
+                      @if (row.p.prog != null) {
+                        <rect
+                          [attr.x]="row.p.prog + '%'"
+                          y="-3"
+                          width="2"
+                          height="11"
+                          rx="1"
+                          ry="1"
+                          fill="var(--color-gris-estructura)"
+                          transform="translate(-1,0)"
+                        >
+                          <title>Programado</title>
+                        </rect>
+                      }
+                    </svg>
+                  } @else {
+                    <span class="text-ink-muted">—</span>
+                  }
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  {{ row.execPct.toFixed(0) }} %
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  <span
+                    class="inline-flex items-center gap-[5px] text-[12px] font-bold whitespace-nowrap"
+                    [style.color]="row.riskColorVar"
+                  >
+                    <span
+                      class="w-2 h-2 rounded-full shrink-0"
+                      [style.background]="row.riskColorVar"
+                    ></span>
+                    {{ row.riskLabel }}
+                  </span>
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  @if (row.critAlerts > 0) {
+                    <span
+                      class="inline-flex items-center gap-[5px] text-[12px] font-bold text-risk-high-text whitespace-nowrap"
+                    >
+                      <app-icon name="alert-triangle" [size]="14" />
+                      {{ row.critAlerts }}
+                    </span>
+                  } @else {
+                    <span class="text-[12px] text-ink-muted">—</span>
+                  }
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  <b [class]="getCulminaClass(row.p.culm)">{{ row.p.culm }}</b>
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-middle">
+                  <button
+                    type="button"
+                    class="bg-transparent border-0 text-azul-institucional font-semibold text-[12.5px] cursor-pointer py-1 px-[6px] rounded-[6px] inline-flex items-center gap-[5px] hover:bg-azul-soft"
+                    title="Ayuda memoria"
+                    (click)="openAyudaMemoria(row.p.cui, $event)"
+                  >
+                    <app-icon name="file-text" [size]="15" />
+                    <span class="sr-only">Ayuda memoria</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <!-- CARDS VIEW -->
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(310px,1fr))] gap-[14px]">
+      @for (row of pagedRows(); track row.p.cui) {
+        <div
+          class="bg-surface-card border border-border-base rounded-[8px] flex flex-col cursor-pointer transition-all hover:border-azul-institucional hover:shadow-[0_6px_16px_rgba(11,106,194,0.09)] shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+          role="button"
+          tabindex="0"
+          (click)="openProject(row.p.cui)"
+          (keydown.enter)="openProject(row.p.cui)"
+        >
+          <div class="pt-4 px-[18px] pb-[14px] flex-1 flex flex-col gap-[10px]">
+            <div class="flex justify-between gap-[10px] items-start">
+              <div class="min-w-0">
+                <div class="text-[15.5px] font-bold leading-[1.25] text-gris-estructura">
+                  {{ row.p.corto }}
+                </div>
+                <div class="text-[12px] text-ink-muted">
+                  {{ row.p.dist }}, {{ row.p.dep }} · CUI {{ row.p.cui }}
+                </div>
+              </div>
+              <span
+                class="inline-flex items-center gap-[5px] text-[12px] font-bold whitespace-nowrap"
+                [style.color]="row.riskColorVar"
+              >
+                <span
+                  class="w-2 h-2 rounded-full shrink-0"
+                  [style.background]="row.riskColorVar"
+                ></span>
+                {{ row.riskLabel }}
+              </span>
+            </div>
+
+            <div class="text-[12.5px] text-ink-muted flex gap-[6px] flex-wrap items-center">
+              @if (row.p.pri) {
+                <span
+                  class="text-[11.5px] font-semibold text-risk-mid-text inline-flex items-center gap-[3px]"
+                >
+                  <app-icon
+                    [name]="row.p.pri === 'Compromiso' ? 'star' : 'star-outline'"
+                    [size]="12"
+                  />
+                  {{ row.p.pri === 'Compromiso' ? 'Priorizado' : 'Contingencia' }}
+                </span>
+                <span class="opacity-45">·</span>
+              }
+              <span>{{ auth.formatAreaLabel(row.p.uo) }}</span>
+              <span class="opacity-45">·</span>
+              <span>{{ row.p.etapa }}</span>
+              @if (row.p.estado === 'Paralizada' || row.p.estado === 'Suspendida') {
+                <span
+                  class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold bg-risk-high-bg text-risk-high-text"
+                >
+                  {{ row.p.estado.toUpperCase() }}
+                </span>
+              }
+            </div>
+
+            <div
+              class="grid grid-cols-3 gap-3 mt-1 pt-3 border-t border-border-base"
+            >
+              <div>
+                <div class="text-[11.5px] text-ink-muted">Avance físico</div>
+                <div
+                  class="text-[16px] font-bold mt-[2px]"
+                  [class.text-risk-high-text]="row.atras"
+                >
+                  @if (row.p.fis != null) {
+                    {{ row.p.fis }} %
+                    <span class="text-[11.5px] font-medium text-ink-muted">
+                      prog. {{ row.p.prog }} %
+                    </span>
+                  } @else {
+                    —
+                    <span class="text-[11.5px] font-medium text-ink-muted">
+                      por entregables
+                    </span>
+                  }
+                </div>
+                @if (row.p.fis != null) {
+                  <svg
+                    class="block w-full h-[5px] mt-[5px] overflow-visible"
+                    role="img"
+                    [attr.aria-label]="'Avance ' + row.p.fis + '%'"
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width="100%"
+                      height="5"
+                      rx="2.5"
+                      ry="2.5"
+                      fill="var(--color-border-base)"
+                    />
+                    <rect
+                      x="0"
+                      y="0"
+                      [attr.width]="row.p.fis + '%'"
+                      height="5"
+                      rx="2.5"
+                      ry="2.5"
+                      [attr.fill]="
+                        row.atras ? 'var(--color-rojo-nacional)' : 'var(--color-azul-institucional)'
+                      "
+                    />
+                    @if (row.p.prog != null) {
+                      <rect
+                        [attr.x]="row.p.prog + '%'"
+                        y="-3"
+                        width="2"
+                        height="11"
+                        rx="1"
+                        ry="1"
+                        fill="var(--color-gris-estructura)"
+                        transform="translate(-1,0)"
+                      />
+                    }
+                  </svg>
+                }
+              </div>
+
+              <div title="Devengado frente al PIM 2026">
+                <div class="text-[11.5px] text-ink-muted">Ejecución</div>
+                <div class="text-[16px] font-bold mt-[2px]">
+                  {{ row.execPct.toFixed(0) }} %
+                </div>
+                <svg class="block w-full h-[5px] mt-[5px] overflow-visible" role="img">
+                  <rect
+                    x="0"
+                    y="0"
+                    width="100%"
+                    height="5"
+                    rx="2.5"
+                    ry="2.5"
+                    fill="var(--color-border-base)"
+                  />
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="row.execPct + '%'"
+                    height="5"
+                    rx="2.5"
+                    ry="2.5"
+                    fill="var(--color-azul-institucional)"
+                  />
+                </svg>
+              </div>
+
+              <div>
+                <div class="text-[11.5px] text-ink-muted">Culmina 2026</div>
+                <div
+                  class="text-[16px] font-bold mt-[2px]"
+                  [class]="getCulminaClass(row.p.culm)"
+                >
+                  {{ row.p.culm }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="py-[9px] px-[18px] border-t border-border-base flex items-center justify-between gap-[10px] bg-surface-subtle rounded-b-[8px]"
+          >
+            @if (row.critAlerts > 0) {
+              <span
+                class="inline-flex items-center gap-[5px] text-[12px] font-bold text-risk-high-text"
+              >
+                <app-icon name="alert-triangle" [size]="14" />
+                {{ row.critAlerts }} alerta{{ row.critAlerts > 1 ? 's' : '' }} crítica{{
+                  row.critAlerts > 1 ? 's' : ''
+                }}
+              </span>
+            } @else {
+              <span class="text-[12px] text-ink-muted">
+                {{ row.activeRisks }} riesgo{{ row.activeRisks === 1 ? '' : 's' }} activo{{
+                  row.activeRisks === 1 ? '' : 's'
+                }}
+              </span>
+            }
+            <button
+              type="button"
+              class="bg-transparent border-0 text-azul-institucional font-semibold text-[12.5px] cursor-pointer py-1 px-[6px] rounded-[6px] inline-flex items-center gap-[5px] hover:bg-azul-soft"
+              (click)="openAyudaMemoria(row.p.cui, $event)"
+            >
+              <app-icon name="file-text" [size]="14" /> Ayuda memoria
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- PAGINATION (.pager) -->
+  <nav
+    class="flex justify-between items-center gap-3 flex-wrap pt-1"
+    aria-label="Páginas"
+  >
+    <span class="text-[12px] text-ink-muted">
+      Mostrando {{ pageRange().start }}–{{ pageRange().end }} de {{ sortedProjects().length }}
+    </span>
+    @if (totalPages() > 1) {
+      <div class="flex gap-1 items-center flex-wrap">
+        <button
+          type="button"
+          class="min-w-[34px] h-[34px] px-[10px] border border-border-strong bg-surface-card text-gris-estructura rounded-[7px] text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-default hover:border-azul-institucional hover:text-azul-institucional"
+          [disabled]="currentPage() <= 1"
+          (click)="goToPage(currentPage() - 1)"
+        >
+          ‹ Anterior
+        </button>
+
+        @for (item of pageNumbers(); track $index) {
+          @if (item === '…') {
+            <span class="px-1 text-ink-muted">…</span>
+          } @else {
+            <button
+              type="button"
+              class="min-w-[34px] h-[34px] px-[10px] border rounded-[7px] text-[13px] font-semibold cursor-pointer"
+              [class.bg-azul-institucional]="item === currentPage()"
+              [class.border-azul-institucional]="item === currentPage()"
+              [class.text-white]="item === currentPage()"
+              [class.bg-surface-card]="item !== currentPage()"
+              [class.border-border-strong]="item !== currentPage()"
+              [class.text-gris-estructura]="item !== currentPage()"
+              [attr.aria-current]="item === currentPage() ? 'page' : null"
+              (click)="goToPage(item)"
+            >
+              {{ item }}
+            </button>
+          }
+        }
+
+        <button
+          type="button"
+          class="min-w-[34px] h-[34px] px-[10px] border border-border-strong bg-surface-card text-gris-estructura rounded-[7px] text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-default hover:border-azul-institucional hover:text-azul-institucional"
+          [disabled]="currentPage() >= totalPages()"
+          (click)="goToPage(currentPage() + 1)"
+        >
+          Siguiente ›
+        </button>
+      </div>
+    }
+  </nav>
+}

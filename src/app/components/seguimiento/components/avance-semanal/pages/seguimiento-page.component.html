@@ -1,0 +1,161 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Registro semanal
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Registro semanal del avance
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      Cada semana, el responsable actualiza el avance, la situación, los hitos y revisa sus
+      riesgos. Con esto se arman solos el tablero, las alertas, las proyecciones y la ayuda
+      memoria.
+    </p>
+  </div>
+</div>
+
+<!-- Weekly Cutoff Progress Card -->
+<section
+  class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex gap-[18px] items-center flex-wrap"
+>
+  <div class="flex-[1_1_260px]">
+    <div class="text-[12px] text-ink-muted font-semibold">
+      Avance del corte {{ formatDate(corte)
+      }}{{ auth.isRegistrador() ? ' · ' + auth.formatAreaLabel(auth.currentUser().area) : '' }}
+    </div>
+    <div class="text-[28px] font-bold text-azul-institucional">
+      {{ completedCount() }} de {{ scopedProjects().length }} proyectos
+    </div>
+    <svg
+      class="h-3 rounded-[4px] bg-border-base overflow-hidden mt-[6px] block w-full"
+      role="img"
+      aria-label="Avance de registro semanal"
+    >
+      <rect
+        x="0"
+        y="0"
+        [attr.width]="progressPct() + '%'"
+        height="12"
+        rx="4"
+        ry="4"
+        fill="var(--color-verde-eficiencia)"
+      />
+    </svg>
+  </div>
+  <div class="text-[12px] text-ink-muted flex-[1_1_260px]">
+    Los que faltan aparecen primero. Al guardar quedan registrados con tu nombre y la fecha.
+  </div>
+</section>
+
+<!-- Table Card -->
+<section
+  class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+>
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13.5px]">
+      <thead>
+        <tr>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Proyecto
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Unidad
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Último registro
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Avance físico
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          >
+            Estado del corte
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle whitespace-nowrap"
+          ></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of displayedRows(); track row.p.cui) {
+          <tr
+            class="cursor-pointer hover:bg-azul-soft/50 transition-colors"
+            (click)="openSeguimiento(row.p.cui)"
+          >
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <b>{{ row.p.corto }}</b>
+              <div class="text-[12px] text-ink-muted">{{ row.p.etapa }}</div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base text-[12px] align-top">
+              {{ auth.formatAreaLabel(row.p.uo) }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base text-[12px] align-top">
+              @if (row.seg) {
+                {{ formatDate(row.seg.f) }}
+                <div class="text-ink-muted">{{ auth.getUserById(row.seg.u).nombre }}</div>
+              } @else {
+                —
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              @if (row.p.fis != null) {
+                {{ row.p.fis }} %
+              } @else {
+                <span class="text-ink-muted">por entregables</span>
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              @if (row.ok) {
+                <span
+                  class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-risk-low-bg text-risk-low-text"
+                >
+                  AL DÍA
+                </span>
+              } @else {
+                <span
+                  class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-risk-high-bg text-risk-high-text"
+                >
+                  PENDIENTE
+                </span>
+              }
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              @if (auth.canEditUnit(row.p.uo)) {
+                <span
+                  class="inline-flex items-center py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold bg-azul-institucional text-white"
+                >
+                  {{ row.ok ? 'Actualizar' : 'Registrar' }}
+                </span>
+              } @else {
+                <span class="text-azul-institucional font-bold text-[12.5px]">Ver →</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+@if (scopedProjects().length > 60) {
+  <div class="text-[12px] text-ink-muted">
+    Se muestran 60 de {{ scopedProjects().length }} (primero los pendientes). Para buscar uno en
+    particular, usa
+    <a routerLink="/seguimiento/cartera" class="text-azul-institucional font-semibold hover:underline">
+      Proyectos
+    </a>
+    .
+  </div>
+}

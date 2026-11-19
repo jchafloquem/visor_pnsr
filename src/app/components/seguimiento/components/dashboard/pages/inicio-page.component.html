@@ -1,0 +1,412 @@
+<!-- Hero (.hero) -->
+<section
+  class="bg-azul-soft border border-border-base rounded-[16px] overflow-hidden flex flex-wrap items-stretch shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+>
+  <div
+    class="flex-[1_1_300px] py-6 px-7 bg-surface-card border-l-[6px] border-l-azul-institucional flex flex-col justify-center gap-2"
+  >
+    <div class="text-[12px] text-ink-muted">Inicio · corte al {{ formatDate(corte) }}</div>
+    <h1 class="m-0 text-[30px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      {{ greeting() }}
+    </h1>
+    <div class="text-[13px] text-ink-muted">
+      @if (auth.isDirector()) {
+        Esta es la situación de la cartera del PNSR.
+      } @else {
+        {{ auth.currentUser().cargo }} · {{ auth.currentUser().sub }}
+      }
+    </div>
+    <div class="flex gap-5 flex-wrap mt-2 pt-3 border-t border-border-base">
+      <div class="text-[12px] text-ink-muted">
+        <b class="block text-[22px] text-azul-institucional leading-[1.1]">
+          <app-count-up [value]="pendingItems().length" />
+        </b>
+        {{ auth.isDirector() ? 'compromisos abiertos' : 'pendientes' }}
+      </div>
+      <div class="text-[12px] text-ink-muted">
+        <b class="block text-[22px] text-risk-high-text leading-[1.1]">
+          <app-count-up [value]="criticalVisibleAlertsCount()" />
+        </b>
+        alertas críticas
+      </div>
+      <div class="text-[12px] text-ink-muted">
+        <b class="block text-[22px] text-risk-mid-text leading-[1.1]">
+          <app-count-up [value]="prioritizedCompromisosCount()" />
+        </b>
+        priorizados
+      </div>
+    </div>
+  </div>
+  <div class="flex-[2.2_1_520px] min-w-0 flex items-center justify-center bg-azul-soft">
+    <img
+      src="assets/images/banner_seguimiento.jpg"
+      alt="Vivienda: Hagamos que suceda. Familias rurales con acceso a agua segura."
+      class="w-full h-full object-cover object-center block"
+    />
+  </div>
+</section>
+
+<!-- Chips de priorización y unidad -->
+<div class="flex flex-col gap-[10px]">
+  <div class="flex gap-[6px] flex-wrap" role="group" aria-label="Priorización">
+    @for (opt of priOptions; track opt.value) {
+      <button
+        type="button"
+        class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer inline-flex items-center gap-1.5 transition-colors"
+        [class.bg-azul-institucional]="store.priFilter() === opt.value && !opt.value"
+        [class.border-azul-institucional]="store.priFilter() === opt.value && !opt.value"
+        [class.bg-risk-mid]="store.priFilter() === opt.value && !!opt.value"
+        [class.border-risk-mid]="store.priFilter() === opt.value && !!opt.value"
+        [class.text-white]="store.priFilter() === opt.value"
+        [class.bg-surface-card]="store.priFilter() !== opt.value"
+        [class.border-border-base]="store.priFilter() !== opt.value"
+        [class.text-ink-muted]="store.priFilter() !== opt.value"
+        (click)="store.priFilter.set(opt.value)"
+      >
+        @if (opt.value === 'todos') {
+          <app-icon name="star" [size]="13" />
+        }
+        {{ opt.label }}
+      </button>
+    }
+  </div>
+
+  @if (!auth.isRegistrador()) {
+    <div class="flex gap-[6px] flex-wrap" role="group" aria-label="Unidad">
+      <button
+        type="button"
+        class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer transition-colors"
+        [class.bg-azul-institucional]="store.uoFilter() === ''"
+        [class.border-azul-institucional]="store.uoFilter() === ''"
+        [class.text-white]="store.uoFilter() === ''"
+        [class.bg-surface-card]="store.uoFilter() !== ''"
+        [class.border-border-base]="store.uoFilter() !== ''"
+        [class.text-ink-muted]="store.uoFilter() !== ''"
+        (click)="store.uoFilter.set('')"
+      >
+        Todas las unidades
+      </button>
+      @for (u of unidades; track u) {
+        <button
+          type="button"
+          class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer transition-colors"
+          [class.bg-azul-institucional]="store.uoFilter() === u"
+          [class.border-azul-institucional]="store.uoFilter() === u"
+          [class.text-white]="store.uoFilter() === u"
+          [class.bg-surface-card]="store.uoFilter() !== u"
+          [class.border-border-base]="store.uoFilter() !== u"
+          [class.text-ink-muted]="store.uoFilter() !== u"
+          (click)="store.uoFilter.set(u)"
+        >
+          {{ auth.formatAreaLabel(u) }}
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<!-- 7 KPI Cards (.kpis) -->
+<div class="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-[14px]">
+  <!-- Priorizados -->
+  <button
+    type="button"
+    class="relative border border-risk-mid/40 rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)] cursor-pointer text-left transition-all hover:border-azul-institucional hover:shadow-[0_8px_20px_rgba(11,106,194,0.12)] hover:-translate-y-[2px] bg-[linear-gradient(135deg,var(--color-surface-card),var(--color-risk-mid-bg))]"
+    (click)="store.priFilter.set('todos')"
+  >
+    <span
+      class="absolute right-[14px] top-[14px] w-9 h-9 rounded-[10px] grid place-items-center bg-risk-mid-bg text-risk-mid-text"
+    >
+      <app-icon name="star" [size]="18" />
+    </span>
+    <span class="text-[12px] text-risk-mid-text font-semibold pr-10">Proyectos priorizados</span>
+    <span class="text-[30px] font-bold leading-[1.1] text-risk-mid-text">
+      <app-count-up [value]="kpiSummary().prCount" />
+    </span>
+    <span class="text-[12px] text-ink-muted">
+      compromisos 2026 · {{ kpiSummary().pcgCount }} de contingencia ·
+      {{ kpiSummary().prExecPct }} % ejecutado
+    </span>
+    <span class="text-[12px] text-risk-mid-text font-bold mt-auto pt-1.5">
+      Ver solo priorizados →
+    </span>
+  </button>
+
+  @for (card of standardKpiCards(); track card.label) {
+    <button
+      type="button"
+      class="relative bg-surface-card border border-border-base rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)] cursor-pointer text-left transition-all hover:border-azul-institucional hover:shadow-[0_8px_20px_rgba(11,106,194,0.12)] hover:-translate-y-[2px]"
+      (click)="navigateTo(card.route)"
+    >
+      <span
+        class="absolute right-[14px] top-[14px] w-9 h-9 rounded-[10px] grid place-items-center"
+        [class]="card.iconWrapClass"
+      >
+        <app-icon [name]="card.icon" [size]="18" />
+      </span>
+      <span class="text-[12px] text-ink-muted font-semibold pr-10">{{ card.label }}</span>
+      <span class="text-[30px] font-bold leading-[1.1]" [class]="card.valueColorClass">
+        <app-count-up
+          [value]="card.value"
+          [decimals]="card.decimals"
+          [suffix]="card.suffix"
+        />
+      </span>
+      <span class="text-[12px] text-ink-muted">{{ card.sub }}</span>
+      <span class="text-[12px] text-azul-institucional font-bold mt-auto pt-1.5">
+        {{ card.goText }} →
+      </span>
+    </button>
+  }
+</div>
+
+<!-- Row: Mis pendientes + Mapa -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-[18px] items-stretch">
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex items-center justify-between gap-[10px] mb-3 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">
+        {{ auth.isDirector() ? 'Compromisos y decisiones' : 'Mis pendientes' }}
+      </h2>
+      <span
+        class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold"
+        [class]="
+          pendingItems().length
+            ? 'bg-risk-high-bg text-risk-high-text'
+            : 'bg-risk-low-bg text-risk-low-text'
+        "
+      >
+        {{ pendingItems().length }}
+      </span>
+    </div>
+
+    @if (pendingItems().length === 0) {
+      <div class="text-center py-[26px] px-3 text-ink-muted flex flex-col items-center gap-2">
+        <app-icon name="check" [size]="24" class="text-verde-eficiencia" />
+        <span>No tienes pendientes.</span>
+      </div>
+    } @else {
+      @for (item of pendingItems().slice(0, 6); track $index) {
+        <button
+          type="button"
+          class="flex items-center gap-3 py-[11px] px-[10px] border-0 border-b border-border-base last:border-b-0 bg-transparent w-full text-left cursor-pointer rounded-[8px] hover:bg-azul-soft/50 transition-colors"
+          (click)="onPendingClick(item)"
+        >
+          <span
+            class="w-[10px] h-[10px] rounded-full shrink-0"
+            [class]="isExpired(item.f) ? 'bg-rojo-nacional' : 'bg-risk-mid'"
+          ></span>
+          <span class="flex-1 min-w-0">
+            <b class="block truncate">{{ item.t }}</b>
+            <div class="text-[12px] text-ink-muted truncate">{{ item.s }}</div>
+          </span>
+          @if (item.f) {
+            <span
+              class="text-[12px] whitespace-nowrap"
+              [class.text-risk-high-text]="isExpired(item.f)"
+              [class.font-bold]="isExpired(item.f)"
+            >
+              {{ formatDate(item.f) }}
+            </span>
+          }
+          <span class="text-azul-institucional font-bold text-[12.5px]">→</span>
+        </button>
+      }
+    }
+  </section>
+
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex items-center justify-between gap-[10px] mb-3 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">Mapa de proyectos y riesgos</h2>
+    </div>
+    <app-mapa
+      [projects]="mapaPoints()"
+      [(severityFilter)]="mapSeverityFilter"
+      (selectProject)="openProject($event)"
+    />
+  </section>
+</div>
+
+<!-- Row: Cartera por unidad + Ejecución presupuestal por unidad -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-[18px] items-stretch">
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex items-center justify-between gap-[10px] mb-3 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">Cartera por unidad</h2>
+      <span class="text-[12px] text-ink-muted">Clic para filtrar</span>
+    </div>
+
+    @for (row of unitBreakdown(); track row.uo) {
+      <button
+        type="button"
+        class="grid grid-cols-[130px_1fr_30px] gap-[10px] items-center py-[7px] px-1 border-0 bg-transparent w-full text-left cursor-pointer rounded-[8px] hover:bg-azul-soft/50 transition-colors"
+        [class.bg-azul-soft]="store.uoFilter() === row.uo"
+        [class.font-bold]="store.uoFilter() === row.uo"
+        (click)="toggleUoFilter(row.uo)"
+      >
+        <span class="text-[13.5px]">{{ auth.formatAreaLabel(row.uo) }}</span>
+        <span class="flex h-[22px] rounded-[6px] overflow-hidden bg-border-base">
+          <svg
+            [attr.viewBox]="'0 0 ' + row.totalSafe + ' 22'"
+            preserveAspectRatio="none"
+            class="w-full h-full block"
+            role="img"
+            [attr.aria-label]="'Cartera ' + auth.formatAreaLabel(row.uo)"
+          >
+            @for (seg of row.segments; track seg.estado) {
+              <rect
+                [attr.x]="seg.x"
+                y="0"
+                [attr.width]="seg.width"
+                height="22"
+                [attr.fill]="seg.colorVar"
+              >
+                <title>{{ seg.estado }}: {{ seg.width }}</title>
+              </rect>
+            }
+          </svg>
+        </span>
+        <b class="text-right text-[13.5px]">{{ row.total }}</b>
+      </button>
+    }
+
+    <div class="text-[12px] flex gap-3 flex-wrap mt-2">
+      @for (item of estadoLegend; track item.estado) {
+        <span class="inline-flex items-center gap-1.5">
+          <span
+            class="w-[10px] h-[10px] rounded-full inline-block"
+            [style.background]="item.colorVar"
+          ></span>
+          {{ item.estado }}
+        </span>
+      }
+    </div>
+  </section>
+
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex items-center justify-between gap-[10px] mb-3 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">Ejecución presupuestal por unidad</h2>
+      <span class="text-[12px] text-ink-muted">Meta: 90 % al 31/12</span>
+    </div>
+
+    @for (row of unitBreakdown(); track row.uo) {
+      <div class="mb-3 last:mb-0">
+        <div class="flex justify-between text-[13px]">
+          <b>{{ auth.formatAreaLabel(row.uo) }}</b>
+          <span>
+            {{ row.execPct.toFixed(1) }} % · {{ formatMillions(row.dev) }} de
+            {{ formatMillions(row.pim) }}
+          </span>
+        </div>
+        <svg
+          class="block w-full h-3 mt-1 overflow-visible"
+          role="img"
+          [attr.aria-label]="
+            'Ejecución ' + auth.formatAreaLabel(row.uo) + ' ' + row.execPct.toFixed(1) + '%'
+          "
+        >
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="12"
+            rx="6"
+            ry="6"
+            fill="var(--color-border-base)"
+          />
+          <rect
+            x="0"
+            y="0"
+            [attr.width]="row.execPct + '%'"
+            height="12"
+            rx="6"
+            ry="6"
+            [attr.fill]="row.execPct >= 70 ? 'var(--color-verde-eficiencia)' : 'var(--color-risk-mid)'"
+          />
+          <rect x="90%" y="-3" width="2" height="18" fill="var(--color-gris-estructura)" />
+        </svg>
+      </div>
+    }
+  </section>
+</div>
+
+<!-- Row: Por culminar en 90 días + Matriz de riesgos -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-[18px] items-stretch">
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-0 shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0 overflow-hidden"
+  >
+    <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-1">
+      <h2 class="m-0 text-[16px] font-bold">Por culminar en 90 días</h2>
+    </div>
+
+    @if (closingSoonProjects().length === 0) {
+      <div class="text-center py-[26px] px-3 text-ink-muted">Ninguno</div>
+    } @else {
+      @for (item of closingSoonProjects(); track item.p.cui) {
+        <button
+          type="button"
+          class="flex items-center gap-3 py-[11px] px-[18px] border-0 border-b border-border-base last:border-b-0 bg-transparent w-full text-left cursor-pointer hover:bg-azul-soft/50 transition-colors"
+          (click)="openProject(item.p.cui)"
+        >
+          <span
+            class="w-[10px] h-[10px] rounded-full shrink-0"
+            [class]="item.llega === false ? 'bg-rojo-nacional' : 'bg-verde-eficiencia'"
+          ></span>
+          <span class="flex-1 min-w-0">
+            <b class="block truncate">{{ item.p.corto }}</b>
+            <div class="text-[12px] text-ink-muted">
+              {{ auth.formatAreaLabel(item.p.uo) }} · avance
+              {{ item.p.fis != null ? item.p.fis + ' %' : '—' }}
+              @if (item.llega === false) {
+                · <b class="text-risk-high-text">al ritmo actual no llega</b>
+              }
+            </div>
+          </span>
+          <span class="text-[12px] whitespace-nowrap">{{ formatDate(item.p.finObra) }}</span>
+        </button>
+      }
+    }
+  </section>
+
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex items-center justify-between gap-[10px] mb-3 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">Matriz de riesgos</h2>
+      <span class="text-[12px] text-ink-muted">Clic en una celda</span>
+    </div>
+    <app-risk-matrix
+      [risks]="activeVisibleRisks()"
+      [params]="store.parametros()"
+      [selectedCell]="store.matrixCellFilter()"
+      [clickable]="true"
+      (cellSelect)="onSelectMatrixCell($event)"
+    />
+  </section>
+</div>
+
+<!-- Filtered risks by selected matrix cell -->
+@if (store.matrixCellFilter(); as cell) {
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-0 shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+  >
+    <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-2 flex-wrap">
+      <h2 class="m-0 text-[16px] font-bold">
+        Riesgos en {{ cell.p }} × {{ cell.i }}
+      </h2>
+      <button
+        type="button"
+        class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="store.clearMatrixAndCatFilters()"
+      >
+        Quitar filtro
+      </button>
+    </div>
+    <app-risk-table [risks]="matrixFilteredRisks()" [showProject]="true" />
+  </section>
+}
