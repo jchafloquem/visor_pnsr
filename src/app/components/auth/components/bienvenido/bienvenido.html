@@ -48,7 +48,7 @@
         </span>
       </div>
       <div *ngFor="let boton of botones" class="flex flex-col items-center group relative pb-4" [id]="'button-' + boton.texto.toLowerCase()">
-        <ng-container *ngIf="{ disabled: (boton.texto === 'REPORTES' || boton.texto === 'REPOSITORIO' || boton.texto === 'METADATA') } as state">
+        <ng-container *ngIf="{ disabled: (boton.texto === 'REPOSITORIO' || boton.texto === 'METADATA') } as state">
           <!-- Wrapper para el efecto de borde animado -->
           <div class="animated-border-wrapper transition-all duration-300" [class.group-hover:scale-110]="!state.disabled">
             <a [attr.href]="state.disabled ? null : boton.link"

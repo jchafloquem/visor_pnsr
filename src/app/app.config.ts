@@ -4,7 +4,7 @@ import {
   provideBrowserGlobalErrorListeners,
   inject,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 
 import { routes } from './app.routes';
@@ -38,7 +38,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     { provide: ErrorHandler, useClass: GlobalErrorAudit },
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     // El interceptor de auditoría registra en mdsisicu.sicu_logmensajes toda
     // llamada al WSGEOVISOR (éxito o error) con su duración real.
     provideHttpClient(withXhr(), withInterceptors([auditoriaInterceptor])),
