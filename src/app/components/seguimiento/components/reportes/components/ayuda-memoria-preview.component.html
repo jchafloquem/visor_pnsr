@@ -1,0 +1,78 @@
+<div
+  class="bg-surface-card border border-border-base rounded-[8px] pt-[22px] px-[26px] pb-[18px] text-[12.5px] leading-[1.4] text-gris-estructura shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+>
+  <img
+    class="h-[34px] w-auto block mb-3"
+    src="assets/images/logo_mvcs.png"
+    alt="Ministerio de Vivienda, Construcción y Saneamiento"
+  />
+
+  @for (bk of doc().blocks; track $index) {
+    @switch (bk.k) {
+      @case ('title') {
+        <div class="text-[20px] font-bold text-azul-institucional-dark tracking-[-0.01em]">
+          {{ bk.t }}
+        </div>
+        <div class="flex justify-between gap-3 items-baseline mt-1 flex-wrap">
+          <b class="text-[14px] text-azul-institucional-dark">CUI {{ bk.cui }}</b>
+          <i class="text-rojo-nacional text-[13px]">
+            {{ bk.lab }} <b>{{ bk.fecha }}</b>
+          </i>
+        </div>
+        <div class="font-bold mt-1.5 mb-[10px] text-justify">
+          {{ bk.nombre }}
+        </div>
+      }
+      @case ('note') {
+        <div class="text-[11px] italic text-ink-muted -mt-1.5 mb-3">
+          {{ bk.t }}
+        </div>
+      }
+      @case ('foot') {
+        <div class="text-[11px] italic text-ink-muted mt-1.5">
+          {{ bk.t }}
+        </div>
+      }
+      @case ('tbl') {
+        <div class="overflow-x-auto mb-3">
+          <table class="w-full border-collapse table-fixed">
+            <colgroup>
+              @for (colPct of getColPercentages(bk); track $index) {
+                <col [style.width.%]="colPct" />
+              }
+            </colgroup>
+            <tbody>
+              @for (row of bk.rows; track $index) {
+                <tr>
+                  @for (cell of row; track $index) {
+                    <td
+                      [attr.colspan]="cell.span && cell.span > 1 ? cell.span : null"
+                      class="border-b border-gris-estructura py-[5px] px-2 align-middle break-words border-r last:border-r-0"
+                      [class]="getCellFillClass(cell.fill)"
+                      [style.text-align]="getCellAlign(cell)"
+                      [style.font-size.px]="cell.sz ? cell.sz / 2 + 1.5 : null"
+                    >
+                      @for (para of cell.ps; track $index) {
+                        <div class="my-[1px]">
+                          @for (run of para; track $index) {
+                            <span
+                              [class.font-bold]="isBold(run[1].b, cell.b)"
+                              [class.italic]="isItalic(run[1].i, cell.i)"
+                              [class]="getTextColorClass(run[1].c || cell.c)"
+                            >
+                              {{ run[0] || ' ' }}
+                            </span>
+                          }
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</div>

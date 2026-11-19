@@ -1,0 +1,134 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Riesgos
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Riesgos
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      Cada riesgo con su nivel, su plan de acción y quién lo registró. Haz clic en una fila para
+      abrirlo.
+    </p>
+  </div>
+</div>
+
+<!-- UO Chips -->
+@if (!auth.isRegistrador()) {
+  <div class="flex gap-[6px] flex-wrap" role="group" aria-label="Unidad">
+    <button
+      type="button"
+      class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer"
+      [class.bg-azul-institucional]="filters().uo === ''"
+      [class.border-azul-institucional]="filters().uo === ''"
+      [class.text-white]="filters().uo === ''"
+      [class.bg-surface-card]="filters().uo !== ''"
+      [class.border-border-base]="filters().uo !== ''"
+      [class.text-ink-muted]="filters().uo !== ''"
+      (click)="store.updateRiskFilter('uo', '')"
+    >
+      Todas las unidades
+    </button>
+    @for (u of unidades; track u) {
+      <button
+        type="button"
+        class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer"
+        [class.bg-azul-institucional]="filters().uo === u"
+        [class.border-azul-institucional]="filters().uo === u"
+        [class.text-white]="filters().uo === u"
+        [class.bg-surface-card]="filters().uo !== u"
+        [class.border-border-base]="filters().uo !== u"
+        [class.text-ink-muted]="filters().uo !== u"
+        (click)="store.updateRiskFilter('uo', u)"
+      >
+        {{ auth.formatAreaLabel(u) }}
+      </button>
+    }
+  </div>
+}
+
+<!-- Filter Controls Card -->
+<div
+  class="bg-surface-card border border-border-base rounded-[8px] py-[14px] px-4 shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-wrap gap-[14px] items-end"
+>
+  <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted flex-[2_1_260px]">
+    Buscar
+    <input
+      type="search"
+      [value]="filters().q"
+      placeholder="Proyecto, código o texto"
+      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+      (input)="onSearchInput($event)"
+    />
+  </label>
+
+  <div class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted flex-[3_1_380px]">
+    Nivel
+    <div class="flex gap-[6px] flex-wrap">
+      @for (opt of nivelOptions; track opt.value) {
+        <button
+          type="button"
+          class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer"
+          [class.bg-azul-institucional]="filters().niv === opt.value"
+          [class.border-azul-institucional]="filters().niv === opt.value"
+          [class.text-white]="filters().niv === opt.value"
+          [class.bg-surface-card]="filters().niv !== opt.value"
+          [class.border-border-base]="filters().niv !== opt.value"
+          [class.text-ink-muted]="filters().niv !== opt.value"
+          (click)="store.updateRiskFilter('niv', opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted flex-[1_1_170px]">
+    Estado
+    <select
+      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+      [value]="filters().est"
+      (change)="onEstadoChange($event)"
+    >
+      @for (opt of estadoOptions; track opt.value) {
+        <option [value]="opt.value">{{ opt.label }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+<!-- Matrix / Category active filter notice -->
+@if (store.matrixCellFilter() || store.catFilter()) {
+  <div
+    class="bg-risk-mid-bg border border-risk-mid/40 text-risk-mid-text rounded-[8px] py-[10px] px-[14px] flex items-center justify-between gap-[10px] flex-wrap text-[13px]"
+  >
+    <span>
+      Filtrado desde el inicio:
+      @if (store.matrixCellFilter(); as cell) {
+        {{ cell.p }} × {{ cell.i }}
+      } @else {
+        tipo {{ store.catFilter() }}
+      }
+    </span>
+    <button
+      type="button"
+      class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong"
+      (click)="store.clearMatrixAndCatFilters()"
+    >
+      Quitar filtro
+    </button>
+  </div>
+}
+
+<!-- Risks Table -->
+<section
+  class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+>
+  <div class="text-[12px] text-ink-muted py-3 px-4">
+    {{ filteredRisks().length }} riesgos
+  </div>
+  <app-risk-table [risks]="filteredRisks()" [showProject]="true" />
+</section>

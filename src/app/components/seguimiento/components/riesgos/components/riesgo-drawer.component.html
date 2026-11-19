@@ -1,0 +1,789 @@
+@if (draft(); as r) {
+  @if (project(); as p) {
+    <!-- Drawer Header (.dh) -->
+    <div
+      class="bg-[linear-gradient(110deg,var(--color-azul-institucional-dark)_0%,var(--color-azul-institucional)_72%,var(--color-celeste-agua)_100%)] text-white pt-[18px] px-6 pb-4 flex justify-between gap-[14px] items-start border-b-[3px] border-rojo-nacional"
+    >
+      <div>
+        @if (previousDrawer(); as prev) {
+          <button
+            type="button"
+            class="inline-flex items-center gap-[5px] bg-white/16 border border-white/28 text-white py-[5px] px-[11px] rounded-[7px] text-[12.5px] font-semibold cursor-pointer mb-2 hover:bg-white/26"
+            (click)="goBack()"
+          >
+            <app-icon name="chevron-left" [size]="16" />
+            {{ prev.label }}
+          </button>
+        }
+        <div class="text-[12px] opacity-90">
+          {{ r.id ? 'Riesgo ' + r.id : 'Nuevo riesgo' }} · {{ p.corto }} ·
+          {{ auth.formatAreaLabel(p.uo) }}
+        </div>
+        <h3 class="m-0 mt-1 text-[21px] leading-[1.2] font-bold">
+          {{ r.evento ? 'Podría ocurrir ' + r.evento : 'Registrar un riesgo' }}
+        </h3>
+        <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+          <span
+            class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+            [class]="getRiskBadgeClass(currentLevel())"
+          >
+            {{ currentLevel() }}
+          </span>
+          <span
+            class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-surface-subtle text-ink-muted"
+          >
+            {{ r.estado.toUpperCase() }}
+          </span>
+          @if (r.mitigable === false) {
+            <span
+              class="inline-flex items-center gap-[5px] py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap bg-risk-high-bg text-risk-high-text"
+            >
+              NO MITIGABLE
+            </span>
+          }
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="bg-white/15 border-0 text-white w-9 h-9 rounded-[7px] cursor-pointer text-[20px] flex items-center justify-center hover:bg-white/25"
+        aria-label="Cerrar"
+        (click)="close()"
+      >
+        <app-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    <!-- Step Tabs (.tabs) -->
+    <div
+      class="flex gap-1 pt-[10px] px-6 pb-0 border-b border-border-base bg-surface-subtle flex-wrap"
+      role="tablist"
+    >
+      @for (step of stepTabs(); track step.num) {
+        <button
+          type="button"
+          role="tab"
+          class="bg-transparent border-0 border-b-[3px] py-[10px] px-[14px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px]"
+          [class.text-azul-institucional]="activeStep() === step.num"
+          [class.border-azul-institucional]="activeStep() === step.num"
+          [class.font-bold]="activeStep() === step.num"
+          [class.text-ink-muted]="activeStep() !== step.num"
+          [class.border-transparent]="activeStep() !== step.num"
+          (click)="activeStep.set(step.num)"
+        >
+          <span
+            class="w-[22px] h-[22px] rounded-full inline-grid place-items-center text-[12px] font-bold"
+            [class.bg-azul-institucional]="activeStep() === step.num"
+            [class.text-white]="activeStep() === step.num || step.done"
+            [class.bg-verde-eficiencia]="activeStep() !== step.num && step.done"
+            [class.bg-border-strong]="activeStep() !== step.num && !step.done"
+            [class.text-gris-estructura]="activeStep() !== step.num && !step.done"
+          >
+            @if (step.done) {
+              <app-icon name="check" [size]="13" />
+            } @else {
+              {{ step.num }}
+            }
+          </span>
+          {{ step.label }}
+        </button>
+      }
+    </div>
+
+    <!-- Drawer Body (.db) -->
+    <div class="py-5 px-6 overflow-y-auto flex-1 min-h-0 flex flex-col gap-4">
+      <!-- Author box (.who) -->
+      <div
+        class="bg-azul-soft/60 border border-azul-institucional/25 rounded-[8px] py-[10px] px-3 flex items-center gap-[10px] text-[13px]"
+      >
+        <span
+          class="w-[34px] h-[34px] rounded-full bg-azul-institucional text-white grid place-items-center font-bold text-[13px] shrink-0"
+        >
+          {{ authorInitials() }}
+        </span>
+        <span>
+          @if (r.id) {
+            Registrado por <b>{{ authorUser().nombre }}</b> · {{ authorUser().cargo }},
+            {{ authorUser().sub }} ({{ auth.formatAreaLabel(authorUser().area) }}) ·
+            {{ formatDate(r.creado) }}
+            @if (r.act && r.act !== r.por) {
+              <br />
+              Última actualización: <b>{{ updaterUser().nombre }}</b> ({{
+                auth.formatAreaLabel(updaterUser().area)
+              }}) · {{ formatDate(r.actF) }}
+            }
+          } @else {
+            Lo registra <b>{{ auth.currentUser().nombre }}</b> · {{ auth.currentUser().cargo }},
+            {{ auth.currentUser().sub }} ({{ auth.formatAreaLabel(auth.currentUser().area) }})
+          }
+          @if (readOnly()) {
+            <br />
+            <b>Solo lectura:</b> este proyecto lo registra {{ auth.formatAreaLabel(p.uo) }}.
+          }
+        </span>
+      </div>
+
+      <!-- Workflow Validation / Proposal Banner (.vban) -->
+      @if (!r.id && auth.isUpp()) {
+        <div
+          class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-azul-soft border-azul-institucional/30 text-azul-institucional-dark"
+        >
+          <b>Notificación a {{ auth.formatAreaLabel(p.uo) }}.</b> El riesgo queda como
+          <b>Propuesto</b> hasta que la unidad lo acepte (y defina el plan de acción) o lo
+          rechace con su motivo.
+        </div>
+      } @else if (r.id && r.estado === 'Propuesto') {
+        @if (auth.canEditUnit(p.uo)) {
+          <div
+            class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-mid-bg border-risk-mid/40 text-risk-mid-text"
+          >
+            <b>Riesgo notificado por la UPP</b> ({{ authorUser().nombre }},
+            {{ formatDate(r.creado) }}). Revísalo y decide:
+            <div class="flex gap-2 items-end flex-wrap mt-[10px]">
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-azul-institucional text-white border-0"
+                (click)="acceptProposed()"
+              >
+                Aceptar y completar el plan
+              </button>
+              <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold flex-[1_1_260px]">
+                Motivo si lo rechazas
+                <textarea
+                  rows="2"
+                  [value]="rejectReason()"
+                  placeholder="¿Por qué no aplica a este proyecto?"
+                  class="border border-border-strong rounded-[7px] py-[7px] px-[10px] font-dm-sans text-[13.5px] text-gris-estructura bg-surface-card"
+                  (input)="onRejectReasonInput($event)"
+                ></textarea>
+              </label>
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong"
+                (click)="rejectProposed()"
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-azul-soft border-azul-institucional/30 text-azul-institucional-dark"
+          >
+            <b>Propuesto por la UPP.</b> Esperando que {{ auth.formatAreaLabel(p.uo) }} lo
+            acepte o lo rechace.
+          </div>
+        }
+      } @else if (r.id && r.estado === 'Rechazado' && r.rech) {
+        <div
+          class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-surface-subtle border-border-base text-gris-estructura"
+        >
+          <b>Rechazado</b> por {{ auth.getUserById(r.rech.u).nombre }} el
+          {{ formatDate(r.rech.f) }}. Motivo: {{ r.rech.mot }}
+        </div>
+      } @else if (r.id && r.val === 'Por validar') {
+        @if (auth.canValidateUnit(p.uo)) {
+          <div
+            class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-mid-bg border-risk-mid/40 text-risk-mid-text"
+          >
+            <b>Pendiente de tu validación.</b> Revisa la redacción, la calificación y el plan de
+            acción.
+            <div class="flex gap-2 items-end flex-wrap mt-[10px]">
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-azul-institucional text-white border-0"
+                (click)="validateCurrentRisk()"
+              >
+                Validar
+              </button>
+              <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold flex-[1_1_260px]">
+                Observación si lo devuelves
+                <textarea
+                  rows="2"
+                  [value]="observeComment()"
+                  placeholder="¿Qué debe corregir?"
+                  class="border border-border-strong rounded-[7px] py-[7px] px-[10px] font-dm-sans text-[13.5px] text-gris-estructura bg-surface-card"
+                  (input)="onObserveCommentInput($event)"
+                ></textarea>
+              </label>
+              <button
+                type="button"
+                class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong"
+                (click)="observeCurrentRisk()"
+              >
+                Devolver con observación
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-azul-soft border-azul-institucional/30 text-azul-institucional-dark"
+          >
+            <b>Por validar.</b> Lo revisará {{ coordinatorName() }} (coordinación de
+            {{ auth.formatAreaLabel(p.uo) }}) antes de que se considere oficial.
+          </div>
+        }
+      } @else if (r.id && r.val === 'Observado') {
+        <div
+          class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-high-bg border-rojo-nacional/30 text-risk-high-text"
+        >
+          <b>Observado</b> por {{ validatorUser().nombre }} el {{ formatDate(r.valF) }}:
+          {{ r.obs }}
+          @if (auth.canEditUnit(p.uo)) {
+            <div class="text-[12px] mt-1">Corrígelo y guarda: volverá a validación.</div>
+          }
+        </div>
+      } @else if (r.id && r.val === 'Validado' && r.valBy) {
+        <div
+          class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-low-bg border-verde-eficiencia/35 text-risk-low-text inline-flex items-center gap-1.5"
+        >
+          <app-icon name="check" [size]="16" />
+          <span>
+            Validado por <b>{{ validatorUser().nombre }}</b> el {{ formatDate(r.valF) }}.
+          </span>
+        </div>
+      }
+
+      <!-- STEP 1: IDENTIFICAR -->
+      @if (activeStep() === 1) {
+        @if (!r.id && auth.canEditUnit(p.uo) && suggestions().length > 0) {
+          <div class="bg-azul-soft/60 border border-azul-institucional/25 rounded-[8px] py-3 px-[14px]">
+            <div class="flex justify-between gap-2 flex-wrap">
+              <b class="text-azul-institucional-dark">
+                Riesgos frecuentes en {{ p.etapa.toLowerCase() }} ·
+                {{ (p.zona || 'Sierra').toLowerCase() }}
+              </b>
+              <span class="text-[12px] text-ink-muted">
+                Elige uno para empezar y ajústalo a tu proyecto
+              </span>
+            </div>
+            @for (sug of suggestions().slice(0, 5); track sug.k) {
+              <button
+                type="button"
+                class="flex items-center gap-[10px] w-full text-left bg-surface-card border border-border-base rounded-[7px] py-[9px] px-3 mt-2 cursor-pointer text-[13px] hover:border-azul-institucional hover:bg-azul-soft"
+                (click)="applySuggestion(sug.k)"
+              >
+                <span
+                  class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold bg-surface-subtle text-ink-muted"
+                >
+                  {{ sug.cats[0] }}
+                </span>
+                <span class="flex-1">Podría ocurrir {{ sug.evento }}</span>
+                <span class="text-azul-institucional font-bold text-[12px] whitespace-nowrap">
+                  Usar
+                </span>
+              </button>
+            }
+          </div>
+        }
+
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            Proyecto
+            <app-project-picker
+              [projects]="selectableProjects()"
+              [selectedCui]="r.cui"
+              [disabled]="readOnly()"
+              (cuiChange)="updateField('cui', $event)"
+            />
+          </label>
+
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            ¿A qué hito afecta?
+            <select
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+              [value]="r.hito"
+              [disabled]="readOnly()"
+              (change)="updateFieldFromEvent('hito', $event)"
+            >
+              <option value="">A todo el proyecto</option>
+              @for (h of p.hitos; track h.id) {
+                <option [value]="h.id">
+                  {{ h.t === 'T' ? 'Técnico' : 'Presupuestal' }} · {{ h.h }} ·
+                  {{ formatDate(h.f) }}
+                </option>
+              }
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            Componente
+            <select
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+              [value]="r.comp"
+              [disabled]="readOnly()"
+              (change)="updateFieldFromEvent('comp', $event)"
+            >
+              @for (comp of componentesList; track comp) {
+                <option [value]="comp">{{ comp }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted mt-1">
+          ¿De qué tipo es? (puedes elegir varias)
+          <div class="flex gap-[6px] flex-wrap">
+            @for (cat of store.parametros().cats; track cat) {
+              <button
+                type="button"
+                class="py-[6px] px-3 rounded-full border text-[12.5px] font-semibold cursor-pointer transition-colors"
+                [class.bg-azul-institucional]="r.cats.includes(cat)"
+                [class.text-white]="r.cats.includes(cat)"
+                [class.border-azul-institucional]="r.cats.includes(cat)"
+                [class.bg-surface-card]="!r.cats.includes(cat)"
+                [class.text-ink-muted]="!r.cats.includes(cat)"
+                [class.border-border-base]="!r.cats.includes(cat)"
+                [disabled]="readOnly()"
+                (click)="toggleCategory(cat)"
+              >
+                {{ cat }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            Debido a… (causa)
+            <textarea
+              rows="3"
+              [value]="r.causa"
+              [disabled]="readOnly()"
+              placeholder="la demora en…"
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card min-h-[70px] resize-y"
+              (input)="updateFieldFromEvent('causa', $event)"
+            ></textarea>
+          </label>
+
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            …podría ocurrir… (evento)
+            <textarea
+              rows="3"
+              [value]="r.evento"
+              [disabled]="readOnly()"
+              placeholder="que se paralice…"
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card min-h-[70px] resize-y"
+              (input)="updateFieldFromEvent('evento', $event)"
+            ></textarea>
+          </label>
+
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            …lo que impactaría en… (consecuencia)
+            <textarea
+              rows="3"
+              [value]="r.consec"
+              [disabled]="readOnly()"
+              placeholder="la meta del año…"
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card min-h-[70px] resize-y"
+              (input)="updateFieldFromEvent('consec', $event)"
+            ></textarea>
+          </label>
+        </div>
+
+        <div class="border border-border-base rounded-[8px] p-[14px] bg-surface-subtle">
+          <b class="text-[12px] text-ink-muted">Así se leerá el riesgo:</b>
+          <div class="mt-1 text-[13.5px]">
+            Debido a {{ r.causa || '…' }}, podría ocurrir {{ r.evento || '…' }}, lo que
+            impactaría en {{ r.consec || '…' }}.
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            Origen
+            <select
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+              [value]="r.origen"
+              [disabled]="readOnly()"
+              (change)="updateFieldFromEvent('origen', $event)"
+            >
+              @for (or of origenesList; track or) {
+                <option [value]="or">{{ or }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+            ¿Se puede reducir con acciones?
+            <select
+              class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+              [value]="r.mitigable ? 'true' : 'false'"
+              [disabled]="readOnly()"
+              (change)="onMitigableChange($event)"
+            >
+              <option value="true">Sí, es mitigable</option>
+              <option value="false">No, está fuera de nuestro control</option>
+            </select>
+          </label>
+        </div>
+      }
+
+      <!-- STEP 2: EVALUAR -->
+      @if (activeStep() === 2) {
+        <p class="text-ink-muted m-0">
+          Elige la probabilidad y el impacto, o haz clic directamente en una celda de la matriz.
+        </p>
+        <div class="flex gap-[14px] flex-wrap items-stretch">
+          <div class="flex-[1_1_240px] flex flex-col gap-3">
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              ¿Qué tan probable es?
+              <select
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.p"
+                [disabled]="readOnly()"
+                (change)="updateFieldFromEvent('p', $event)"
+              >
+                @for (pLab of probabilidadLabels; track pLab) {
+                  <option [value]="pLab">
+                    {{ pLab }} ({{ store.parametros().P[pLab] }})
+                  </option>
+                }
+              </select>
+            </label>
+
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              ¿Cuánto afectaría?
+              <select
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.i"
+                [disabled]="readOnly()"
+                (change)="updateFieldFromEvent('i', $event)"
+              >
+                @for (iLab of impactoLabels; track iLab) {
+                  <option [value]="iLab">
+                    {{ iLab }} ({{ store.parametros().I[iLab] }})
+                  </option>
+                }
+              </select>
+            </label>
+
+            <div
+              class="rounded-[12px] p-4 flex flex-col gap-1 items-start"
+              [class]="getResultBoxClass(currentBaseNivel())"
+            >
+              <div class="text-[12px] font-bold">RESULTADO</div>
+              <div class="text-[30px] font-bold">{{ currentLevel() }}</div>
+              <div>Puntaje {{ currentScore().toFixed(3) }}</div>
+              <div class="text-[12px] mt-1">
+                @if (currentLevel() === 'CRÍTICO') {
+                  Se reporta a la Dirección para decidir.
+                } @else if (currentBaseNivel() === 'ALTA') {
+                  Necesita un plan de acción y se reporta a la Dirección.
+                } @else if (currentBaseNivel() === 'MODERADA') {
+                  Necesita un plan de acción con responsable y fecha.
+                } @else {
+                  Se monitorea.
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-[1_1_380px]">
+            <app-risk-matrix
+              [params]="store.parametros()"
+              [selectedCell]="{ p: r.p, i: r.i }"
+              [clickable]="!readOnly()"
+              [compact]="true"
+              (cellSelect)="onPickMatrixCell($event)"
+            />
+          </div>
+        </div>
+      }
+
+      <!-- STEP 3: PLAN DE ACCIÓN -->
+      @if (activeStep() === 3) {
+        @if (isUppNotificationDraft()) {
+          <div class="text-center py-[26px] px-3 text-ink-muted">
+            El plan de acción lo define {{ auth.formatAreaLabel(p.uo) }} cuando acepte el
+            riesgo.<br />
+            Tú puedes guardarlo ya como notificación.
+          </div>
+        } @else {
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              Estrategia
+              <select
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.estrategia"
+                [disabled]="readOnly()"
+                (change)="updateFieldFromEvent('estrategia', $event)"
+              >
+                @for (est of estrategiasList; track est) {
+                  <option [value]="est">{{ est }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              Responsable del riesgo
+              <input
+                type="text"
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.resp"
+                [disabled]="readOnly()"
+                (input)="updateFieldFromEvent('resp', $event)"
+              />
+            </label>
+
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              Fecha límite
+              <input
+                type="date"
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.flim"
+                [disabled]="readOnly()"
+                (change)="updateFieldFromEvent('flim', $event)"
+              />
+            </label>
+
+            <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+              Estado del riesgo
+              <select
+                class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                [value]="r.estado"
+                [disabled]="readOnly()"
+                (change)="updateFieldFromEvent('estado', $event)"
+              >
+                @for (es of estadosRiesgoList; track es) {
+                  <option [value]="es">{{ es }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          @if (r.acc.length === 0) {
+            <div class="text-center py-[26px] px-3 text-ink-muted">
+              Aún no hay acciones.
+              @if (currentBaseNivel() === 'ALTA') {
+                <br />
+                <b class="text-risk-high-text">
+                  Un riesgo de nivel alto necesita al menos una.
+                </b>
+              }
+            </div>
+          } @else {
+            @for (a of r.acc; track $index) {
+              <div
+                class="border rounded-[8px] p-[14px] flex flex-col gap-[10px]"
+                [class.border-rojo-nacional/30]="isActionExpired(a)"
+                [class.bg-risk-high-bg/50]="isActionExpired(a)"
+                [class.border-border-base]="!isActionExpired(a)"
+                [class.bg-surface-card]="!isActionExpired(a)"
+              >
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <label
+                    class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted md:col-span-2"
+                  >
+                    Actividad
+                    <input
+                      type="text"
+                      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                      [value]="a.t"
+                      [disabled]="readOnly()"
+                      placeholder="¿Qué se va a hacer?"
+                      (input)="updateActionFromEvent($index, 't', $event)"
+                    />
+                  </label>
+
+                  <label
+                    class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted"
+                  >
+                    Responsable
+                    <input
+                      type="text"
+                      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                      [value]="a.r"
+                      [disabled]="readOnly()"
+                      (input)="updateActionFromEvent($index, 'r', $event)"
+                    />
+                  </label>
+
+                  <label
+                    class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted"
+                  >
+                    Fecha compromiso
+                    <input
+                      type="date"
+                      class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+                      [value]="a.f"
+                      [disabled]="readOnly()"
+                      (change)="updateActionFromEvent($index, 'f', $event)"
+                    />
+                  </label>
+                </div>
+
+                <div class="flex gap-[14px] items-center flex-wrap">
+                  <label class="text-[12px] text-ink-muted flex items-center gap-2 font-semibold">
+                    Avance
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="10"
+                      class="accent-azul-institucional"
+                      [value]="a.av"
+                      [disabled]="readOnly() || a.est === 'Atendida'"
+                      (change)="onActionProgressChange($index, $event)"
+                    />
+                    <b>{{ a.av }} %</b>
+                  </label>
+
+                  <span
+                    class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold"
+                    [class]="
+                      a.est === 'Atendida'
+                        ? 'bg-risk-low-bg text-risk-low-text'
+                        : a.est === 'En curso'
+                          ? 'bg-azul-soft text-azul-institucional-dark'
+                          : 'bg-surface-subtle text-ink-muted'
+                    "
+                  >
+                    {{ a.est.toUpperCase() }}
+                  </span>
+
+                  @if (isActionExpired(a)) {
+                    <span
+                      class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold bg-risk-high-bg text-risk-high-text"
+                    >
+                      VENCIDA
+                    </span>
+                  }
+
+                  <span class="ml-auto flex gap-2 items-center">
+                    @if (a.ev) {
+                      <span class="text-[12px] inline-flex items-center gap-1">
+                        <app-icon name="check" [size]="15" />
+                        <b>{{ a.ev }}</b>
+                      </span>
+                    } @else if (!readOnly()) {
+                      <label
+                        class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+                      >
+                        Cargar evidencia y marcar atendida
+                        <input
+                          type="file"
+                          class="hidden"
+                          (change)="onActionEvidenceSelected($index, $event)"
+                        />
+                      </label>
+                    }
+                    @if (!readOnly()) {
+                      <button
+                        type="button"
+                        class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-transparent text-azul-institucional border-0 hover:bg-azul-soft/50"
+                        (click)="removeAction($index)"
+                      >
+                        Quitar
+                      </button>
+                    }
+                  </span>
+                </div>
+              </div>
+            }
+          }
+
+          @if (!readOnly()) {
+            <button
+              type="button"
+              class="self-start py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-1.5 bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+              (click)="addAction()"
+            >
+              <app-icon name="plus" [size]="15" /> Agregar acción
+            </button>
+          }
+
+          <p class="text-[12px] text-ink-muted m-0">
+            Una acción queda atendida al cargar su evidencia. El riesgo se cierra aparte, cuando
+            ya no existe.
+          </p>
+        }
+      }
+
+      <!-- STEP 4: HISTORIAL -->
+      @if (activeStep() === 4) {
+        <div class="flex flex-col">
+          @for (item of reversedHistory(); track $index) {
+            <div
+              class="grid grid-cols-[18px_1fr] gap-3 py-[10px] relative before:content-[''] before:w-3 before:h-3 before:rounded-full before:mt-1 before:z-10 after:content-[''] after:absolute after:left-[5px] after:top-[22px] after:-bottom-[6px] after:w-[2px] after:bg-border-base last:after:hidden"
+              [class]="item.dotClass"
+            >
+              <div class="flex justify-between gap-[10px] flex-wrap">
+                <div>
+                  <b>{{ formatDate(item.h.f) }}</b> ·
+                  <span
+                    class="inline-flex items-center py-[2px] px-2 rounded-full text-[11px] font-bold"
+                    [class]="getRiskBadgeClass(item.level)"
+                  >
+                    {{ item.level }}
+                  </span>
+                  <span class="text-[12px] text-ink-muted ml-1">
+                    {{ item.h.p }} × {{ item.h.i }} = {{ item.score.toFixed(3) }}
+                  </span>
+                  <div class="text-[12px] mt-0.5">{{ item.h.n }}</div>
+                </div>
+                <span class="text-[12px] text-ink-muted">
+                  {{ item.userName }} · {{ item.userArea }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Drawer Footer (.df) -->
+    <div
+      class="py-[14px] px-6 border-t border-border-base flex justify-between gap-[10px] bg-surface-subtle flex-wrap items-center"
+    >
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="openProjectDrawer(r.cui)"
+      >
+        Ver proyecto
+      </button>
+
+      <div class="flex gap-2">
+        @if (activeStep() > 1 && activeStep() < 4) {
+          <button
+            type="button"
+            class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+            (click)="activeStep.set(activeStep() - 1)"
+          >
+            ← Anterior
+          </button>
+        }
+        @if (activeStep() < 3) {
+          <button
+            type="button"
+            class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer"
+            [class.bg-azul-institucional]="readOnly()"
+            [class.text-white]="readOnly()"
+            [class.border-0]="readOnly()"
+            [class.bg-surface-card]="!readOnly()"
+            [class.text-gris-estructura]="!readOnly()"
+            [class.border]="!readOnly()"
+            [class.border-border-strong]="!readOnly()"
+            (click)="activeStep.set(activeStep() + 1)"
+          >
+            Siguiente →
+          </button>
+        }
+        @if (canShowSaveButton()) {
+          <button
+            type="button"
+            class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+            (click)="saveRisk()"
+          >
+            {{
+              isUppNotificationDraft()
+                ? 'Notificar a ' + auth.formatAreaLabel(p.uo)
+                : 'Guardar riesgo'
+            }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+}

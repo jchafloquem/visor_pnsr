@@ -1,0 +1,163 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Compromisos
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Compromisos y decisiones
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      Lo que se acordó para destrabar cada problema: quién lo hace, para cuándo y con qué
+      evidencia se cumplió.
+    </p>
+  </div>
+  @if (!auth.isRegistrador()) {
+    <button
+      type="button"
+      class="py-[9px] px-[14px] rounded-[10px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+      (click)="openNewCompromiso()"
+    >
+      <app-icon name="plus" [size]="15" /> Nuevo compromiso
+    </button>
+  }
+</div>
+
+<!-- 4 Status KPI Cards -->
+<div class="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-[14px]">
+  <div
+    class="bg-surface-card border border-border-base rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12px] text-ink-muted font-semibold">Pendientes</span>
+    <span class="text-[30px] font-bold leading-[1.1] text-risk-mid-text">
+      {{ stats().pendientes }}
+    </span>
+  </div>
+  <div
+    class="bg-surface-card border border-border-base rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12px] text-ink-muted font-semibold">En curso</span>
+    <span class="text-[30px] font-bold leading-[1.1] text-azul-institucional">
+      {{ stats().enCurso }}
+    </span>
+  </div>
+  <div
+    class="bg-surface-card border border-border-base rounded-[8px] p-[14px] flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12.5px] text-ink-muted font-semibold">Vencidos</span>
+    <span class="text-[28px] font-bold leading-[1.05] text-rojo-nacional">
+      {{ stats().vencidos }}
+    </span>
+  </div>
+  <div
+    class="bg-surface-card border border-border-base rounded-[8px] p-[14px] flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <span class="text-[12.5px] text-ink-muted font-semibold">Cumplidos</span>
+    <span class="text-[28px] font-bold leading-[1.05] text-risk-low-text">
+      {{ stats().cumplidos }}
+    </span>
+  </div>
+</div>
+
+<!-- Table -->
+<section
+  class="bg-surface-card border border-border-base rounded-[8px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] overflow-hidden"
+>
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13.5px]">
+      <thead>
+        <tr>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Proyecto
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Problema
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Decisión / compromiso
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Responsable
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Fecha
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Estado
+          </th>
+          <th
+            class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+          >
+            Evidencia
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of sortedRows(); track row.c.id) {
+          <tr
+            class="cursor-pointer hover:bg-azul-soft/50 transition-colors"
+            (click)="openCompromiso(row.c.id)"
+          >
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <b>{{ row.projectCorto }}</b>
+              <div class="text-[12px] text-ink-muted">{{ row.c.id }}</div>
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top text-[12px] max-w-[220px]"
+            >
+              {{ row.c.prob }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top max-w-[260px]">
+              <b>{{ row.c.dec }}</b>
+              <div class="text-[12px] text-ink-muted">
+                Acordado el {{ formatDate(row.c.fr) }} · {{ auth.getUserById(row.c.por).nombre }}
+              </div>
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top text-[12px]">
+              {{ row.c.resp }}
+            </td>
+            <td
+              class="py-[11px] px-3 border-b border-border-base align-top whitespace-nowrap"
+              [class.text-risk-high-text]="row.vencido"
+              [class.font-bold]="row.vencido"
+            >
+              {{ formatDate(row.c.f) }}
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top">
+              <span
+                class="inline-flex items-center py-[3px] px-[9px] rounded-full text-[11.5px] font-bold whitespace-nowrap"
+                [class]="row.badgeClass"
+              >
+                {{ row.vencido ? 'VENCIDO' : row.c.est.toUpperCase() }}
+              </span>
+            </td>
+            <td class="py-[11px] px-3 border-b border-border-base align-top text-[12px]">
+              @if (row.c.ev) {
+                <span class="inline-flex items-center gap-1">
+                  <app-icon name="check" [size]="15" class="text-verde-eficiencia" />
+                  {{ row.c.ev }}
+                </span>
+              } @else {
+                —
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

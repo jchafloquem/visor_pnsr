@@ -1,0 +1,295 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Parámetros
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Parámetros de medición y alertas
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    @if (auth.isUpp()) {
+      <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+        La fórmula no cambia: nivel = probabilidad × impacto. Al cambiar un valor, todo el
+        sistema se recalcula al instante.
+      </p>
+    }
+  </div>
+  @if (auth.isUpp()) {
+    <button
+      type="button"
+      class="py-[9px] px-[14px] rounded-[10px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+      (click)="resetOece()"
+    >
+      Volver a los valores OECE
+    </button>
+  }
+</div>
+
+@if (!auth.isUpp()) {
+  <div
+    class="bg-surface-card border border-border-base rounded-[14px] py-[26px] px-3 text-center text-ink-muted"
+  >
+    Esta sección la administra UPP.
+  </div>
+} @else {
+  <!-- Row: Scales & Live Matrix -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-[18px] items-stretch">
+    <section
+      class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+    >
+      <h2 class="m-0 mb-3 text-[16px] font-bold">Escalas y cortes</h2>
+      <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+        <!-- Probabilidad -->
+        <div>
+          <b>Probabilidad</b>
+          @for (pLab of probabilidadLabels; track pLab) {
+            <div class="flex justify-between items-center mt-2 text-[13.5px]">
+              <span>{{ pLab }}</span>
+              <input
+                type="number"
+                step="0.005"
+                min="0"
+                max="1"
+                [value]="params().P[pLab]"
+                [attr.aria-label]="pLab"
+                class="w-24 border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                (change)="onUpdateProb(pLab, $event)"
+              />
+            </div>
+          }
+        </div>
+
+        <!-- Impacto -->
+        <div>
+          <b>Impacto</b>
+          @for (iLab of impactoLabels; track iLab) {
+            <div class="flex justify-between items-center mt-2 text-[13.5px]">
+              <span>{{ iLab }}</span>
+              <input
+                type="number"
+                step="0.005"
+                min="0"
+                max="1"
+                [value]="params().I[iLab]"
+                [attr.aria-label]="iLab"
+                class="w-24 border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                (change)="onUpdateImp(iLab, $event)"
+              />
+            </div>
+          }
+        </div>
+
+        <!-- Niveles -->
+        <div>
+          <b>Niveles</b>
+          <div class="flex justify-between items-center mt-2 text-[13.5px]">
+            <span>Baja hasta</span>
+            <input
+              type="number"
+              step="0.005"
+              min="0"
+              max="1"
+              [value]="params().cBaja"
+              aria-label="Corte baja"
+              class="w-24 border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+              (change)="onUpdateCutoff('cBaja', $event)"
+            />
+          </div>
+          <div class="flex justify-between items-center mt-2 text-[13.5px]">
+            <span>Alta desde</span>
+            <input
+              type="number"
+              step="0.005"
+              min="0"
+              max="1"
+              [value]="params().cAlta"
+              aria-label="Corte alta"
+              class="w-24 border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+              (change)="onUpdateCutoff('cAlta', $event)"
+            />
+          </div>
+          <p class="text-[12px] text-ink-muted mt-3">Crítico = Alta + no mitigable.</p>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+    >
+      <h2 class="m-0 mb-3 text-[16px] font-bold">Así queda la matriz</h2>
+      <app-risk-matrix
+        [risks]="activeRisks()"
+        [params]="params()"
+        [clickable]="false"
+      />
+    </section>
+  </div>
+
+  <!-- Anticipation Days Table -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <h2 class="m-0 mb-3 text-[16px] font-bold">¿Con cuánta anticipación avisar?</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+            >
+              Unidad o proyecto
+            </th>
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+            >
+              Hitos
+            </th>
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+            >
+              Acciones del plan
+            </th>
+            <th
+              class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+            ></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of unidades; track u) {
+            <tr>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <b>{{ auth.formatAreaLabel(u) }}</b>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <select
+                  class="border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                  [value]="params().dias[u].hito"
+                  (change)="onUpdateUoDias(u, 'hito', $event)"
+                >
+                  @for (n of diasOptions; track n) {
+                    <option [value]="n">{{ n }} días antes</option>
+                  }
+                </select>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <select
+                  class="border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                  [value]="params().dias[u].accion"
+                  (change)="onUpdateUoDias(u, 'accion', $event)"
+                >
+                  @for (n of diasOptions; track n) {
+                    <option [value]="n">{{ n }} días antes</option>
+                  }
+                </select>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base"></td>
+            </tr>
+          }
+
+          @for (exc of exceptionRows(); track exc.cui) {
+            <tr class="bg-azul-soft/60">
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <b>{{ exc.corto }}</b>
+                <span class="text-[12px] text-ink-muted"> (excepción)</span>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <select
+                  class="border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                  [value]="exc.hito"
+                  (change)="onUpdateExcDias(exc.cui, 'hito', $event)"
+                >
+                  @for (n of diasOptions; track n) {
+                    <option [value]="n">{{ n }} días antes</option>
+                  }
+                </select>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <select
+                  class="border border-border-strong rounded-[8px] p-[7px] font-dm-sans text-[13.5px] bg-surface-card text-gris-estructura"
+                  [value]="exc.accion"
+                  (change)="onUpdateExcDias(exc.cui, 'accion', $event)"
+                >
+                  @for (n of diasOptions; track n) {
+                    <option [value]="n">{{ n }} días antes</option>
+                  }
+                </select>
+              </td>
+              <td class="py-[11px] px-3 border-b border-border-base">
+                <button
+                  type="button"
+                  class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+                  (click)="removeException(exc.cui)"
+                >
+                  Quitar
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex gap-2 items-end mt-3 flex-wrap">
+      <label
+        class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted max-w-[360px] flex-1"
+      >
+        Excepción para un proyecto
+        <select
+          class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[13.5px] text-gris-estructura bg-surface-card"
+          [value]="effectiveExcCui()"
+          (change)="onExcCuiChange($event)"
+        >
+          @for (p of availableExceptionProjects(); track p.cui) {
+            <option [value]="p.cui">{{ p.corto }} · CUI {{ p.cui }}</option>
+          }
+        </select>
+      </label>
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="addException()"
+      >
+        Agregar
+      </button>
+    </div>
+  </section>
+
+  <!-- Risk Categories -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[8px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+  >
+    <h2 class="m-0 mb-3 text-[16px] font-bold">Categorías de riesgo</h2>
+    <div class="flex gap-[6px] flex-wrap">
+      @for (cat of params().cats; track cat) {
+        <span
+          class="py-[6px] px-3 rounded-full border border-azul-institucional bg-azul-institucional text-white text-[12.5px] font-semibold cursor-default"
+        >
+          {{ cat }}
+        </span>
+      }
+    </div>
+    <div class="flex gap-2 items-end mt-3 flex-wrap">
+      <label
+        class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted max-w-[320px] flex-1"
+      >
+        Nueva categoría
+        <input
+          type="text"
+          [value]="newCategory()"
+          placeholder="p. ej. Predios"
+          class="border border-border-strong rounded-[7px] py-[9px] px-[11px] font-dm-sans text-[14px] text-gris-estructura bg-surface-card"
+          (input)="onNewCategoryInput($event)"
+        />
+      </label>
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="addCategory()"
+      >
+        Agregar
+      </button>
+    </div>
+  </section>
+}

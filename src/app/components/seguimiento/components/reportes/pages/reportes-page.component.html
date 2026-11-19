@@ -1,0 +1,363 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Reportes
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Reportes
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      Se arman solos con lo registrado. Ves los reportes <b>{{ scopeLabel() }}</b>. Cada
+      exportación queda registrada con tu nombre, la fecha, la hora y un código.
+    </p>
+  </div>
+</div>
+
+<!-- 4 Report Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-[18px] items-stretch">
+  <!-- 1. Ayuda memoria -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-col gap-3 min-w-0"
+  >
+    <div class="flex gap-3 items-start">
+      <span
+        class="w-[38px] h-[38px] rounded-[8px] bg-azul-soft text-azul-institucional grid place-items-center shrink-0"
+      >
+        <app-icon name="file-text" [size]="20" />
+      </span>
+      <div>
+        <h2 class="m-0 text-[16px] font-bold">Ayuda memoria</h2>
+        <div class="text-[12px] text-ink-muted mt-[2px]">
+          PDF oficial{{ auth.canExportWordDraft() ? ' · Word como borrador' : '' }}
+        </div>
+      </div>
+    </div>
+    <p class="text-[12px] text-ink-muted m-0 flex-1">
+      Formato estándar de la Dirección, por proyecto. La ejecutiva resume datos, avance y
+      situación; la de riesgos detalla riesgos, acciones y decisiones que se piden a la DE.
+    </p>
+
+    <label class="flex flex-col gap-[5px] text-[12.5px] font-semibold text-ink-muted">
+      Proyecto
+      <app-project-picker
+        [projects]="store.roleScopedProyectos()"
+        [selectedCui]="effectiveSelectedCui()"
+        (cuiChange)="selectedCui.set($event)"
+      />
+    </label>
+
+    <div
+      class="inline-flex border border-border-base rounded-[7px] overflow-hidden bg-surface-card self-start"
+      role="group"
+      aria-label="Tipo de ayuda memoria"
+    >
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="amType() === 'ej'"
+        [class.text-white]="amType() === 'ej'"
+        [class.bg-transparent]="amType() !== 'ej'"
+        [class.text-ink-muted]="amType() !== 'ej'"
+        (click)="amType.set('ej')"
+      >
+        Ejecutiva
+      </button>
+      <button
+        type="button"
+        class="py-[6px] px-[11px] text-[12.5px] font-semibold border-0 cursor-pointer"
+        [class.bg-azul-institucional]="amType() === 'rg'"
+        [class.text-white]="amType() === 'rg'"
+        [class.bg-transparent]="amType() !== 'rg'"
+        [class.text-ink-muted]="amType() !== 'rg'"
+        (click)="amType.set('rg')"
+      >
+        De riesgos
+      </button>
+    </div>
+
+    <div class="flex gap-2 flex-wrap">
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="previewAyudaMemoria()"
+      >
+        <app-icon name="eye" [size]="16" /> Ver en pantalla
+      </button>
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+        (click)="downloadAmPdf()"
+      >
+        <app-icon name="download" [size]="16" /> Descargar PDF
+      </button>
+    </div>
+  </section>
+
+  <!-- 2. Reporte semanal de la cartera -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-col gap-3 min-w-0"
+  >
+    <div class="flex gap-3 items-start">
+      <span
+        class="w-[38px] h-[38px] rounded-[8px] bg-azul-soft text-azul-institucional grid place-items-center shrink-0"
+      >
+        <app-icon name="table" [size]="20" />
+      </span>
+      <div>
+        <h2 class="m-0 text-[16px] font-bold">Reporte semanal de la cartera</h2>
+        <div class="text-[12px] text-ink-muted mt-[2px]">
+          Excel (.xlsx) · {{ store.roleScopedProyectos().length }} proyectos
+        </div>
+      </div>
+    </div>
+    <p class="text-[12px] text-ink-muted m-0 flex-1">
+      Una fila por proyecto: avance, ejecución, estado, nivel de riesgo y alertas.
+    </p>
+    <div class="flex gap-2 flex-wrap">
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="copyExcelTable('cart')"
+      >
+        <app-icon name="copy" [size]="16" /> Copiar para Excel
+      </button>
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+        (click)="downloadExcel('cart')"
+      >
+        <app-icon name="download" [size]="16" /> Descargar Excel
+      </button>
+    </div>
+  </section>
+
+  <!-- 3. Matriz de riesgos -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-col gap-3 min-w-0"
+  >
+    <div class="flex gap-3 items-start">
+      <span
+        class="w-[38px] h-[38px] rounded-[8px] bg-azul-soft text-azul-institucional grid place-items-center shrink-0"
+      >
+        <app-icon name="alert-triangle" [size]="20" />
+      </span>
+      <div>
+        <h2 class="m-0 text-[16px] font-bold">Matriz de riesgos</h2>
+        <div class="text-[12px] text-ink-muted mt-[2px]">
+          Excel (.xlsx) · {{ nonRejectedRisksCount() }} riesgos
+        </div>
+      </div>
+    </div>
+    <p class="text-[12px] text-ink-muted m-0 flex-1">
+      Riesgos, validación y planes de acción con la estructura que pide el Ministerio [formato
+      por confirmar con el Ing. Hidalgo].
+    </p>
+    <div class="flex gap-2 flex-wrap">
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+        (click)="copyExcelTable('risk')"
+      >
+        <app-icon name="copy" [size]="16" /> Copiar para Excel
+      </button>
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+        (click)="downloadExcel('risk')"
+      >
+        <app-icon name="download" [size]="16" /> Descargar Excel
+      </button>
+    </div>
+  </section>
+
+  <!-- 4. Cifras para el MIRA (UPP & Dirección only) -->
+  @if (!auth.isRegistrador()) {
+    <section
+      class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] flex flex-col gap-3 min-w-0"
+    >
+      <div class="flex gap-3 items-start">
+        <span
+          class="w-[38px] h-[38px] rounded-[8px] bg-azul-soft text-azul-institucional grid place-items-center shrink-0"
+        >
+          <app-icon name="bar-chart" [size]="20" />
+        </span>
+        <div>
+          <h2 class="m-0 text-[16px] font-bold">Cifras para el MIRA</h2>
+          <div class="text-[12px] text-ink-muted mt-[2px]">
+            Excel (.xlsx) · solo UPP y Dirección
+          </div>
+        </div>
+      </div>
+      <p class="text-[12px] text-ink-muted m-0 flex-1">
+        Obras en ejecución y paralizadas con avance y devengado, para cuadrar con el tablero del
+        Viceministerio.
+      </p>
+      <div class="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+          (click)="copyExcelTable('mira')"
+        >
+          <app-icon name="copy" [size]="16" /> Copiar para Excel
+        </button>
+        <button
+          type="button"
+          class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer inline-flex items-center gap-[7px] bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+          (click)="downloadExcel('mira')"
+        >
+          <app-icon name="download" [size]="16" /> Descargar Excel
+        </button>
+      </div>
+    </section>
+  }
+</div>
+
+<!-- Verification & Export Audit Log Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-[18px] items-stretch">
+  <!-- Document Verification -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] p-[18px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0"
+  >
+    <div class="flex gap-3 items-start">
+      <span
+        class="w-[38px] h-[38px] rounded-[8px] bg-azul-soft text-azul-institucional grid place-items-center shrink-0"
+      >
+        <app-icon name="shield-check" [size]="20" />
+      </span>
+      <div>
+        <h2 class="m-0 text-[16px] font-bold">Verificar un documento</h2>
+        <div class="text-[12px] text-ink-muted mt-[2px]">
+          Para saber si un PDF o Excel que te enviaron lo emitió el sistema
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2 flex-wrap mt-3">
+      <input
+        type="text"
+        class="flex-[1_1_200px] border border-border-strong rounded-[7px] py-[9px] px-[11px] font-mono text-[13.5px] uppercase text-gris-estructura bg-surface-card"
+        [value]="verifyCode()"
+        placeholder="PNSR-AME-1A2B3C4D"
+        aria-label="Código de verificación"
+        (input)="onVerifyInput($event)"
+      />
+      <button
+        type="button"
+        class="py-[9px] px-[14px] rounded-[7px] font-semibold text-[13.5px] cursor-pointer bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+        (click)="verifyDocument()"
+      >
+        Verificar
+      </button>
+    </div>
+
+    @if (verifyResult() === false) {
+      <div
+        class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-high-bg border-rojo-nacional/30 text-risk-high-text mt-3"
+      >
+        <b>No encontrado.</b> Este código no fue emitido por el sistema: no lo tomes como
+        oficial.
+      </div>
+    } @else if (verifyResult(); as vr) {
+      <div
+        class="rounded-[8px] py-3 px-[14px] text-[13px] border bg-risk-low-bg border-verde-eficiencia/35 text-risk-low-text mt-3"
+      >
+        <span class="inline-flex items-center gap-1 font-bold">
+          <app-icon name="check" [size]="15" /> Documento válido.
+        </span>
+        {{ getKindLabel(vr.kind) }} · {{ vr.label }} · {{ vr.fmt }}<br />
+        Generado por <b>{{ auth.getUserById(vr.u).nombre }}</b> ({{
+          auth.formatAreaLabel(auth.getUserById(vr.u).area)
+        }}) el {{ vr.fecha }} a las {{ vr.hora }}.
+        <div class="text-[12px] mt-1">
+          Si el contenido que tienes no coincide con lo que muestra el sistema, el archivo fue
+          modificado.
+        </div>
+      </div>
+    }
+
+    <p class="text-[12px] text-ink-muted mt-3 mb-0">
+      En el prototipo la verificación usa la bitácora de este navegador. En el sistema estará en
+      el servidor y el PDF podrá llevar firma digital.
+    </p>
+  </section>
+
+  <!-- Export Audit Log -->
+  <section
+    class="bg-surface-card border border-border-base rounded-[14px] shadow-[0_1px_2px_rgba(15,35,60,0.05)] min-w-0 overflow-hidden"
+  >
+    <div class="flex items-center justify-between gap-[10px] pt-4 px-[18px] pb-2">
+      <h2 class="m-0 text-[16px] font-bold">Bitácora de exportaciones</h2>
+      <span class="text-[12px] text-ink-muted">
+        {{ auth.isUpp() || auth.isDirector() ? 'Todas las áreas' : 'Solo las tuyas' }}
+      </span>
+    </div>
+
+    @if (visibleTraces().length === 0) {
+      <div class="text-center py-[26px] px-3 text-ink-muted">Aún no hay exportaciones.</div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px]">
+          <thead>
+            <tr>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+              >
+                Fecha y hora
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+              >
+                Documento
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+              >
+                Formato
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+              >
+                Generado por
+              </th>
+              <th
+                class="text-left py-[10px] px-3 border-b border-border-base text-[12px] text-ink-muted font-bold bg-surface-subtle"
+              >
+                Código
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (x of visibleTraces().slice(0, 8); track x.cod) {
+              <tr>
+                <td
+                  class="py-[11px] px-3 border-b border-border-base whitespace-nowrap align-top"
+                >
+                  {{ x.fecha }} {{ x.hora }}
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-top">
+                  {{ getKindLabel(x.kind) }}
+                  <div class="text-[12px] text-ink-muted">{{ x.label }}</div>
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-top">
+                  {{ x.fmt }}
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-top">
+                  {{ auth.getUserById(x.u).nombre }}
+                  <div class="text-[12px] text-ink-muted">
+                    {{ auth.formatAreaLabel(auth.getUserById(x.u).area) }}
+                  </div>
+                </td>
+                <td class="py-[11px] px-3 border-b border-border-base align-top">
+                  <code class="text-[12px]">{{ x.cod }}</code>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

@@ -1,0 +1,124 @@
+<!-- Page Header -->
+<div class="flex flex-wrap items-end justify-between gap-[14px]">
+  <div>
+    <div class="text-[12px] text-ink-muted mb-1">
+      <a routerLink="/seguimiento/dashboard" class="text-azul-institucional font-semibold hover:underline">Inicio</a>
+      / Alertas
+    </div>
+    <h1 class="m-0 text-[26px] leading-[1.15] font-bold tracking-[-0.02em] text-rojo-nacional">
+      Alertas
+    </h1>
+    <div class="w-[56px] h-[4px] rounded-[2px] bg-azul-institucional my-2"></div>
+    <p class="m-0 text-[13.5px] text-ink-muted max-w-[780px]">
+      El sistema revisa hitos, riesgos y acciones cada día y te avisa con anticipación. Desde
+      cada alerta puedes actuar.
+    </p>
+  </div>
+</div>
+
+<!-- 3 Severity Filter KPI Cards -->
+<div class="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-[14px]">
+  @for (card of severityCards(); track card.sev) {
+    <button
+      type="button"
+      class="bg-surface-card border rounded-[14px] p-4 flex flex-col gap-1 shadow-[0_1px_2px_rgba(15,35,60,0.05)] cursor-pointer text-left transition-all hover:border-azul-institucional hover:shadow-[0_8px_20px_rgba(11,106,194,0.12)] hover:-translate-y-[2px]"
+      [class.border-border-base]="store.alertSevFilter() !== card.sev"
+      [class.ring-2]="store.alertSevFilter() === card.sev"
+      [class.border-rojo-nacional]="store.alertSevFilter() === card.sev && card.sev === 'Crítica'"
+      [class.ring-rojo-nacional]="store.alertSevFilter() === card.sev && card.sev === 'Crítica'"
+      [class.border-risk-mid]="store.alertSevFilter() === card.sev && card.sev === 'Alta'"
+      [class.ring-risk-mid]="store.alertSevFilter() === card.sev && card.sev === 'Alta'"
+      [class.border-azul-institucional]="store.alertSevFilter() === card.sev && card.sev === 'Media'"
+      [class.ring-azul-institucional]="store.alertSevFilter() === card.sev && card.sev === 'Media'"
+      (click)="toggleSevFilter(card.sev)"
+    >
+      <span class="text-[12px] text-ink-muted font-semibold">{{ card.label }}</span>
+      <span class="text-[30px] font-bold leading-[1.1]" [class]="card.valueClass">
+        {{ card.count }}
+      </span>
+      <span class="text-[12px] text-ink-muted">{{ card.sub }}</span>
+      <span class="text-[12px] text-azul-institucional font-bold mt-auto pt-1.5">
+        {{
+          store.alertSevFilter() === card.sev ? 'Mostrando · clic para quitar' : 'Filtrar →'
+        }}
+      </span>
+    </button>
+  }
+</div>
+
+<!-- Alert List -->
+<section
+  class="bg-surface-card border border-border-base rounded-[14px] py-2 px-3 shadow-[0_1px_2px_rgba(15,35,60,0.05)]"
+>
+  @if (filteredAlertas().length === 0) {
+    <div class="text-center py-[26px] px-3 text-ink-muted">Sin alertas.</div>
+  } @else {
+    @for (a of filteredAlertas(); track $index) {
+      <div
+        class="flex items-center gap-3 py-[11px] px-[10px] border-b border-border-base last:border-b-0 flex-wrap sm:flex-nowrap"
+      >
+        <span
+          class="w-[10px] h-[10px] rounded-full shrink-0"
+          [class]="getSevDotClass(a.sev)"
+        ></span>
+        <span class="flex-1 min-w-0">
+          <span class="text-[12px] text-ink-muted">
+            {{ a.rn }} ·
+            <button
+              type="button"
+              class="bg-transparent border-0 p-0 font-bold text-azul-institucional cursor-pointer hover:underline"
+              (click)="openProject(a.p.cui)"
+            >
+              {{ a.p.corto }}
+            </button>
+            · {{ auth.formatAreaLabel(a.p.uo) }}
+          </span>
+          <div class="text-[13.5px]">
+            <b>{{ a.txt }}</b>
+          </div>
+        </span>
+
+        <span
+          class="text-[12px] whitespace-nowrap font-bold"
+          [class]="getSevTextClass(a.sev)"
+        >
+          {{ a.sit }}
+        </span>
+
+        @if (a.rk) {
+          <button
+            type="button"
+            class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+            (click)="openRisk(a.rk.id)"
+          >
+            Ver riesgo
+          </button>
+        } @else if (auth.canEditUnit(a.p.uo) && a.hid !== undefined) {
+          <button
+            type="button"
+            class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+            (click)="openNewRisk(a)"
+          >
+            Registrar riesgo
+          </button>
+        } @else if (a.k === 'A08' && auth.canEditUnit(a.p.uo)) {
+          <button
+            type="button"
+            class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-azul-institucional text-white border-0 hover:bg-azul-institucional-dark"
+            (click)="openProject(a.p.cui)"
+          >
+            Revisar
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="py-[6px] px-[10px] text-[12px] rounded-[7px] font-semibold cursor-pointer bg-surface-card text-gris-estructura border border-border-strong hover:bg-azul-soft/50"
+            (click)="openProject(a.p.cui)"
+          >
+            Ver proyecto
+          </button>
+        }
+      </div>
+    }
+  }
+</section>
