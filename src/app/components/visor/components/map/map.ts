@@ -91,11 +91,8 @@ throw new Error('Method not implemented.');
     // El effect debe crearse en el constructor para tener un contexto de inyección.
     effect(() => {
       if (this.mapService.isReady()) {
-        setTimeout(() => {
-          this.funcionesComponent.goHome();
-          // Eliminamos la capa del INEI después de la animación inicial
-          this.mapService.removeLayerById('ig_departamento');
-        }, 2000); // 5 segundos
+        this.funcionesComponent.goHome();
+        setTimeout(() => this.mapService.removeLayerById('ig_departamento'), 2000);
       }
     });
 

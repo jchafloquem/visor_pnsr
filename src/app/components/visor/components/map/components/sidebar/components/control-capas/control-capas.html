@@ -1,60 +1,64 @@
-<div class="space-y-4">
-  <p class="text-sm text-gray-600">
-    Activa o desactiva las capas mostradas en el mapa.
-  </p>
-
-  @if (standaloneLayers().length > 0) {
-    <section class="overflow-hidden rounded-lg border border-gray-200">
-      <h3 class="bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600">
-        LÍMITES DEL PERÚ
-      </h3>
-      <div class="divide-y divide-gray-100">
-        @for (layer of standaloneLayers(); track layer.id) {
-          <label class="flex cursor-pointer items-center gap-3 px-3 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50">
-            <input
-              type="checkbox"
-              class="h-4 w-4 accent-primary"
-              [checked]="layer.visible"
-              [attr.aria-label]="layer.label"
-              (change)="onLayerVisibilityChange(layer.id, $event, 'limitesPeru')"
-            />
-            <span>{{ layer.label }}</span>
-          </label>
-        }
-      </div>
-    </section>
-  }
-
-  @if (groups().length === 0) {
-    <p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
-      No hay capas de viviendas rurales disponibles.
-    </p>
-  }
-
-  @for (group of groups(); track group.id) {
-    <section class="overflow-hidden rounded-lg border border-gray-200">
-      <h3 class="bg-gray-50 px-3 py-2 text-xs font-semibold tracking-wide text-gray-600">
-        {{ group.title }}
-      </h3>
-      <div class="divide-y divide-gray-100">
-        @for (layer of group.layers; track layer.id) {
-          <label
-            class="flex cursor-pointer items-center gap-3 px-3 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-50"
-            [class.cursor-not-allowed]="layer.disabled"
-            [class.opacity-50]="layer.disabled"
-          >
-            <input
-              type="checkbox"
-              class="h-4 w-4 accent-primary"
-              [checked]="layer.visible"
-              [disabled]="layer.disabled"
-              [attr.aria-label]="layer.label"
-              (change)="onLayerVisibilityChange(layer.id, $event)"
-            />
-            <span>{{ layer.label }}</span>
-          </label>
-        }
-      </div>
-    </section>
+<div class="h-full p-2">
+  @if (layerGroups().length > 0) {
+    <div class="space-y-2">
+      @for (layerGroup of layerGroups(); track layerGroup.id) {
+        <details
+          name="layer-groups"
+          class="!mx-0 !my-2 !rounded-xl !border !border-slate-100 !px-4 !shadow-sm"
+          [open]="layerGroup.expanded"
+        >
+          <summary class="flex cursor-pointer items-center justify-between gap-2 py-3">
+            <span class="!text-m !font-bold">{{ layerGroup.title }}</span>
+            <span
+              class="grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 text-sm font-bold text-secondary"
+            >
+              {{ layerGroup.layers.length }}
+            </span>
+          </summary>
+          <div class="flex flex-col divide-y divide-slate-100 !px-0 !pb-2">
+            @for (layer of layerGroup.layers; track layer.id) {
+              <div class="flex flex-col gap-1 py-2 transition-colors hover:text-primary">
+                <label
+                  class="flex cursor-pointer items-center gap-2"
+                  [class.cursor-not-allowed]="layer.disabled"
+                  [class.opacity-50]="layer.disabled"
+                >
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 accent-primary"
+                    [checked]="layer.visible"
+                    [disabled]="layer.disabled"
+                    [attr.aria-label]="layer.label"
+                    (change)="onLayerVisibilityChange(layerGroup.sectionId, layer.id, $event)"
+                  />
+                  <span class="text-m text-textPrimary">{{ layer.label }}</span>
+                </label>
+                <div class="flex items-center gap-2 pl-8">
+                  <span class="w-10 text-right text-xs text-textDefault">
+                    {{ getOpacityPercent(layer) | number: '1.0-0' }}%
+                  </span>
+                  <input
+                    type="range"
+                    [min]="0"
+                    [max]="100"
+                    [value]="getOpacityPercent(layer)"
+                    [disabled]="layer.disabled"
+                    [attr.aria-label]="'Opacidad de ' + layer.label"
+                    (input)="setLayerOpacityFromEvent(layerGroup.sectionId, layer.id, $event)"
+                    class="flex-1 accent-primary"
+                    title="Opacidad de la capa"
+                  />
+                </div>
+              </div>
+            }
+          </div>
+        </details>
+      }
+    </div>
+  } @else {
+    <div class="mt-8 text-center">
+      <p class="mt-1 text-m font-semibold text-slate-600">No hay capas disponibles</p>
+      <p class="text-sm text-slate-400">Las capas se cargarán automáticamente al iniciar el mapa.</p>
+    </div>
   }
 </div>

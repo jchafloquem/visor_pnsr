@@ -1,6 +1,4 @@
 import { BaseLayer } from '../modules/openlayers.module';
-import ImageLayer from 'ol/layer/Image';
-import ImageWMS from 'ol/source/ImageWMS';
 
 /** Estructura básica de una geometría GeoJSON, incluyendo GeometryCollection */
 export interface GeoJSONGeometry {
@@ -9,20 +7,14 @@ export interface GeoJSONGeometry {
   geometries?: GeoJSONGeometry[]; // Array de geometrías para GeometryCollection
 }
 
-/** Estructura de un Feature devuelto por GeoServer */
+/** Estructura de un Feature GeoJSON */
 export interface GeoJSONFeature {
   type: 'Feature';
   id?: string;
-  /** Sistema de referencia declarado por GeoServer (p. ej. en respuestas GetFeatureInfo) */
+  /** Sistema de referencia declarado por el servicio de origen. */
   crs?: { type: string; properties: { name: string } };
   geometry: GeoJSONGeometry;
   properties: Record<string, any>;
-}
-
-export interface WfsResponse {
-  features: GeoJSONFeature[];
-  totalFeatures: number;
-  type: 'FeatureCollection';
 }
 
 export interface LayerLegendEntry {
@@ -30,7 +22,6 @@ export interface LayerLegendEntry {
   url: string;
 }
 
-/** Configuración para la inicialización de capas WMS */
 export interface LayerItem {
   showInLegend: boolean;
   /** Si es true, la capa solo se muestra en el panel cuando el usuario está autenticado. */
@@ -38,7 +29,7 @@ export interface LayerItem {
   /**
    * Si es true, la capa se muestra "bloqueada" en el panel: checkbox atenuado,
    * candado y sin posibilidad de activarla. Se usa para capas en desarrollo
-   * (sin servicio WMS asociado).
+   * (sin servicio cartográfico asociado).
    */
   disabled?: boolean;
   type: 'layer';
@@ -49,44 +40,14 @@ export interface LayerItem {
   olLayer?: BaseLayer;
   legendUrl?: string; // Añadimos la propiedad legendUrl
   /**
-   * Leyendas de la capa: una imagen por cada capa WMS que compone el servicio
-   * (ver `WmsLayerConfig.legendLayerName`). Se generan al cargar la capa en el
-   * mapa y el panel de leyenda muestra todas; `legendUrl` conserva la primera
-   * por compatibilidad.
+   * Leyendas de la capa: el panel puede mostrar varias entradas bajo un mismo
+   * título; `legendUrl` conserva la primera por compatibilidad.
    */
   legendUrls?: string[];
   /** Simbología dinámica devuelta por servicios que no publican URLs de imagen. */
   legendEntries?: LayerLegendEntry[];
   /** Color del símbolo cuando la capa vectorial no tiene una leyenda como imagen. */
   legendColor?: string;
-}
-export interface WmsLayerConfig {
-  id: string;
-  /**
-   * Capa del servicio WMS que se va a publicar.
-   *
-   * Admite varias capas separadas por comas (`WEB_GIS:capa_a,WEB_GIS:capa_b`)
-   * para declarar una capa COMPUESTA: se dibuja con una sola petición GetMap
-   * (en el orden indicado, la primera queda debajo) y el panel de capas la
-   * controla con un único interruptor, opacidad y leyenda.
-   */
-  layerName: string;
-  /**
-   * Capa (o capas separadas por comas) de las que se genera la leyenda
-   * (`GetLegendGraphic`). Si se indican varias, se pide UNA imagen de leyenda por
-   * capa —así no se depende del soporte de leyendas multi-capa del GeoServer— y el
-   * panel de leyenda las muestra todas bajo el mismo título. Solo hace falta
-   * cuando `layerName` es una capa compuesta; por defecto se usa `layerName`.
-   */
-  legendLayerName?: string;
-  zIndex: number;
-  title: string;
-  url?: string;
-  version?: string;
-  tiled?: boolean;
-  minZoom?: number;
-  maxZoom?: number;
-  className?: string;
 }
 export interface SubSection {
   type: 'subsection';
@@ -250,22 +211,7 @@ export interface CodPredialResultado {
   numeroint: string;
 }
 
-/** Sugerencia de vía con su código, para el flujo de numeraciones. */
-export interface ViaSugerencia {
-  etiqueta: string;
-  codVia: string;
-}
-
-/**
- * Vía devuelta por el API `listar-vias` del Geovisor municipal, que es la
- * fuente de verdad de los nombres de vías (el WFS `vw_tg_via` solo trae las
- * vías que tienen geometría dibujada, y no todas las del distrito).
- *
- * - `codviaequ` (ej. 'L271170') es el código de vía con el que se emparejan los
- *   segmentos del WFS `vw_tg_via` (`codi_via`) para poder resaltarla.
- * - `txtnomviA_ANT` conserva el nombre anterior de la vía, por lo que el API
- *   también encuentra vías con su denominación antigua.
- */
+/** Vía devuelta por el API `listar-vias` del Geovisor municipal. */
 export interface ViaApi {
   codvia: string;
   txtnomvia: string;
@@ -295,53 +241,4 @@ export interface LoteDatosHover {
   lotecodcatant: string;
   codlotecatastral: string;
   txtdirecprincipal: string;
-}
-
-/**
- * Ventana flotante con la información de un lote.
- * Varias pueden estar abiertas simultáneamente sin bloquear el mapa.
- */
-export interface LoteInfoWindow {
-  /** Código catastral del lote (identificador único de la ventana) */
-  id: string;
-  /** URL de la ficha del lote */
-  url: string;
-  /** Posición horizontal (px) respecto al viewport */
-  x: number;
-  /** Posición vertical (px) respecto al viewport */
-  y: number;
-  /** Título de la ventana. Si no se define, usa "Información del Lote". */
-  title?: string;
-  /** Ancho de la ventana en px. Por defecto 700. */
-  width?: number;
-  /** Alto de la ventana en px. Por defecto 520. */
-  heightPx?: number;
-  /** Prioridad (z-index) de la ventana. Por defecto 1040. */
-  zIndex?: number;
-}
-
-/**
- * Lámina PDF asociada a una vía de la capa "Sección de Vías Normativas
- * Metropolitanas" (ORD. N° 2343-MML), que se muestra en un modal al hacer clic
- * sobre su eje.
- */
-export interface LaminaSeccionVialMetro {
-  /** Valor del campo llave `refname` del eje consultado (p. ej. `E16`). */
-  refname: string;
-  /** Tipo de vía informado por la capa (p. ej. `CORTES EXPRESAS`). */
-  tipo: string;
-  /** Nombre del PDF en el servidor (p. ej. `E-16.pdf`). */
-  archivo: string;
-  /** URL de la lámina para el visor; `null` cuando la lámina no está publicada. */
-  url: string | null;
-}
-
-/** Configuración de una capa consultable al hacer clic sobre el mapa. */
-export interface ClickableLayerConfig {
-  /** Identificador de la capa en el panel de capas. */
-  layerId: string;
-  /** Obtiene la capa de OpenLayers asociada. */
-  getLayer: () => ImageLayer<ImageWMS> | undefined;
-  /** Lógica a ejecutar cuando el clic acierta sobre un feature de esta capa. */
-  handler: (feature: GeoJSONFeature) => void;
 }

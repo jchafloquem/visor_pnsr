@@ -9,13 +9,11 @@ import {
   SAN_ISIDRO_EXTENT,
   SAN_ISIDRO_ZOOM,
   TERMS_ZOOM_DISTRICTO,
-  TRAMA_WMS_URL,
   ZINDEX_GEOMETRIAS_USUARIO,
   ZOOM_LEVEL_LOCATION,
   ZOOM_MAX_PARQUE,
   ZOOM_MAX_PARQUE_CENTROIDE,
 } from './mapas.config';
-import { environment } from '../../environments/environment';
 
 /**
  * `mapas.config.ts` concentra los parámetros de la vista del visor (centro,
@@ -47,10 +45,6 @@ describe('mapas.config · plantillas de teselas', () => {
       expect(url).toContain('{x}');
       expect(url).toContain('{y}');
     }
-  });
-
-  it('usa el servicio WMS del ambiente activo para la trama catastral', () => {
-    expect(TRAMA_WMS_URL).toBe(environment.geoserver.wmsUrl);
   });
 });
 

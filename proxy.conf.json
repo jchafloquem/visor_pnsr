@@ -1,19 +1,4 @@
 {
-  "/geoserver": {
-    "target": "http://localhost:8080",
-    "secure": false,
-    "changeOrigin": true,
-    "logLevel": "debug"
-  },
-  "/geoserver-orto/**": {
-    "target": "https://192.168.41.147:8080",
-    "secure": false,
-    "changeOrigin": true,
-    "pathRewrite": {
-      "^/geoserver-orto": "/geoserver"
-    },
-    "logLevel": "debug"
-  },
   "/DataGIS_WGS84": {
     "target": "http://192.168.41.160",
     "secure": false,

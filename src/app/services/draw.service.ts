@@ -26,7 +26,7 @@ export class DrawMeasureService {
 
   private readonly layer = new VectorLayer({
     source: this.source,
-    // Se apila por encima de las ortofotos (zIndex 5) y de las capas WMS
+    // Se apila por encima de las ortofotos (zIndex 5) y las capas temáticas
     // (0–15): las geometrías trazadas con las herramientas de dibujo y medición
     // deben verse siempre sobre la imagen aérea activa.
     zIndex: ZINDEX_GEOMETRIAS_USUARIO,

@@ -42,12 +42,6 @@ export class Funciones {
   public readonly herramientasActivas = signal(false);
   /** Hay una herramienta de dibujo activa (habilita el botón "Finalizar trazo"). */
   public readonly dibujando = this.drawMeasureService.isDrawing;
-  /** Estado y resultado de la herramienta de medición de área por lote. */
-  public readonly areaLoteActiva = this.mapService.areaLoteActivo;
-  public readonly areaLoteCargando = this.mapService.areaLoteCargando;
-  public readonly areaLoteResultado = this.mapService.areaLoteResultado;
-  public readonly areaLoteError = this.mapService.areaLoteError;
-
   private userMarkerOverlay?: Overlay;
   private locationPopupOverlay?: Overlay;
   /** Indica que hay una petición de ubicación en curso (bloquea el botón). */
@@ -261,41 +255,26 @@ export class Funciones {
     this.herramientasActivas.update((v) => !v);
     if (!this.herramientasActivas()) {
       this.drawMeasureService.desactivarHerramienta();
-      this.mapService.cancelarMedicionAreaLote();
     }
   }
 
   medirDistancia(): void {
-    this.mapService.cancelarMedicionAreaLote();
     this.drawMeasureService.medirDistancia();
   }
 
   medirArea(): void {
-    this.mapService.cancelarMedicionAreaLote();
     this.drawMeasureService.medirArea();
   }
 
-  toggleMedicionAreaLote(): void {
-    if (this.areaLoteActiva()) {
-      this.mapService.cancelarMedicionAreaLote();
-      return;
-    }
-    this.drawMeasureService.desactivarHerramienta();
-    this.mapService.activarMedicionAreaLote();
-  }
-
   dibujarPunto(): void {
-    this.mapService.cancelarMedicionAreaLote();
     this.drawMeasureService.dibujarPunto();
   }
 
   dibujarLinea(): void {
-    this.mapService.cancelarMedicionAreaLote();
     this.drawMeasureService.dibujarLinea();
   }
 
   dibujarPoligono(): void {
-    this.mapService.cancelarMedicionAreaLote();
     this.drawMeasureService.dibujarPoligono();
   }
 
@@ -309,6 +288,5 @@ export class Funciones {
 
   limpiarDibujo(): void {
     this.drawMeasureService.limpiar();
-    this.mapService.limpiarAreasLotes();
   }
 }

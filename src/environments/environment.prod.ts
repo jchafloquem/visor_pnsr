@@ -9,9 +9,4 @@ export const environment = crearEnvironment({
   production: true,
   ambiente: 'Producción',
   portalUrl: 'https://munisanisidro.gob.pe',
-  // GeoServer de PRODUCCIÓN (público, servido por el dominio del municipio).
-  // Desarrollo y QA usan el servidor local por defecto
-  // ('http://localhost:8080/geoserver', definido en environment.model.ts).
-  // El build de producción usa esta URL pública.
-  geoserverUrl: 'https://geomapas.munisanisidro.gob.pe/geoserver'
 });

@@ -22,8 +22,6 @@ export interface ParametrosEnvironment {
    * registra con otro código.
    */
   codigoSistema?: string;
-  /** URL de GeoServer (por defecto, servidor local de desarrollo) */
-  geoserverUrl?: string;
   ortofotoServerUrl?: string;
   dataGisServerUrl?: string;
   tusneServerUrl?: string;
@@ -66,31 +64,6 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
     // Se abre en una pestaña nueva cuando el usuario confirma el cierre de sesión
     // o sale del geovisor.
     encuestaSalidaUrl: 'https://forms.gle/zadpPzpAR6h8Ud2P7',
-
-    // --- CONFIGURACIÓN DE GEOSERVER ---
-    geoserver: {
-      // Servidor local para desarrollo y QA; producción define su URL pública.
-      serverUrl: cfg.geoserverUrl ?? 'http://localhost:8080/geoserver',
-      // La URL para el servicio de impresión es la misma que la de GeoServer
-      get serverImpresionLocal(): string { return this.serverUrl; },
-      // Workspace compartido para todas las capas y consultas OGC
-      workspace: 'WEB_GIS',
-      get workspacePrefix(): string {
-        return `${this.workspace}:`;
-      },
-      get baseUrl(): string {
-        return `${this.serverUrl}/${this.workspace}`;
-      },
-      get wmsUrl(): string {
-        return `${this.baseUrl}/wms`;
-      },
-      get owsUrl(): string {
-        return `${this.baseUrl}/ows`;
-      },
-      formatWMS: 'image/png',
-      srs: 'EPSG:32718', // Sistema de referencia UTM 18S detectado en el servicio
-      transparent: true
-    },
 
     // --- CONFIGURACIÓN DEL SERVIDOR DE ORTOFOTOS ---
     ortofotoServerUrl: cfg.ortofotoServerUrl ?? 'http://192.168.40.58:8082',
@@ -155,13 +128,6 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
       get areasVerdesUrlBase(): string {
         return `${this.tusneServerUrl}/DataGIS_WGS84/19_AREAS%20VERDES%20DE%20SAN%20ISIDRO`;
       },
-      // --- Láminas PDF de Sección Vial Normativa Metropolitana (ORD. N° 2343) ---
-      // Una lámina por vía normativa; el archivo se resuelve desde el campo
-      // `refname` de la capa `tg_seccion_vial_normativa_metropolitana` (ver
-      // `laminasSeccionVialMetro.config.ts`).
-      get seccionVialMetroLaminasUrlBase(): string {
-        return `${this.tusneServerUrl}/DataGIS_WGS84/23_LAMINAS_SECCION_VIAL_MET_ORD_2343`;
-      }
     }
   };
 }

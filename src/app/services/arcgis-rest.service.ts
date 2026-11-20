@@ -17,6 +17,7 @@ export const VIVIENDAS_RURALES_FEATURE_SERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/OGEI/Viviendas_Rurales/FeatureServer';
 export const PERU_LIMITS_MAPSERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/Limites_Peru/MapServer';
+export const VIVIENDAS_RURALES_COARSE_RESOLUTION = 1200;
 
 export interface ArcGISRestError {
   code: number;
@@ -192,7 +193,7 @@ export class ArcGISRestService {
             spatialRel: 'esriSpatialRelIntersects',
           });
           let responses: ArcGISFeatureSet<Record<string, unknown>>[];
-          if (resolution >= 1200) {
+          if (resolution >= VIVIENDAS_RURALES_COARSE_RESOLUTION) {
             const quadrants = this.splitExtentIntoQuadrants(extent);
             responses = await Promise.all(quadrants.map(queryExtent =>
               firstValueFrom(this.queryViviendasRurales<Record<string, unknown>>(

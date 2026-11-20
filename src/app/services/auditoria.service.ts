@@ -53,8 +53,6 @@ export const AUDITORIA_OPCIONES = {
   TERMINOS_MOSTRADOS: 'TERMINOS_MOSTRADOS',
   /** El visitante rechazó los términos y salió hacia el portal. */
   TERMINOS_RECHAZADOS: 'TERMINOS_RECHAZADOS',
-  /** Petición a un servicio cartográfico de GeoServer (WMS / WFS / WMTS). */
-  CONSULTA_GEOSERVER: 'CONSULTA_GEOSERVER',
 } as const;
 
 /** Cualquiera de las acciones del catálogo `AUDITORIA_OPCIONES`. */

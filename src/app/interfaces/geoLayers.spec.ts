@@ -20,7 +20,7 @@ describe('geoLayers · utilidades de simbología', () => {
     visible: false,
     opacity: 1,
     showInLegend: true,
-    legendUrl: 'http://servidor/GetLegendGraphic?LAYER=poligono',
+    legendUrl: 'https://maps.example.test/legend/poligono.png',
     ...cambios,
   });
 
@@ -60,7 +60,7 @@ describe('geoLayers · utilidades de simbología', () => {
       expect(capaAportaSimbologia(capa({ visible: true, showInLegend: false }))).toBe(false);
     });
 
-    it('es falsa cuando GeoServer no generó ninguna imagen', () => {
+    it('es falsa cuando una capa no tiene imagen de leyenda', () => {
       expect(capaAportaSimbologia(capa({ visible: true, legendUrl: undefined }))).toBe(false);
     });
 

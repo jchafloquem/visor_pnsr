@@ -217,11 +217,9 @@ export class ApisService {
    * Lista las vías del distrito cuyo nombre coincida con el texto indicado
    * (`listar-vias`).
    *
-   * El API es la fuente de verdad de los nombres de vías: el WFS `vw_tg_via`
-   * solo contiene las vías con geometría dibujada, por lo que buscar en él
-   * deja fuera vías existentes (de ahí que se consulte primero aquí). El API
-   * también busca por el nombre anterior (`txtnomviA_ANT`), de modo que
-   * escribir el nombre antiguo de una vía la encuentra igual.
+   * El API es la fuente de verdad de los nombres de vías y también busca por
+   * el nombre anterior (`txtnomviA_ANT`), de modo que escribirlo encuentra la
+   * vía aunque ya no se use su denominación actual.
    * @param nombre Texto de búsqueda (parcial). Admite un solo carácter, de modo
    *   que las coincidencias se muestren desde la primera tecla.
    * @returns Observable con las vías `{ codviaequ, txtnomvia, ... }`.

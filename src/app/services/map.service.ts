@@ -1,19 +1,16 @@
-import { Injectable, signal, computed, inject, NgZone, effect, untracked, WritableSignal } from '@angular/core';
-import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { Injectable, signal, computed, inject, NgZone, effect, untracked } from '@angular/core';
 import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
-import { ArcGISRestService, PERU_LIMITS_MAPSERVER_URL } from './arcgis-rest.service';
-import { WmsService } from './wms.service';
+import {
+  ArcGISRestService,
+  PERU_LIMITS_MAPSERVER_URL,
+  VIVIENDAS_RURALES_COARSE_RESOLUTION,
+} from './arcgis-rest.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
-import { SIN_AUDITORIA } from '../interceptor/auditoria.interceptor';
 import { environment } from '../../environments/environment';
 import { easeOut } from 'ol/easing';
 import { defaults as defaultInteractions } from 'ol/interaction';
 import type { Coordinate } from 'ol/coordinate';
-import type Geometry from 'ol/geom/Geometry';
-import MultiPolygon from 'ol/geom/MultiPolygon';
-import Polygon from 'ol/geom/Polygon';
-import { Observable, map, take, switchMap, catchError, of, throwError } from 'rxjs';
 
 import { ORTOFOTO_YEARS } from '../interfaces/ortofotos';
 import {
@@ -22,33 +19,18 @@ import {
 } from '../interfaces/controlCapasConfig';
 import {
   Section,
-  WmsLayerConfig,
-  GeoJSONFeature,
   LayerItem,
-  WfsResponse,
   GeoJSONGeometry,
-  ViaSugerencia,
-  ViaApi,
   TipoMapaBase,
-  LoteDatosHover,
-  LoteInfoWindow,
-  ClickableLayerConfig,
-  LaminaSeccionVialMetro,
   capasConSimbologiaVisible,
   sincroniaLeyenda,
 } from '../interfaces/geoLayers';
-import { INITIAL_WMS_LAYERS } from '../interfaces/capasWMS.config';
-import {
-  laminaSeccionVialMetroPublicada,
-  nombreLaminaSeccionVialMetro,
-} from '../interfaces/laminasSeccionVialMetro.config';
 import {
   INITIAL_CENTER,
   INITIAL_ZOOM,
   MAP_MAX_ZOOM,
   GOOGLE_SATELLITE_URL,
   ARCGIS_WORLD_TOPO_TILES_URL,
-  TRAMA_WMS_URL,
   ANIMATION_DURATION,
   ZOOM_MAX_PARQUE,
   ZOOM_MAX_PARQUE_CENTROIDE,
@@ -68,8 +50,6 @@ import {
   getCenter,
   getDistance,
   isEmpty,
-  ImageLayer,
-  ImageWMS,
   ImageTile,
   Layer,
   LineString,
@@ -88,7 +68,6 @@ import {
   VectorLayer,
   VectorSource,
   View,
-  WKT,
   XYZ,
   defaultControls,
 } from '@app/modules/openlayers.module';
@@ -102,13 +81,11 @@ import {
   providedIn: 'root'
 })
 export class MapService {
-  private readonly http = inject(HttpClient);
   private readonly zone = inject(NgZone);
   private readonly drawMeasureService = inject(DrawMeasureService);
   private readonly authService = inject(AuthService);
   private readonly arcgisRestService = inject(ArcGISRestService);
-  private readonly wmsService = inject(WmsService);
-  /** Registro de auditoría del uso de los servicios cartográficos (WMS). */
+  /** Registro de auditoría de las capas seleccionadas por el usuario. */
   private readonly auditoria = inject(AuditoriaService);
   baseLayerType = signal<TipoMapaBase>('satellite');
   /** Instancia del mapa OpenLayers */
@@ -122,10 +99,6 @@ export class MapService {
   public streetsLayer?: TileLayer;
   /** Capa para resaltar geometrías de búsqueda */
   private highlightLayer: VectorLayer<any> | undefined;
-  /** Capa cyan para resaltar el lote calculado y rotular su área. */
-  private areaLoteLayer: VectorLayer<any> | undefined;
-  /** Capa para resaltar el lote seleccionado para impresión (borde rojo grueso + medidas) */
-  private loteSeleccionLayer: VectorLayer<any> | undefined;
   /**
    * Configuración centralizada para las capas de ortofotos.
    * Esta será la única fuente de verdad para generar tanto los
@@ -187,18 +160,6 @@ export class MapService {
    * y al cerrar sesión vuelven a la pública (LotePublico.asp), de modo que una
    * ficha con datos restringidos nunca quede abierta tras el logout.
    */
-  private readonly syncLoteFichasWithAuth = effect(() => {
-    const autenticado = this.authService.isAuthenticated();
-    untracked(() => {
-      if (this.loteInfoWindows().length === 0) return;
-      this.loteInfoWindows.update(wins => wins.map(w => ({
-        ...w,
-        ...(autenticado ? MapService.LOTE_WINDOW_PRIVADO : MapService.LOTE_WINDOW_PUBLICO),
-        url: this.construirUrlFicha(w.id, autenticado),
-      })));
-    });
-  });
-  /** Indica si el mapa ha sido inicializado y está listo para su uso. */
   isReady = signal(false);
   /** Coordenadas actuales del usuario (longitud, latitud). */
   userCoords = signal<{ lon: number, lat: number } | null>(null);
@@ -253,101 +214,6 @@ export class MapService {
     }
   }
   /** Ventanas flotantes con la información de lotes (varias abiertas, sin bloquear el mapa) */
-  loteInfoWindows = signal<LoteInfoWindow[]>([]);
-  /** Datos del lote bajo el cursor (popup hover); `null` cuando no hay lote cargado. */
-  loteHoverDatos = signal<LoteDatosHover | null>(null);
-  /** Indica si la consulta de datos del lote bajo el cursor está en curso. */
-  loteHoverCargando = signal(false);
-  /** Posición (px) del popup hover; `null` lo oculta. */
-  loteHoverPosicion = signal<{ x: number; y: number } | null>(null);
-  /** Cache de datos de lote ya consultados (evita repetir llamadas al API). */
-  private readonly loteDatosCache = new Map<string, LoteDatosHover>();
-  /**
-   * Cache de geometrías de lote (en la proyección de la vista) indexadas por
-   * código catastral. Permite hacer "hit test" local: mientras el cursor siga
-   * dentro de un lote ya consultado NO se vuelve a llamar al servicio
-   * GetFeatureInfo; el popup solo cambia al entrar en otro lote.
-   */
-  private readonly hoverGeometriasCache = new Map<string, Geometry>();
-  /** Código del lote cuyo popup se ocultó automáticamente tras 8 s (no se vuelve a mostrar hasta cambiar de lote). */
-  private hoverHiddenCode: string | null = null;
-  /** Temporizador que oculta el popup hover tras 8 s. */
-  private hoverHideTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Tiempo máximo de permanencia del popup hover. */
-  private static readonly HOVER_AUTO_HIDE_MS = 5000;
-  /** Código del lote actualmente bajo el cursor. */
-  private hoverCodActual: string | null = null;
-  /** Identificador de la última consulta hover; descarta respuestas obsoletas. */
-  private hoverRequestId = 0;
-  /** Consultas GetFeatureInfo del hover actualmente en curso (máx. 1). */
-  private hoverInfoEnCurso = 0;
-  /** Última posición pendiente de resolver al terminar la consulta en curso. */
-  private hoverInfoPendiente: { coordinate: Coordinate; pixel: number[] } | null = null;
-  /** Última coordenada consultada por red (para descartar micro-movimientos). */
-  private hoverUltimaConsulta: { coordinate: Coordinate; resolution: number } | null = null;
-  /** Último evento de movimiento pendiente de procesar (throttle). */
-  private hoverPendingEvt: { coordinate: Coordinate; pixel: number[] } | null = null;
-  /** Temporizador del throttle del pointermove. */
-  private hoverMoveTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Retardo del throttle del hover: agrupa el movimiento en una sola consulta. */
-  private static readonly HOVER_DEBOUNCE_MS = 110;
-  /** Desplazamiento mínimo (en píxeles de pantalla) para repetir una consulta. */
-  private static readonly HOVER_MIN_PIXELES = 6;
-  /** Máximo de geometrías de lote guardadas para el hit test local. */
-  private static readonly HOVER_MAX_GEOMETRIAS = 400;
-  /** Modo selección: el próximo clic sobre la capa "Lote Catastral" lo asigna al módulo de impresión */
-  pickLoteActivo = signal(false);
-  /** Código catastral (id_lote) seleccionado en el mapa para imprimir */
-  loteSeleccionadoCodigo = signal<string | null>(null);
-  /** Modo de selección de lote para calcular y mostrar su área. */
-  areaLoteActivo = signal(false);
-  /** Indica que se está recuperando la geometría del lote seleccionado. */
-  areaLoteCargando = signal(false);
-  /** Resultado del último cálculo de área de lote. */
-  areaLoteResultado = signal<{ codigo: string; areaM2: number } | null>(null);
-  /** Error visible al intentar seleccionar o medir un lote. */
-  areaLoteError = signal<string | null>(null);
-  private areaLoteRequestId = 0;
-
-  /** Activa el modo de selección de lote sobre el mapa */
-  activarPickLote(): void {
-    this.cancelarMedicionAreaLote();
-    this.pickLoteActivo.set(true);
-  }
-  /** Cancela el modo de selección de lote */
-  cancelarPickLote(): void {
-    this.pickLoteActivo.set(false);
-  }
-  /** Activa el modo para calcular el área del lote elegido con un clic. */
-  activarMedicionAreaLote(): void {
-    this.pickLoteActivo.set(false);
-    this.areaLoteResultado.set(null);
-    this.areaLoteError.set(null);
-    this.areaLoteLayer?.getSource()?.clear();
-    this.limpiarHover();
-    this.areaLoteActivo.set(true);
-  }
-  /** Cancela la selección de lotes para calcular áreas. */
-  cancelarMedicionAreaLote(): void {
-    this.areaLoteRequestId++;
-    this.areaLoteActivo.set(false);
-    this.areaLoteCargando.set(false);
-  }
-  /** Limpia los lotes calculados sin salir del modo de selección. */
-  limpiarAreasLotes(): void {
-    this.areaLoteRequestId++;
-    this.areaLoteCargando.set(false);
-    this.areaLoteResultado.set(null);
-    this.areaLoteError.set(null);
-    this.areaLoteLayer?.getSource()?.clear();
-  }
-  /** Quita el lote seleccionado para impresión */
-  limpiarLoteSeleccionado(): void {
-    this.loteSeleccionadoCodigo.set(null);
-    // Retiramos también el resaltado rojo y las medidas eventuales del mapa
-    this.limpiarResaltadoLoteSeleccionado();
-  }
-  /** URL con la información de la foto de dron 2018 para mostrar en un modal. */
   fotoDroneUrl2018 = signal<string | null>(null);
   /** URL con la información de la foto de dron 2024 para mostrar en un modal. */
   fotoDroneUrl2024 = signal<string | null>(null);
@@ -387,132 +253,6 @@ export class MapService {
   subsectorVecinalUrl = signal<string | null>(null);
   /** URL con la fotografía de un componente de señaletica (2026) para mostrar en un modal. */
   senaleticaUrl = signal<string | null>(null);
-  /**
-   * Lámina PDF de la capa "Sección de Vías Normativas Metropolitanas"
-   * (ORD. N° 2343-MML) que se está mostrando en el modal; `null` cuando el modal
-   * está cerrado. Incluye los datos de la vía consultada (`refname` y `tipo`) y
-   * `url: null` cuando la lámina todavía no está publicada en el servidor.
-   */
-  laminaSeccionVialMetro = signal<LaminaSeccionVialMetro | null>(null);
-  /** Parámetros comunes para las consultas GetFeatureInfo. */
-  private static readonly FEATURE_INFO_PARAMS = {
-    'INFO_FORMAT': 'application/json',
-    'FEATURE_COUNT': '1'
-  } as const;
-  /**
-   * Capas consultables al hacer un clic simple sobre el mapa. La prioridad
-   * se resuelve en tiempo de consulta por el zIndex de cada capa visible.
-   */
-  private readonly clickableLayers: ClickableLayerConfig[] = [
-    this.infoLayerConfig('fotos_sin_2018', p => p['id'], id => `${environment.dataGis.fotoDrone2018Url}?codigo_i=${id}`, this.fotoDroneUrl2018),
-    this.infoLayerConfig('fotos_sin_2024', p => p['id'], id => `${environment.dataGis.fotoDrone2024Url}?codigo_i=${id}`, this.fotoDroneUrl2024),
-    this.infoLayerConfig('puntos_geodesicos', p => p['cod_pto_geodesico'], id => `${environment.dataGis.ptoGeodesicoUrl}?codigo_i=${id}`, this.ptoGeodesicoUrl),
-    this.infoLayerConfig('arbolado_urbano_2015', p => p['codigo'], id => `${environment.dataGis.catArbolesUrl}?codigo_i=${id}`, this.arboladoUrbano2015Url),
-    this.infoLayerConfig('cactus_yucca_2015', p => p['codigo'], id => `${environment.dataGis.catArbolesUrl}?codigo_i=${id}`, this.arboladoUrbano2015Url),
-    this.infoLayerConfig('tusne', p => p['id_lote'] ?? p['codigo'] ?? p['id'], id => `${environment.dataGis.tusneUrlBase}/${id}.pdf`, this.tusneUrl),
-    // Cruces de accesibilidad (5 capas: cruces_accesibilidad_1 al 5)
-    this.infoLayerConfig('cruces_accesibilidad_1', p => p['cod_cruce'], id => `${environment.dataGis.fichaAccCruceUrl}?codigo_i=${id}`, this.cruceAccesibilidadUrl),
-    this.infoLayerConfig('cruces_accesibilidad_2', p => p['cod_cruce'], id => `${environment.dataGis.fichaAccCruceUrl}?codigo_i=${id}`, this.cruceAccesibilidadUrl),
-    this.infoLayerConfig('cruces_accesibilidad_3', p => p['cod_cruce'], id => `${environment.dataGis.fichaAccCruceUrl}?codigo_i=${id}`, this.cruceAccesibilidadUrl),
-    this.infoLayerConfig('cruces_accesibilidad_4', p => p['cod_cruce'], id => `${environment.dataGis.fichaAccCruceUrl}?codigo_i=${id}`, this.cruceAccesibilidadUrl),
-    this.infoLayerConfig('cruces_accesibilidad_5', p => p['cod_cruce'], id => `${environment.dataGis.fichaAccCruceUrl}?codigo_i=${id}`, this.cruceAccesibilidadUrl),
-    // Manzanas de accesibilidad (5 capas: manzanas_cruces_accesibilidad_1 al 5)
-    this.infoLayerConfig('manzanas_cruces_accesibilidad_1', p => p['codi_mza'] ?? p['cod_manz'], id => `${environment.dataGis.fichaAccManzaUrl}?codigo_i=${id}`, this.cruceAccesibilidadManzanaUrl),
-    this.infoLayerConfig('manzanas_cruces_accesibilidad_2', p => p['codi_mza'] ?? p['cod_manz'], id => `${environment.dataGis.fichaAccManzaUrl}?codigo_i=${id}`, this.cruceAccesibilidadManzanaUrl),
-    this.infoLayerConfig('manzanas_cruces_accesibilidad_3', p => p['codi_mza'] ?? p['cod_manz'], id => `${environment.dataGis.fichaAccManzaUrl}?codigo_i=${id}`, this.cruceAccesibilidadManzanaUrl),
-    this.infoLayerConfig('manzanas_cruces_accesibilidad_4', p => p['codi_mza'] ?? p['cod_manz'], id => `${environment.dataGis.fichaAccManzaUrl}?codigo_i=${id}`, this.cruceAccesibilidadManzanaUrl),
-    this.infoLayerConfig('manzanas_cruces_accesibilidad_5', p => p['codi_mza'] ?? p['cod_manz'], id => `${environment.dataGis.fichaAccManzaUrl}?codigo_i=${id}`, this.cruceAccesibilidadManzanaUrl),
-    // Bancas 2016
-    this.infoLayerConfig('mu_bancas_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.bancas2016Url),
-    // Estacionamientos de bicicletas 2016
-    this.infoLayerConfig('mu_estac_bicis_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.estacBicis2016Url),
-    // Fichas PDF de áreas recreativas (por id_lote)
-    this.infoLayerConfig('nom_area_verde', p => p['id_lote'], id => `${environment.dataGis.areasVerdesUrlBase}/${id}.pdf`, this.areaVerdeUrl),
-    // Hidrantes 2016
-    this.infoLayerConfig('mu_hidrante_2016', p => p['codigo'], id => `${environment.dataGis.hidrante2016Url}?codigo_i=${id}`, this.hidrante2016Url),
-    // Juegos para niños 2016
-    this.infoLayerConfig('mu_juego_ninos_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.juegoNinos2016Url),
-    // Minigimnasios 2016
-    this.infoLayerConfig('mu_mini_gimnasios', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.miniGimnasiosUrl),
-    // Monumentos, Bustos y Tótem 2021
-    this.infoLayerConfig('mu_monu_bustos_toten_2021', p => p['CODCOMPCAT'] ?? p['codcompcat'], id => `${environment.dataGis.monumentos2021Url}?codigo_i=${id}`, this.monumentos2021Url),
-    // Monumentos o esculturas 2016
-    this.infoLayerConfig('mu_monu_esculturas_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.esculturas2016Url}?codigo_i=${id}`, this.esculturas2016Url),
-    // Paneles publicitarios 2018
-    this.infoLayerConfig('mu_paneles_publicitarios_2018', p => p['cod_compon'] ?? p['COD_COMPON'], id => `${environment.dataGis.panelesPublicitarios2018Url}?codigo_i=${id}`, this.panelesPublicitarios2018Url),
-    // Papeleras 2016
-    this.infoLayerConfig('mu_papelera_2016', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.papelera2016Url),
-    // Postes de Iluminación Ornamentales
-    this.infoLayerConfig('mu_postes_iluminacion', p => p['COD_COMPON'] ?? p['cod_compon'], id => `${environment.dataGis.bancas2016Url}?codigo_i=${id}`, this.postesIluminacionUrl),
-    // Subsectores Vecinales 1-3 y 2-1 (2025) — fotografía del componente
-    this.infoLayerConfig('mu_sub_sectores_vecinales_2025', p => p['Foto'] ?? p['foto'], id => {
-      // El campo "Foto" ya incluye la extensión; si se recibe un valor sin ella (p. ej. "Foto_2"), se agrega ".jpg".
-      const nombre = /\.[a-zA-Z]{3,4}$/.test(id) ? id : `${id}.jpg`;
-      return `${environment.dataGis.subsectoresVecinalesFotosUrl}/${nombre}`;
-    }, this.subsectorVecinalUrl),
-    // Señalética (2026) — fotografía del componente (campo llave "Foto")
-    this.infoLayerConfig('senaletica_limite', p => p['Foto'] ?? p['foto'], id => {
-      // El campo "Foto" incluye la ruta relativa (p. ej. "DCIM/JPEG_20260218150353457.jpg").
-      // Si viniera sin extensión se agrega ".jpg", y si faltara la subcarpeta se antepone "DCIM/".
-      const nombre = /\.[a-zA-Z]{3,4}$/.test(id) ? id : `${id}.jpg`;
-      const ruta = nombre.includes('/') ? nombre : `DCIM/${nombre}`;
-      return `${environment.dataGis.senaleticaFotosUrl}/${ruta}`;
-    }, this.senaleticaUrl),
-    // Sección de Vías Normativas Metropolitanas (ORD. N° 2343-MML) — lámina PDF
-    // por vía: el archivo se resuelve con el campo llave `refname` de la capa.
-    {
-      layerId: 'secc-vial-metro',
-      getLayer: () => this.getLayerById('secc-vial-metro'),
-      handler: (feature) => this.abrirLaminaSeccionVialMetro(feature.properties),
-    },
-  ];
-  /**
-   * Construye la configuración de una capa que, al recibir un clic sobre uno
-   * de sus features, asigna la URL construida a la señal indicada.
-   * @param layerId Identificador de la capa en el panel de capas.
-   * @param getId Extrae el identificador del feature (p. ej. de sus propiedades).
-   * @param buildUrl Construye la URL a partir del identificador obtenido.
-   * @param target Señal donde se guarda la URL de la capa consultada.
-   */
-  private infoLayerConfig(
-    layerId: string,
-    getId: (properties: Record<string, any>) => string | undefined,
-    buildUrl: (id: string) => string,
-    target: WritableSignal<string | null>
-  ): ClickableLayerConfig {
-    return {
-      layerId,
-      getLayer: () => this.getLayerById(layerId),
-      handler: (feature) => {
-        const id = getId(feature.properties);
-        if (id) {
-          target.set(buildUrl(id));
-        }
-      }
-    };
-  }
-  /**
-   * Abre la lámina PDF de una vía de la capa "Sección de Vías Normativas
-   * Metropolitanas" (ORD. N° 2343-MML) a partir del feature consultado.
-   *
-   * El archivo se resuelve con el campo llave `refname` (ver
-   * `nombreLaminaSeccionVialMetro`). Si la lámina aún no está publicada, el
-   * modal lo indica en lugar de intentar cargar un PDF inexistente.
-   *
-   * @param properties Propiedades del feature devuelto por GeoServer.
-   */
-  private abrirLaminaSeccionVialMetro(properties: Record<string, any>): void {
-    const refname = String(properties['refname'] ?? properties['REFNAME'] ?? '').trim().toUpperCase();
-    if (!refname) return;
-    const archivo = nombreLaminaSeccionVialMetro(refname);
-    const publicada = laminaSeccionVialMetroPublicada(refname);
-    this.laminaSeccionVialMetro.set({
-      refname,
-      tipo: String(properties['tipo'] ?? properties['TIPO'] ?? '').trim(),
-      archivo,
-      url: publicada && archivo ? `${environment.dataGis.seccionVialMetroLaminasUrlBase}/${archivo}` : null,
-    });
-  }
   /** Controla la visibilidad del modal global de Términos y Condiciones */
   showTermsModal = signal(false);
   /** Términos aceptados por el usuario durante esta sesión (no vuelve a mostrarse automáticamente) */
@@ -573,8 +313,8 @@ export class MapService {
     // Si el mapa ya existe, reasignamos el target
     if (this._map()) {
       const existingMap = this._map()!;
+      this.handleInitialRender(existingMap);
       existingMap.setTarget(target);
-      setTimeout(() => this.isReady.set(true), 2000);
       return existingMap;
     }
     this.setupBaseLayers();
@@ -604,15 +344,12 @@ export class MapService {
     });
     this._map.set(olMap);
     olMap.getViewport().style.cursor = 'pointer';
-    this.setupInitialWmsLayers();
+    this.setupOrtofotoLayers();
     this.setupPeruLimitsLayer();
     this.setupViviendasRuralesLayers();
     this.handleMapResizing(olMap);
     this.setupHighlightLayer();
-    this.setupAreaLoteLayer();
-    this.setupLoteSeleccionLayer();
     this.handleInitialRender(olMap);
-    this.setupMapClickHandler(olMap);
     // Detección de zoom sobre el distrito para mostrar Términos y Condiciones
     this.setupTermsOnZoom(olMap);
     return olMap;
@@ -689,59 +426,9 @@ export class MapService {
         // una cadena vacía dispara el evento `error` del <img> y OL lo registra
         // como "Error: Image load error" en consola.
         img.removeAttribute('src');
-        // ImageTile admite setState; el envoltorio de ImageWMS transiciona a
-        // ERROR por su cuenta al fallar la carga de la imagen.
+        // ImageTile admite setState para marcar el fallo de carga.
         if (typeof (imageTile as { setState?: (s: number) => void }).setState === 'function') {
           imageTile.setState(TileState.ERROR);
-        }
-      });
-  };
-  /** Píxel PNG transparente de 1x1: sustituto seguro cuando el WMS no devuelve una imagen. */
-  private static readonly TRANSPARENT_PIXEL =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  /**
-   * Función de carga validada para capas ImageWMS: descarga la imagen GetMap
-   * con `fetch` y solo la asigna al `<img>` si es una imagen decodificable.
-   * Si el servidor responde con un error HTTP o con un XML de ServiceException
-   * (p. ej. capa inexistente), se asigna un píxel transparente en su lugar, de
-   * modo que el `decode()` interno de OpenLayers resuelve sin lanzar el
-   * `EncodingError: The source image cannot be decoded` que ensuciaba la
-   * consola al cargar el visor (Image.js hace `console.error` de ese rechazo).
-   * Si el `fetch` falla por CORS/red (TypeError), se delega a la vía normal
-   * (`img.src = src`), ya que el `<img>` sí puede mostrar la imagen aunque el
-   * `fetch` esté bloqueado.
-   */
-  private readonly wmsImageLoadFunction = (image: any, src: string): void => {
-    const img = (image?.getImage?.() ?? image) as HTMLImageElement;
-    if (!src) {
-      img.src = MapService.TRANSPARENT_PIXEL;
-      return;
-    }
-    fetch(src, { mode: 'cors' })
-      .then(async (respuesta) => {
-        if (!respuesta.ok) throw new Error(`WMS HTTP ${respuesta.status}`);
-        const blob = await respuesta.blob();
-        // GeoServer responde los errores (capa inexistente, BBOX inválido,
-        // etc.) como XML: si no es imagen, no intentamos decodificarlo.
-        if (blob.type && !blob.type.startsWith('image/')) {
-          throw new Error(`WMS no imagen: ${blob.type || 'sin tipo'}`);
-        }
-        if (typeof createImageBitmap === 'function') {
-          await createImageBitmap(blob);
-        }
-        const url = URL.createObjectURL(blob);
-        img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
-        img.src = url;
-      })
-      .catch((error: unknown) => {
-        if (error instanceof TypeError) {
-          // Probable bloqueo CORS o fallo de red: el <img> puede cargar la
-          // imagen aunque el fetch no (la carga de imágenes no exige CORS).
-          img.src = src;
-        } else {
-          // El servidor respondió algo que no es imagen decodificable:
-          // píxel transparente para que decode() resuelva sin EncodingError.
-          img.src = MapService.TRANSPARENT_PIXEL;
         }
       });
   };
@@ -784,19 +471,8 @@ export class MapService {
     this.satelliteLayer = this.createBaseLayer(satelliteSource, 'Satélite', 'satellite');
     this.streetsLayer = this.createBaseLayer(streetsSource, 'Calles', 'streets');
   }
-  /** Configura la carga inicial de capas WMS. */
-  private setupInitialWmsLayers(): void {
-    // Inicialización de la capa WMS de departamentos
-    this.addWmsLayer({
-      id: 'tg_departamentos',
-      url: TRAMA_WMS_URL,
-      layerName: 'WEB_GIS:tg_departamentos',
-      version: '1.1.0',
-      zIndex: 5, // zIndex para posicionarse sobre el mapa base
-      title: 'Departamento del Perú',
-    });
-
-    // Añadimos las capas de ortofotos como XYZ usando la configuración centralizada
+  /** Configura la carga inicial de ortofotos. */
+  private setupOrtofotoLayers(): void {
     this.ortofotoLayerConfigs.forEach(config => {
       this.addXyzLayer({
         id: `ortofoto_${config.year}`,
@@ -805,8 +481,6 @@ export class MapService {
         zIndex: config.zIndex
       });
     });
-    // Inicializamos las capas catastrales recorriendo la lista
-    INITIAL_WMS_LAYERS.forEach(config => this.addWmsLayer(config));
   }
   /** Agrega el MapServer REST de límites nacionales al panel de capas. */
   private setupPeruLimitsLayer(): void {
@@ -859,16 +533,20 @@ export class MapService {
       this.updateLayerInSectionsSignal(layerId, layer);
     });
 
-    let previousExtent = map.getView().calculateExtent(map.getSize());
+    // El loader cambia su consulta en este umbral; al desplazar, la estrategia bbox carga solo extensiones nuevas.
+    const coarseScale = (resolution: number) => resolution >= VIVIENDAS_RURALES_COARSE_RESOLUTION;
+    let previousCoarseScale = coarseScale(map.getView().getResolution() ?? Infinity);
     map.on('moveend', () => {
-      const currentExtent = map.getView().calculateExtent(map.getSize());
-      const extentChanged = currentExtent.some((value, index) =>
-        Math.abs(value - previousExtent[index]) > 1
-      );
-      if (!extentChanged) return;
-      previousExtent = currentExtent;
+      const currentResolution = map.getView().getResolution();
+      if (currentResolution === undefined) return;
+
+      const currentCoarseScale = coarseScale(currentResolution);
+      if (currentCoarseScale === previousCoarseScale) return;
+
+      previousCoarseScale = currentCoarseScale;
       layers.forEach(({ layer }) => layer.getSource()?.refresh());
     });
+
   }
   /**
    * Asegura que el mapa se actualice fuera de la zona de Angular para rendimiento.
@@ -880,15 +558,9 @@ export class MapService {
       });
     });
   }
-  /**
-   * Maneja el estado isReady tras el primer renderizado completo.
-   */
+  /** Marca el mapa disponible después de dibujar el primer frame, sin esperar a todas las capas. */
   private handleInitialRender(olMap: OlMap): void {
-    olMap.once('rendercomplete', () => {
-      setTimeout(() => {
-        this.isReady.set(true);
-      }, 2000);
-    });
+    olMap.once('postrender', () => this.isReady.set(true));
   }
   /**
    * Método auxiliar para estandarizar la creación de capas base.
@@ -901,46 +573,6 @@ export class MapService {
       preload: 0, // 0 es el valor por defecto y el más eficiente para el arranque
       visible: this.baseLayerType() === type
     });
-  }
-  /**
-   * Método genérico para agregar capas WMS al mapa.
-   * @private
-   */
-  private addWmsLayer(options: WmsLayerConfig): void {
-    const map = this._map();
-    if (!map) return;
-    const url = options.url ?? environment.geoserver.wmsUrl;
-    const version = options.version ?? '1.1.0';
-    const separator = url.includes('?') ? '&' : '?';
-    const layer = this.wmsService.createImageLayer(
-      { ...options, url, version },
-      this.wmsImageLoadFunction
-    );
-    map.addLayer(layer);
-    // Generamos la URL de la leyenda para servicios WMS (estándar GetLegendGraphic).
-    // En capas compuestas `layerName` agrupa varias capas: se pide UNA leyenda por
-    // cada capa indicada en `legendLayerName` (o en `layerName` si no se informa),
-    // de modo que no se depende del soporte de leyendas multi-capa del GeoServer.
-    const capasLeyenda = (options.legendLayerName ?? options.layerName)
-      .split(',')
-      .map(nombre => nombre.trim())
-      .filter(nombre => nombre.length > 0);
-    const legendUrls = capasLeyenda.map(capaLeyenda =>
-      `${url}${separator}` +
-      `SERVICE=WMS&VERSION=${version}&REQUEST=GetLegendGraphic&FORMAT=image/png&LAYER=${capaLeyenda}&TRANSPARENT=true`);
-    this.updateLayerProperties(options.id, { olLayer: layer, legendUrl: legendUrls[0], legendUrls });
-
-    // Auditoría del consumo del servicio cartográfico.
-    //
-    // No puede interceptarse aquí con el interceptor de `HttpClient`: las capas
-    // WMS las pide OpenLayers (`ImageWMS`), que usa el `Image` del navegador y
-    // NO pasa por el cliente HTTP de Angular. Por eso se registra aquí, en el
-    // punto donde el visor abre la conexión con la capa.
-    this.auditoria.accion(
-      AUDITORIA_OPCIONES.CONSULTA_GEOSERVER,
-      `WMS carga la capa "${options.layerName}"`,
-      { conexionNombre: 'GEOSERVER' }
-    );
   }
   /**
    * Método para agregar capas XYZ al mapa.
@@ -1012,658 +644,6 @@ export class MapService {
    * información de las capas y seleccionar lotes para impresión, y un doble
    * clic para abrir la ficha del lote catastral.
    * @param olMap Instancia del mapa de OpenLayers.
-   */
-  private setupMapClickHandler(olMap: OlMap): void {
-    this.setupSingleClickHandler(olMap);
-    this.setupDoubleClickHandler(olMap);
-    this.setupLoteHoverHandler(olMap);
-  }
-
-  /**
-   * Registra el evento `pointermove` del mapa: al pasar sobre la capa de lote
-   * muestra un popup flotante junto al cursor.
-   *
-   * Optimización de llamadas: antes de consultar el servicio se hace un
-   * "hit test" local contra las geometrías de lotes ya conocidas
-   * (`hoverGeometriasCache`), de modo que:
-   *  - mientras el cursor permanece dentro del MISMO lote no se llama nada;
-   *  - al entrar en OTRO lote ya consultado el popup cambia al instante y
-   *    tampoco se llama al servicio;
-   *  - solo se llama (GetFeatureInfo, 1 vez por lote nuevo) cuando el cursor
-   *    entra en un lote desconocido, con throttle de 110 ms y un único
-   *    requerimiento simultáneo.
-   * @param olMap Instancia del mapa de OpenLayers.
-   */
-  private setupLoteHoverHandler(olMap: OlMap): void {
-    this.zone.runOutsideAngular(() => {
-      olMap.on('pointermove', (evt) => {
-        const coordinate: Coordinate = [...evt.coordinate];
-        const pixel: number[] = evt.pixel ? [...evt.pixel] : [0, 0];
-        // 1) ¿El cursor está sobre un lote ya conocido? Se resuelve en memoria.
-        const codigoCacheado = this.buscarLoteEnCacheHover(coordinate);
-        if (codigoCacheado) {
-          // Nada que resolver: descartamos la posición pendiente y las
-          // respuestas en vuelo (ya no son la posición actual del cursor).
-          this.hoverInfoPendiente = null;
-          this.hoverRequestId++;
-          this.zone.run(() => this.mostrarHoverDeLote(codigoCacheado, pixel[0], pixel[1]));
-          return;
-        }
-        // 2) Salió de un lote conocido: ocultamos el popup mientras se resuelve
-        //    el nuevo lote (evita mostrar datos del lote anterior).
-        if (this.hoverCodActual !== null) {
-          this.zone.run(() => this.ocultarHover());
-        }
-        // 3) Guardamos solo el último evento; el throttle procesa el más reciente.
-        this.hoverPendingEvt = { coordinate, pixel };
-        if (this.hoverMoveTimer !== null) return;
-        this.hoverMoveTimer = setTimeout(() => {
-          this.hoverMoveTimer = null;
-          const pendiente = this.hoverPendingEvt;
-          this.hoverPendingEvt = null;
-          if (pendiente) this.procesarHover(pendiente.coordinate, pendiente.pixel);
-        }, MapService.HOVER_DEBOUNCE_MS);
-      });
-      // Ocultamos el popup al salir del lienzo del mapa
-      olMap.getViewport().addEventListener('mouseleave', () => {
-        if (this.hoverMoveTimer !== null) { clearTimeout(this.hoverMoveTimer); this.hoverMoveTimer = null; }
-        this.hoverPendingEvt = null;
-        this.zone.run(() => this.limpiarHover());
-      });
-    });
-  }
-
-  /**
-   * Procesa un movimiento pendiente: si el lote bajo el cursor todavía no se
-   * conoce, lo identifica con un GetFeatureInfo sobre la capa 'lote'.
-   *
-   * Reglas para no repetir llamadas:
-   *  - solo se permite un GetFeatureInfo simultáneo (el resto de posiciones
-   *    quedan en `hoverInfoPendiente` y se resuelven al recibir la respuesta);
-   *  - se descarta el requerimiento si el cursor no se desplazó al menos
-   *    `HOVER_MIN_PIXELES` desde la última consulta (ruido del puntero);
-   *  - la geometría devuelta se guarda en `hoverGeometriasCache`, así que en
-   *    adelante ese lote se resuelve localmente (sin llamar al servicio).
-   */
-  private procesarHover(coordinate: Coordinate, pixel: number[]): void {
-    const pixelX = pixel[0], pixelY = pixel[1];
-    if (this.drawMeasureService.isDrawing() || this.areaLoteActivo()) { this.zone.run(() => this.limpiarHover()); return; }
-    // Identificamos el lote bajo el cursor (mismo patrón del doble clic)
-    const layer = this.getLayerById('lote');
-    if (!layer?.getVisible()) { this.zone.run(() => this.limpiarHover()); return; }
-    const view = this._map()?.getView();
-    const source = layer.getSource();
-    if (!view || !source) { this.zone.run(() => this.limpiarHover()); return; }
-    const resolution = view.getResolution();
-    if (!resolution) { this.zone.run(() => this.limpiarHover()); return; }
-    // Una sola consulta simultánea: guardamos la última posición y salimos.
-    if (this.hoverInfoEnCurso > 0) {
-      this.hoverInfoPendiente = { coordinate: [...coordinate], pixel: [pixelX, pixelY] };
-      return;
-    }
-    // Micro-movimiento sobre una zona ya consultada: no repetimos la llamada.
-    if (this.esMovimientoInsignificante(coordinate, resolution)) return;
-    const url = source.getFeatureInfoUrl(coordinate, resolution, view.getProjection(), MapService.FEATURE_INFO_PARAMS);
-    if (!url) { this.zone.run(() => this.ocultarHover()); return; }
-    this.hoverUltimaConsulta = { coordinate: [...coordinate], resolution };
-    const requestId = ++this.hoverRequestId;
-    this.hoverInfoEnCurso++;
-    this.http.get<WfsResponse>(url).pipe(take(1)).subscribe({
-      next: response => {
-        this.hoverInfoEnCurso = Math.max(0, this.hoverInfoEnCurso - 1);
-        const feature = response?.features?.[0];
-        const props = feature?.properties ?? {};
-        const codigo = String(props['id_lote'] ?? props['codlote'] ?? props['codigo_lote'] ?? '').trim();
-        // Guardamos la geometría incluso si la respuesta ya es obsoleta: sirve
-        // para resolver por hit test local las próximas posiciones.
-        if (codigo && codigo !== 'undefined') {
-          this.cachearGeometriaHover(codigo, feature, view.getProjection()?.getCode());
-        }
-        this.zone.run(() => {
-          if (requestId === this.hoverRequestId) {
-            if (codigo && codigo !== 'undefined') {
-              this.mostrarHoverDeLote(codigo, pixelX, pixelY);
-            } else {
-              this.ocultarHover(); // Sin lote bajo el cursor
-            }
-          }
-          this.procesarHoverPendiente(); // Resolvemos la última posición conocida
-        });
-      },
-      error: () => {
-        this.hoverInfoEnCurso = Math.max(0, this.hoverInfoEnCurso - 1);
-        // silencioso: el hover no debe molestar con errores de red
-        this.zone.run(() => this.procesarHoverPendiente());
-      }
-    });
-  }
-
-  /**
-   * Procesa la posición que quedó pendiente mientras había una consulta en
-   * curso. Si esa posición cae dentro de un lote ya cacheado no habrá llamada.
-   */
-  private procesarHoverPendiente(): void {
-    const pendiente = this.hoverInfoPendiente;
-    this.hoverInfoPendiente = null;
-    if (pendiente) this.procesarHover(pendiente.coordinate, pendiente.pixel);
-  }
-
-  /**
-   * Busca en `hoverGeometriasCache` el lote que contiene la coordenada dada
-   * (se comprueba primero el lote actual, que es el caso más frecuente).
-   * @param coordinate Coordenada en la proyección de la vista.
-   * @returns Código del lote encontrado o `null` si el cursor está fuera de
-   * todos los lotes ya consultados.
-   */
-  private buscarLoteEnCacheHover(coordinate: Coordinate): string | null {
-    const actual = this.hoverCodActual;
-    if (actual) {
-      const geometriaActual = this.hoverGeometriasCache.get(actual);
-      if (geometriaActual?.intersectsCoordinate(coordinate)) return actual;
-    }
-    for (const [codigo, geometria] of this.hoverGeometriasCache) {
-      if (codigo === actual) continue;
-      if (geometria.intersectsCoordinate(coordinate)) return codigo;
-    }
-    return null;
-  }
-
-  /**
-   * Guarda la geometría del lote (en la proyección de la vista) para el hit
-   * test local. La caché es FIFO y limitada (`HOVER_MAX_GEOMETRIAS`) para no
-   * crecer sin control al recorrer todo el distrito.
-   */
-  private cachearGeometriaHover(codigo: string, feature: GeoJSONFeature | undefined, srsVista?: string): void {
-    if (!feature?.geometry) return;
-    try {
-      const geometria = new GeoJSON().readGeometry(feature.geometry, {
-        dataProjection: srsVista,
-        featureProjection: srsVista
-      });
-      if (!geometria) return;
-      this.hoverGeometriasCache.set(codigo, geometria);
-      if (this.hoverGeometriasCache.size > MapService.HOVER_MAX_GEOMETRIAS) {
-        const masAntigua = this.hoverGeometriasCache.keys().next().value;
-        if (masAntigua !== undefined) this.hoverGeometriasCache.delete(masAntigua);
-      }
-    } catch {
-      // Geometría no interpretable: ese lote se seguirá resolviendo por red
-    }
-  }
-
-  /**
-   * Muestra (o actualiza) el popup del lote indicado: mueve la posición junto
-   * al cursor y consulta los datos del API solo la primera vez por lote
-   */
-  private mostrarHoverDeLote(codigo: string, x: number, y: number): void {
-    if (this.areaLoteActivo()) return;
-    // Si el popup de este lote se ocultó automáticamente, no se vuelve a mostrar
-    // hasta que el cursor entre en un lote distinto.
-    if (this.hoverHiddenCode === codigo) return;
-    if (this.hoverHiddenCode !== null && codigo !== this.hoverHiddenCode) {
-      this.hoverHiddenCode = null;
-    }
-    // Evitamos re-renderizar cuando no cambió ni el lote ni la posición exacta
-    const posicionActual = this.loteHoverPosicion();
-    if (codigo === this.hoverCodActual && posicionActual?.x === x && posicionActual?.y === y) return;
-    this.loteHoverPosicion.set({ x, y });
-    if (codigo === this.hoverCodActual) return; // Mismo lote: solo movemos el popup
-    this.hoverCodActual = codigo;
-    const cacheado = this.loteDatosCache.get(codigo);
-    if (cacheado) {
-      this.loteHoverDatos.set(cacheado);
-      this.loteHoverCargando.set(false);
-    } else {
-      this.loteHoverDatos.set(null);
-      this.loteHoverCargando.set(false);
-    }
-    // Ocultamos automáticamente tras 8 s; reaparece al cambiar de lote.
-    if (this.hoverHideTimer) clearTimeout(this.hoverHideTimer);
-    const codigoActual = codigo;
-    this.hoverHideTimer = setTimeout(() => {
-      this.zone.run(() => {
-        this.hoverHiddenCode = codigoActual;
-        this.ocultarHover();
-      });
-      this.hoverHideTimer = null;
-    }, MapService.HOVER_AUTO_HIDE_MS);
-
-  }
-  /**
-   * Indica si la coordenada está tan cerca de la última consulta que no merece
-   * una nueva llamada al servicio (evita repetir la petición con el temblor
-   * natural del puntero). Se compara en unidades de mapa usando la resolución
-   * actual, es decir, en píxeles de pantalla.
-   */
-  private esMovimientoInsignificante(coordinate: Coordinate, resolution: number): boolean {
-    const ultima = this.hoverUltimaConsulta;
-    if (!ultima) return false;
-    if (ultima.resolution !== resolution) return false; // Cambió el zoom: consultamos
-    const dx = coordinate[0] - ultima.coordinate[0];
-    const dy = coordinate[1] - ultima.coordinate[1];
-    const minimo = resolution * MapService.HOVER_MIN_PIXELES;
-    return Math.sqrt(dx * dx + dy * dy) < minimo;
-  }
-
-  /** Oculta el popup hover sin invalidar las consultas en curso. */
-  private ocultarHover(): void {
-    if (this.hoverHideTimer) { clearTimeout(this.hoverHideTimer); this.hoverHideTimer = null; }
-    this.hoverCodActual = null;
-    this.loteHoverDatos.set(null);
-    this.loteHoverCargando.set(false);
-    this.loteHoverPosicion.set(null);
-  }
-
-  /** Oculta el popup hover y resetea el estado de las consultas del hover. */
-  private limpiarHover(): void {
-    this.hoverRequestId++;
-    if (this.hoverMoveTimer !== null) {
-      clearTimeout(this.hoverMoveTimer);
-      this.hoverMoveTimer = null;
-    }
-    this.hoverPendingEvt = null;
-    this.hoverInfoPendiente = null;
-    this.hoverUltimaConsulta = null;
-    this.ocultarHover();
-  }
-
-
-  /**
-   * Registra el evento de clic simple. Si se está usando una herramienta de
-   * dibujo se ignora; en modo "pick lote" se captura el predio clicado y se
-   * abandona el modo; en caso contrario se consultan las capas clicables.
-   * @param olMap Instancia del mapa de OpenLayers.
-   */
-  private setupSingleClickHandler(olMap: OlMap): void {
-    olMap.on('singleclick', (evt) => {
-      // Si se está usando una herramienta de dibujo, no hacemos nada.
-      if (this.drawMeasureService.isDrawing()) {
-        return;
-      }
-      // Modo "seleccionar lote para imprimir": capturamos el lote clicado y salimos.
-      if (this.pickLoteActivo()) {
-        this.handlePickLoteClick(olMap, evt.coordinate);
-        return;
-      }
-      if (this.areaLoteActivo()) {
-        if (!this.areaLoteCargando()) {
-          this.handlePickAreaLoteClick(olMap, evt.coordinate);
-        }
-        return;
-      }
-      this.queryInfoLayers(olMap, evt.coordinate);
-    });
-  }
-
-  /**
-   * Modo selección de lote para impresión: consulta la capa "Lote Catastral"
-   * en el punto indicado y, si existe un predio, lo marca como seleccionado y
-   * resalta sus medidas perimetrales.
-   * @param olMap Instancia del mapa de OpenLayers.
-   * @param coordinate Coordenada del clic en la proyección del mapa.
-   */
-  private handlePickLoteClick(olMap: OlMap, coordinate: Coordinate): void {
-    const loteLayer = this.getLayerById('lote');
-    const source = loteLayer?.getSource();
-    const view = olMap.getView();
-    const infoUrl = loteLayer?.getVisible()
-      ? source?.getFeatureInfoUrl(coordinate, view.getResolution()!, view.getProjection(), MapService.FEATURE_INFO_PARAMS)
-      : undefined;
-
-    if (infoUrl) {
-      this.http.get<WfsResponse>(infoUrl).subscribe(resp => {
-        const loteFeature = resp?.features?.[0];
-        const codigo = loteFeature?.properties?.['id_lote'];
-        this.zone.run(() => {
-          if (codigo) {
-            this.loteSeleccionadoCodigo.set(String(codigo).trim());
-            // Resaltamos el lote en rojo y estampamos sus medidas perimetrales
-            this.resaltarLoteSeleccionado(loteFeature);
-          }
-          this.pickLoteActivo.set(false);
-        });
-      });
-    } else {
-      this.zone.run(() => this.pickLoteActivo.set(false));
-    }
-  }
-
-  /**
-   * Identifica el lote bajo el clic y calcula el área de su geometría WFS en
-   * EPSG:32718, cuyas coordenadas están expresadas en metros.
-   */
-  private handlePickAreaLoteClick(olMap: OlMap, coordinate: Coordinate): void {
-    const loteLayer = this.getLayerById('lote');
-    const source = loteLayer?.getSource();
-    const view = olMap.getView();
-    const infoUrl = loteLayer?.getVisible()
-      ? source?.getFeatureInfoUrl(coordinate, view.getResolution()!, view.getProjection(), MapService.FEATURE_INFO_PARAMS)
-      : undefined;
-
-    if (!infoUrl) {
-      this.areaLoteError.set('Activa la capa de lotes catastrales para calcular el área.');
-      return;
-    }
-
-    this.areaLoteCargando.set(true);
-    this.areaLoteError.set(null);
-    const requestId = ++this.areaLoteRequestId;
-    this.http.get<WfsResponse>(infoUrl).pipe(
-      take(1),
-      switchMap(response => {
-        const feature = response?.features?.[0];
-        const codigo = String(feature?.properties?.['id_lote'] ?? '').trim();
-        if (!codigo) {
-          return of({ codigo: null, lote: null });
-        }
-        return this.searchLoteByCodigoCatastral(codigo).pipe(
-          map(lote => lote ? { codigo, lote } : null)
-        );
-      })
-    ).subscribe({
-      next: resultado => {
-        if (requestId !== this.areaLoteRequestId) return;
-        this.zone.run(() => {
-          this.areaLoteCargando.set(false);
-          if (resultado?.codigo === null) {
-            this.areaLoteError.set('No se encontró un lote en ese punto. Intenta hacer clic dentro del lote.');
-            return;
-          }
-          if (!resultado?.lote.geometry) {
-            this.areaLoteError.set('No se pudo recuperar la geometría del lote para calcular su área.');
-            return;
-          }
-          try {
-            const geometria = new GeoJSON().readGeometry(resultado.lote.geometry, {
-              dataProjection: 'EPSG:32718',
-              featureProjection: 'EPSG:32718',
-            });
-            const areaM2 = this.calcularAreaGeometriaLote(geometria);
-            if (!Number.isFinite(areaM2) || areaM2 <= 0) {
-              this.areaLoteError.set('La geometría del lote no tiene un área válida.');
-              return;
-            }
-            const geometriaVista = geometria.clone();
-            geometriaVista.transform('EPSG:32718', olMap.getView().getProjection());
-            const puntoEtiqueta = this.obtenerPuntoEtiquetaAreaLote(geometriaVista);
-            if (!puntoEtiqueta) {
-              this.areaLoteError.set('No se pudo ubicar la etiqueta dentro del lote.');
-              return;
-            }
-            this.areaLoteLayer?.getSource()?.addFeatures([
-              new Feature({ geometry: geometriaVista }),
-              new Feature({
-                geometry: puntoEtiqueta,
-                areaLabel: this.formatearEtiquetaAreaLote(areaM2),
-              }),
-            ]);
-            this.areaLoteResultado.set({ codigo: resultado.codigo, areaM2 });
-          } catch (error) {
-            console.error('No se pudo calcular el área del lote:', error);
-            this.areaLoteError.set('No se pudo calcular el área de este lote.');
-          }
-        });
-      },
-      error: error => {
-        console.error('No se pudo recuperar la geometría del lote para calcular su área:', error);
-        this.zone.run(() => {
-          if (requestId === this.areaLoteRequestId) {
-            this.areaLoteCargando.set(false);
-            this.areaLoteError.set('Ocurrió un error al calcular el área. Intenta seleccionar el lote nuevamente.');
-          }
-        });
-      },
-    });
-  }
-
-  private calcularAreaGeometriaLote(geometria: Geometry): number {
-    if (geometria instanceof Polygon || geometria instanceof MultiPolygon) {
-      return geometria.getArea();
-    }
-    return 0;
-  }
-
-  private obtenerPuntoEtiquetaAreaLote(geometria: Geometry): Point | null {
-    const poligono = geometria instanceof Polygon
-      ? geometria
-      : geometria instanceof MultiPolygon
-        ? geometria.getPolygons().sort((a, b) => b.getArea() - a.getArea())[0]
-        : null;
-    return poligono ? new Point(poligono.getInteriorPoint().getCoordinates()) : null;
-  }
-
-  private formatearEtiquetaAreaLote(areaM2: number): string {
-    const formato = new Intl.NumberFormat('es-PE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `Área: ${formato.format(areaM2)} m²\n${formato.format(areaM2 / 10000)} ha`;
-  }
-
-  /**
-   * Consulta las capas clicables visibles (ordenadas de mayor a menor zIndex)
-   * hasta encontrar la primera que devuelva un feature y ejecuta su handler.
-   * @param olMap Instancia del mapa de OpenLayers.
-   * @param coordinate Coordenada del clic en la proyección del mapa.
-   */
-  private queryInfoLayers(olMap: OlMap, coordinate: Coordinate): void {
-    const view = olMap.getView();
-    const viewResolution = view.getResolution()!;
-    const projection = view.getProjection();
-
-    // Priorizamos la capa visible con el zIndex más alto.
-    const visibleLayers = this.clickableLayers
-      .map(config => ({ config, layer: config.getLayer() }))
-      .filter(item => item.layer?.getVisible())
-      .sort((a, b) => (b.layer?.getZIndex() ?? 0) - (a.layer?.getZIndex() ?? 0));
-
-    const queryNext = (pending: typeof visibleLayers): void => {
-      if (pending.length === 0) return;
-      const { config, layer } = pending[0];
-      const source = layer?.getSource();
-      if (!source) {
-        queryNext(pending.slice(1)); // Sin fuente: intenta con la siguiente
-        return;
-      }
-      const url = source.getFeatureInfoUrl(coordinate, viewResolution, projection, MapService.FEATURE_INFO_PARAMS);
-      if (!url) {
-        queryNext(pending.slice(1)); // Sin URL: intenta con la siguiente
-        return;
-      }
-      this.http.get<WfsResponse>(url).subscribe(response => {
-        if (response?.features?.length > 0) {
-          config.handler(response.features[0]); // Encontramos algo: lo manejamos y paramos.
-        } else {
-          queryNext(pending.slice(1)); // Si no, intentamos con la siguiente capa.
-        }
-      });
-    };
-
-    queryNext(visibleLayers);
-  }
-
-  /**
-   * Registra el evento de doble clic para abrir la ficha del lote catastral
-   * (información de la capa "Lote Catastral") cuando está visible.
-   * @param olMap Instancia del mapa de OpenLayers.
-   */
-  private setupDoubleClickHandler(olMap: OlMap): void {
-    olMap.on('dblclick', (evt) => {
-      if (this.drawMeasureService.isDrawing() || this.areaLoteActivo()) {
-        return;
-      }
-      const layer = this.getLayerById('lote');
-      if (!layer?.getVisible()) {
-        return;
-      }
-      const view = olMap.getView();
-      const source = layer.getSource();
-      const url = source?.getFeatureInfoUrl(evt.coordinate, view.getResolution()!, view.getProjection(), MapService.FEATURE_INFO_PARAMS);
-
-      if (url) {
-        this.http.get<WfsResponse>(url).subscribe(response => {
-          if (response?.features?.length > 0) {
-            const feature = response.features[0];
-            const codigoLote = String(feature.properties['id_lote']);
-            if (codigoLote && codigoLote !== 'undefined') {
-              this.openLoteInfoWindow(codigoLote);
-              // Resaltamos la geometría del lote en el mapa (igual que en búsqueda por código catastral)
-              this.resaltarGeometriaLote(feature, view.getProjection()?.getCode());
-            }
-          }
-        });
-      }
-    });
-  }
-
-  /**
-   * Resalta la geometría de un lote en el mapa usando la capa de resaltado.
-   * @param feature Feature GeoJSON del lote.
-   * @param srsProyeccion SRS de la proyección actual del mapa (para transformación de coordenadas).
-   */
-  private resaltarGeometriaLote(feature: GeoJSONFeature, srsProyeccion?: string): void {
-    if (!feature.geometry) return;
-
-    // Limpiamos cualquier resaltado anterior para evitar confusiones
-    this.clearHighlightLayer();
-
-    const format = new GeoJSON();
-    // Leemos la geometría del feature y la transformamos a la proyección del mapa
-    const geometryOl = format.readGeometry(feature.geometry, {
-      dataProjection: srsProyeccion,
-      featureProjection: srsProyeccion
-    });
-
-    if (geometryOl) {
-      const featureToHighlight = new Feature({ geometry: geometryOl });
-      this.highlightLayer?.getSource()?.addFeature(featureToHighlight);
-    }
-  }
-  /**
-   * Configuración por defecto (ficha pública) de las ventanas flotantes de lote.
-   * Centralizada aquí para que cualquier ventana se cree con estos valores
-   * y el componente pueda sobrescribirlos de forma opcional.
-   * `Required` garantiza que estas propiedades se traten como obligatorias
-   * (en `LoteInfoWindow` son opcionales) al leerlas, p. ej. al calcular posiciones.
-   */
-  private static readonly LOTE_WINDOW_PUBLICO: Readonly<Required<Pick<LoteInfoWindow, 'title' | 'width' | 'heightPx' | 'zIndex'>>> = {
-    title: 'Información del Lote',
-    // La ficha LotePublico.asp se maqueta con una tabla fija de 680px:
-    // 700px evita espacios laterales muertos sin cortar el contenido.
-    width: 685,
-    // El contenido de la ficha mide ≈ 480-500px de alto; un valor fijo en px
-    // es predecible en cualquier pantalla (720p: y máx. 232 + 520 = 752 < 768).
-    heightPx: 380,
-    zIndex: 1040,
-  };
-
-  /**
-   * Configuración de la ventana cuando hay sesión iniciada: muestra la ficha
-   * interna `informacion.asp` (endpoint `informacionPrivadaUrl`). Mientras no
-   * se verifique el layout real de ese ASP reutilizamos las dimensiones de la
-   * ficha pública (misma tabla base de WEBFILES).
-   */
-  private static readonly LOTE_WINDOW_PRIVADO: Readonly<Required<Pick<LoteInfoWindow, 'title' | 'width' | 'heightPx' | 'zIndex'>>> = {
-    ...MapService.LOTE_WINDOW_PUBLICO,
-    title: 'Información del Lote (Interna)',
-    width: 700,
-    heightPx: 850,
-    zIndex: 1040,
-  };
-
-  /**
-   * Construye la URL de la ficha del lote según el estado de sesión:
-   * autenticado → ficha interna (`informacion.asp`); público → `LotePublico.asp`.
-   */
-  private construirUrlFicha(codigoLote: string, autenticado: boolean): string {
-    const base = autenticado
-      ? environment.dataGis.informacionPrivadaUrl
-      : environment.dataGis.informacionUrl;
-    return `${base}?codigo_i=${encodeURIComponent(codigoLote)}`;
-  }
-
-  /**
-   * Normaliza el identificador del lote: recorta espacios y, si se recibió una
-   * URL completa (p. ej. "…/LotePublico.asp?codigo_i=3107007010"), extrae el
-   * valor real del parámetro `codigo_i` para evitar URLs anidadas inválidas.
-   * @param valor Código catastral o URL que lo contiene.
-   */
-  private static normalizarCodigoLote(valor: string): string {
-    const texto = (valor ?? '').trim();
-    const coincidencia = texto.match(/[?&]codigo_i=([^&\s]+)/i);
-    return coincidencia ? decodeURIComponent(coincidencia[1]) : texto;
-  }
-
-  /**
-   * Abre una nueva ventana flotante con la información del lote indicado,
-   * o la trae al frente si ya se encuentra abierta. Las ventanas conviven
-   * entre sí y no bloquean la interacción con el mapa.
-   * @param codigo Código catastral del lote (id_lote). Se acepta también una
-   *               URL que contenga `codigo_i`; se extrae el código real.
-   * @param opciones Ajustes opcionales que sobrescriben los valores por defecto.
-   */
-  openLoteInfoWindow(codigo: string, opciones?: Partial<Pick<LoteInfoWindow, 'title' | 'width' | 'heightPx' | 'zIndex'>>): void {
-    const codigoLote = MapService.normalizarCodigoLote(codigo);
-    if (!codigoLote) return;
-    const existente = this.loteInfoWindows().find(w => w.id === codigoLote);
-    if (existente) {
-      this.bringLoteToFront(codigoLote);
-      return;
-    }
-    const index = this.loteInfoWindows().length;
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    // Ficha según sesión: autenticado → informacion.asp (interna); público → LotePublico.asp
-    const autenticado = this.authService.isAuthenticated();
-    const configVentana = autenticado ? MapService.LOTE_WINDOW_PRIVADO : MapService.LOTE_WINDOW_PUBLICO;
-    // Escalonamos cada ventana nueva para que no queden exactamente superpuestas
-    const x = Math.min(96 + index * 36, Math.max(vw - configVentana.width, 20));
-    const y = Math.min(88 + index * 30, Math.max(vh - configVentana.heightPx - 16, 20));
-    const url = this.construirUrlFicha(codigoLote, autenticado);
-    this.loteInfoWindows.update(wins => [...wins, {
-      id: codigoLote,
-      url,
-      x,
-      y,
-      ...configVentana,
-      ...opciones,
-    }]);
-  }
-  /**
-   * Cierra la ventana flotante del lote indicado.
-   */
-  closeLoteWindow(id: string): void {
-    this.loteInfoWindows.update(wins => wins.filter(w => w.id !== id));
-    // Limpiamos el resaltado al cerrar la ventana
-    this.clearHighlightLayer();
-  }
-  /**
-   * Cierra la última ventana abierta (la superior). Usado por la tecla Escape.
-   */
-  closeLastLoteWindow(): void {
-    this.loteInfoWindows.update(wins => wins.slice(0, -1));
-    // Limpiamos el resaltado al cerrar la ventana
-    this.clearHighlightLayer();
-  }
-  /**
-   * Mueve una ventana flotante a la posición indicada (arrastre).
-   */
-  moveLoteWindow(id: string, x: number, y: number): void {
-    this.loteInfoWindows.update(wins => wins.map(w => (w.id === id ? { ...w, x, y } : w)));
-  }
-  /**
-   * Trae la ventana indicada al frente de las demás (reordenando el arreglo,
-   * el último elemento se renderiza encima al compartir z-index).
-   */
-  bringLoteToFront(id: string): void {
-    this.loteInfoWindows.update(wins => {
-      const win = wins.find(w => w.id === id);
-      if (!win || wins[wins.length - 1].id === id) return wins;
-      return [...wins.filter(w => w.id !== id), win];
-    });
-  }
-  /**
-   * Limpia la URL de la foto de dron de 2018, para cerrar el modal.
    */
   clearFotoDroneUrl2018(): void {
     this.fotoDroneUrl2018.set(null);
@@ -1804,9 +784,6 @@ export class MapService {
    * Cierra el modal de la lámina de sección vial normativa metropolitana
    * (ORD. N° 2343-MML).
    */
-  clearLaminaSeccionVialMetro(): void {
-    this.laminaSeccionVialMetro.set(null);
-  }
   /** Señal que indica si la fotografía de la señaletica (2026) se cargó correctamente. */
   senaleticaImgLoaded = signal<boolean>(false);
   /** Señal que indica si la fotografía de la señaletica (2026) no pudo cargarse. */
@@ -2092,6 +1069,9 @@ export class MapService {
           .find(l => l.id === layerId);
         // Si ya estaba visible, se apaga (comportamiento de radio-button).
         const isTurningOn = !clicked?.visible;
+        if (clicked && clicked.visible !== isTurningOn) {
+          this.registrarCambioVisibilidad(clicked, isTurningOn);
+        }
 
         // Apaga todas las ortofotos y deja encendida únicamente la clicada.
         const radioUpdate = (l: LayerItem): LayerItem =>
@@ -2112,6 +1092,8 @@ export class MapService {
       });
     } else {
       // Lógica original para el resto de las capas.
+      const clicked = this.findLayerItem(sectionId, layerId);
+      if (clicked) this.registrarCambioVisibilidad(clicked, !clicked.visible);
       this.updateLayerProperties(layerId, (layer) => ({ visible: !layer.visible }));
     }
     // La leyenda aparece sola al encender una capa con simbología (y se oculta
@@ -2120,6 +1102,10 @@ export class MapService {
   }
   setLayerVisibility(sectionId: string, layerId: string, visible: boolean) {
     const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
+    const layer = this.findLayerItem(sectionId, layerId);
+    if (layer && layer.visible !== visible) {
+      this.registrarCambioVisibilidad(layer, visible);
+    }
     this.updateLayerProperties(layerId, { visible });
     this.sincronizarLeyendaConCapas(simbologiaAntes);
   }
@@ -2133,6 +1119,18 @@ export class MapService {
    */
   private updateLayerProperties(layerId: string, newProps: Partial<LayerItem> | ((layer: LayerItem) => Partial<LayerItem>)): void {
     this.sections.update(sections => sections.map(section => this.updateSectionItems(section, layerId, newProps)));
+  }
+  private findLayerItem(sectionId: string, layerId: string): LayerItem | undefined {
+    const section = this.sections().find(item => item.id === sectionId);
+    return section?.items
+      .flatMap(item => item.type === 'subsection' ? item.layers : [item])
+      .find(layer => layer.id === layerId);
+  }
+  private registrarCambioVisibilidad(layer: LayerItem, visible: boolean): void {
+    this.auditoria.accion(
+      AUDITORIA_OPCIONES.CAPA_VISIBILIDAD,
+      `Capa "${layer.label ?? layer.id}" ${visible ? 'activada' : 'desactivada'}`
+    );
   }
   /**
    * Itera sobre los items de una sección para actualizar una capa.
@@ -2237,7 +1235,7 @@ export class MapService {
   }
   /**
    * Ajusta la vista del mapa para encuadrar una geometría GeoJSON (Polygon, MultiPolygon, etc.)
-   * @param geometry Objeto de geometría devuelto por el servicio WFS
+   * @param geometry Geometría GeoJSON que se desea encuadrar.
    * @param offset Indica si se debe desplazar el centro para compensar el sidebar
    * @param zoom Nivel de zoom opcional para forzar en geometrías de tipo Point
    */
@@ -2348,512 +1346,7 @@ export class MapService {
       maxZoom: topeZoom
     });
   }
-  /**
-   * Busca un lote por su código catastral (id_lote) consultando el servicio WFS de GeoServer.
-   * @param codigo Código catastral en formato XX-XXX-XXX
-   * @returns Observable con el feature encontrado o null
-   */
-  searchLoteByCodigoCatastral(codigo: string): Observable<GeoJSONFeature | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    // Limpiamos guiones y espacios en blanco (ej: '3112065002    ' -> '3112065002')
-    const codigoSinGuiones = codigo.replaceAll('-', '').trim();
-    // Usamos HttpParams para asegurar la correcta construcción y codificación del cql_filter
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('cql_filter', `id_lote = '${codigoSinGuiones}'`);
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map((response) => {
-        if (response?.features?.length > 0) {
-          // Devolvemos el primer resultado encontrado
-          return response.features[0];
-        }
-        return null;
-      })
-    );
-  }
-  /**
-   * Busca un lote urbano por habilitación, manzana y lote.
-   * @param habilitacion Nombre de la habilitación urbana.
-   * @param manzana Manzana urbana.
-   * @param lote Lote urbano.
-   * @returns Un Observable con el feature encontrado o null.
-   */
-  searchLoteByHabilitacion(habilitacion: string, manzana: string, lote: string): Observable<GeoJSONFeature | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-
-    // Construimos un filtro CQL que busca coincidencias en los tres campos.
-    // Usamos ILIKE para la habilitación para ser flexible con mayúsculas/minúsculas.
-    const cqlFilter = `urbanizaci ILIKE '%${habilitacion.trim()}%' AND mzaurb = '${manzana.trim()}' AND loteurb = '${lote.trim()}'`;
-
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote_urbano`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('cql_filter', cqlFilter);
-
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        if (response?.features?.length > 0) {
-          return response.features[0]; // Devolvemos el primer resultado
-        }
-        return null;
-      })
-    );
-  }
-  /**
-   * Busca nombres de habilitaciones urbanas que coincidan parcialmente.
-   * @param partialName El nombre parcial de la habilitación.
-   * @returns Un Observable con un array de nombres de habilitaciones únicos.
-   */
-  searchHabilitaciones(partialName: string, esSugerencia = false): Observable<GeoJSONFeature[] | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote_urbano`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('cql_filter', `urbanizaci ILIKE '%${partialName.trim().toUpperCase()}%'`);
-
-    // `esSugerencia` marca el autocompletado (texto que se va tecleando): esas
-    // consultas no son una búsqueda del usuario y no se auditan.
-    const opciones = esSugerencia
-      ? { context: new HttpContext().set(SIN_AUDITORIA, true) }
-      : undefined;
-    return this.http.get<WfsResponse>(url, { params, ...opciones }).pipe(
-      map(response => {
-        if (response?.features?.length > 0) {
-          // Para evitar duplicados, creamos un mapa de habilitaciones únicas
-          const uniqueHabilitaciones = new Map<string, GeoJSONFeature>();
-          response.features.forEach(feature => {
-            const nombreHabilitacion = feature.properties['urbanizaci'];
-            if (!uniqueHabilitaciones.has(nombreHabilitacion)) {
-              uniqueHabilitaciones.set(nombreHabilitacion, feature);
-            }
-          });
-          return Array.from(uniqueHabilitaciones.values());
-        }
-        return null;
-      })
-    );
-  }
-  /**
-   * Busca manzanas urbanas basadas en una habilitación y un nombre parcial de manzana.
-   * @param habilitacion El nombre exacto de la habilitación.
-   * @param partialManzana El nombre parcial de la manzana.
-   * @returns Un Observable con un array de nombres de manzanas únicos.
-   */
-  searchManzanasByHabilitacion(habilitacion: string, partialManzana: string): Observable<string[]> {
-    if (!habilitacion) {
-      return new Observable(subscriber => subscriber.next([]));
-    }
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    let cqlFilter = `urbanizaci = '${habilitacion}'`;
-    if (partialManzana && partialManzana.trim().length > 0) {
-      cqlFilter += ` AND mzaurb ILIKE '%${partialManzana.trim()}%'`;
-    }
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote_urbano`)
-      .set('outputFormat', 'application/json')
-      .set('propertyName', 'mzaurb')
-      .set('cql_filter', cqlFilter);
-
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        if (!response?.features) return [];
-        const manzanas = response.features.map(f => f.properties['mzaurb']);
-        return [...new Set(manzanas)];
-      })
-    );
-  }
-  /**
-   * Busca lotes urbanos basados en una habilitación, una manzana y un número de lote parcial.
-   * @param habilitacion El nombre exacto de la habilitación.
-   * @param manzana El nombre exacto de la manzana.
-   * @param partialLote El número parcial del lote.
-   * @returns Un Observable con un array de números de lote únicos.
-   */
-  searchLotesByHabilitacionManzana(habilitacion: string, manzana: string, partialLote: string): Observable<string[]> {
-    if (!habilitacion || !manzana) {
-      return new Observable(subscriber => subscriber.next([]));
-    }
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    let cqlFilter = `urbanizaci = '${habilitacion}' AND mzaurb = '${manzana}'`;
-    if (partialLote && partialLote.trim().length > 0) {
-      cqlFilter += ` AND loteurb ILIKE '%${partialLote.trim()}%'`;
-    }
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote_urbano`)
-      .set('outputFormat', 'application/json')
-      .set('propertyName', 'loteurb')
-      .set('cql_filter', cqlFilter);
-
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        if (!response?.features) return [];
-        const lotes = response.features.map(f => f.properties['loteurb']);
-        return [...new Set(lotes)];
-      })
-    );
-  }
-  /**
-   * Busca áreas recreacionales (parques) por su denominación consultando el
-   * servicio WFS de GeoServer.
-   * @param denominacion Denominación del parque a buscar.
-   * @param exactMatch Si es `true`, exige coincidencia exacta (sin distinguir
-   *   mayúsculas/minúsculas) y devuelve solo los polígonos que componen el
-   *   parque solicitado, lo que permite encuadrarlo con un zoom ajustado. Con
-   *   `false` (por defecto) busca coincidencias parciales, comportamiento que
-   *   alimenta el autocompletado del campo "Nombre del Parque".
-   * @returns Un Observable con un array de features encontrados o null.
-   */
-  searchParquesByDenominacion(denominacion: string, exactMatch = false, esSugerencia = false): Observable<GeoJSONFeature[] | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    // Normalizamos a mayúsculas (el API compara así) y escapamos las comillas
-    // simples para no romper el cql_filter (p. ej. "PARQUE O'HIGGINS").
-    const nombre = denominacion.trim().toUpperCase().replace(/'/g, "''");
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_area_rec_nombres`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      // ILIKE sin comodines equivale a una igualdad que ignora mayúsculas y
-      // minúsculas: trae únicamente los polígonos del parque buscado.
-      .set('cql_filter', exactMatch
-        ? `denominaci ILIKE '${nombre}'`
-        : `denominaci ILIKE '%${nombre}%'`);
-    // `esSugerencia` marca el autocompletado: esas consultas son el texto que se
-    // va tecleando, no una búsqueda del usuario, y no se auditan (ver SIN_AUDITORIA).
-    const opciones = esSugerencia
-      ? { context: new HttpContext().set(SIN_AUDITORIA, true) }
-      : undefined;
-    return this.http.get<WfsResponse>(url, { params, ...opciones }).pipe(
-      map((response) => {
-        if (response?.features?.length > 0) {
-          return response.features;
-        }
-        return null;
-      })
-    );
-  }
-  /**
-   * Busca el área recreativa (parque) que CONTIENE un punto del mapa.
-   *
-   * La capa que alimenta el buscador de parques (`vw_tg_area_rec_nombres`) solo
-   * guarda el centroide de cada área como geometría `Point`, por lo que no sirve
-   * para resaltar el parque (un `Point` no se dibuja con estilos de polígono).
-   * Esta consulta localiza por INTERSECCIÓN ESPACIAL el polígono de
-   * `vw_tg_area_rec` que engloba ese centroide. Se intersecciona (en lugar de
-   * comparar nombres) porque los nombres de ambas capas no coinciden
-   * literalmente: el buscador ofrece "Bosque El Olivar" y los polígonos usan
-   * "EL OLIVAR", de modo que la intersección funciona con cualquier parque y no
-   * depende de cómo esté escrito su nombre.
-   *
-   * @param punto Coordenada del centroide del parque en EPSG:32718.
-   * @returns Observable con la denominación del área encontrada, o `null`.
-   */
-  searchAreaRecreativaEnPunto(punto: Coordinate): Observable<string | null> {
-    const x = Number(punto?.[0]);
-    const y = Number(punto?.[1]);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return of(null);
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_area_rec`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      // Solo necesitamos el nombre del área: la respuesta es mínima.
-      .set('propertyName', 'denominaci')
-      .set('maxFeatures', '1')
-      // El filtro espacial exige declarar el SRID del punto buscado.
-      .set('cql_filter', `INTERSECTS(geom,SRID=32718;POINT(${x} ${y}))`);
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => String(response?.features?.[0]?.properties?.['denominaci'] ?? '').trim() || null)
-    );
-  }
-  /**
-   * Devuelve las geometrías de TODOS los polígonos que componen un área
-   * recreativa (parque), para poder resaltar su superficie completa en el mapa.
-   * @param denominacion Denominación exacta del área (`denominaci` en `vw_tg_area_rec`).
-   * @returns Observable con las geometrías en EPSG:32718, o `null` si no hay ninguna.
-   */
-  searchGeometriasAreaRecreativa(denominacion: string): Observable<GeoJSONGeometry[] | null> {
-    // Escapamos las comillas simples para no romper el cql_filter.
-    const nombre = denominacion.trim().replace(/'/g, "''");
-    if (!nombre) return of(null);
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_area_rec`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      // Pedimos solo la geometría: un área puede agrupar cientos de polígonos
-      // (el Bosque El Olivar, 326) y así la respuesta pesa bastante menos.
-      .set('propertyName', 'geom')
-      .set('cql_filter', `denominaci = '${nombre}'`);
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        const geometrias = (response?.features ?? [])
-          .map(feature => feature.geometry)
-          .filter((geometria): geometria is GeoJSONGeometry => !!geometria);
-        return geometrias.length > 0 ? geometrias : null;
-      })
-    );
-  }
-  /**
-   * Resuelve las geometrías con las que se resalta un parque encontrado por su
-   * nombre:
-   *  - Si el buscador devolvió centroides (`Point`, capa `vw_tg_area_rec_nombres`),
-   *    intenta localizar el área poligonal real en `vw_tg_area_rec` y devuelve sus
-   *    polígonos, de modo que el parque quede resaltado con su superficie.
-   *  - Si no hay área poligonal (o el servicio falla), devuelve los centroides,
-   *    con los que el mapa igualmente ubica y señala el parque con el pin.
-   * @param centroides Geometrías devueltas por el buscador de parques.
-   */
-  resolverGeometriasParque(centroides: GeoJSONGeometry[]): Observable<GeoJSONGeometry[]> {
-    const respaldo = (centroides ?? []).filter(geometria => !!geometria);
-    const centroide = respaldo.find(geometria =>
-      geometria.type === 'Point'
-      && Array.isArray(geometria.coordinates)
-      && geometria.coordinates.length >= 2);
-    if (!centroide) return of(respaldo);
-    const punto: Coordinate = [Number(centroide.coordinates?.[0]), Number(centroide.coordinates?.[1])];
-    return this.searchAreaRecreativaEnPunto(punto).pipe(
-      switchMap(denominacion => denominacion
-        ? this.searchGeometriasAreaRecreativa(denominacion)
-        : of(null)),
-      map(geometrias => (geometrias && geometrias.length > 0) ? geometrias : respaldo),
-      // Ante cualquier fallo del servicio de polígonos seguimos con el centroide:
-      // ubicar el parque es más importante que resaltar su superficie.
-      catchError(() => of(respaldo))
-    );
-  }
-  /**
-   * Busca y devuelve una capa de OpenLayers por su ID asignado en la configuración.
-   * @param id El identificador de la capa.
-   * @returns La instancia de la capa de OpenLayers o `undefined` si no se encuentra.
-   */
-  private getLayerById(id: string): ImageLayer<ImageWMS> | undefined {
-    // 1) Búsqueda declarativa: capas registradas en el panel (control de capas)
-    for (const section of this.sections()) {
-      for (const item of section.items) {
-        const layers = 'layers' in item ? item.layers : (item.type === 'layer' ? [item] : []);
-        const layerData = layers.find(l => l.id === id);
-        if (layerData && layerData.olLayer instanceof ImageLayer) {
-          return layerData.olLayer;
-        }
-      }
-    }
-    // 2) Respaldo: capas agregadas directamente al mapa desde INITIAL_WMS_LAYERS
-    //    pero sin declaración en el panel (p. ej. 'lote', capa de fondo que
-    //    alimenta el popup de información del lote y el pick de impresión).
-    const map = this._map();
-    if (map) {
-      for (const layer of map.getLayers().getArray()) {
-        if (layer.get('id') === id && layer instanceof ImageLayer) {
-          return layer;
-        }
-      }
-    }
-    return undefined;
-  }
-  /**
-   * Busca vías en el servicio WFS. Puede buscar por nombre parcial (para autocompletar)
-   * o por nombre exacto (para obtener la geometría).
-   * @param query El nombre de la vía a buscar (parcial o completo).
-   * @param exactMatch Si es `true`, busca una coincidencia exacta. Por defecto es `false`.
-   * @param propertiesOnly Si es `true`, devuelve solo la propiedad 'etiquetado_ext'. Por defecto es `false`.
-   */
-  searchVias(query: string, exactMatch: boolean, propertiesOnly: true): Observable<string[]>;
-  searchVias(query: string, exactMatch: boolean, propertiesOnly: false): Observable<GeoJSONFeature[]>;
-  searchVias(query: string, exactMatch = false, propertiesOnly = false): Observable<GeoJSONFeature[] | string[]> {
-    if (!query || query.trim().length < 3) {
-      return new Observable(subscriber => subscriber.next([]));
-    }
-    // Normalizamos el query para asegurar que "CA " se convierta en "CA. "
-    // Esto soluciona inconsistencias entre el autocompletado y la búsqueda exacta.
-    const normalizedQuery = query.trim().toUpperCase().replace(/^CA\s/, 'CA. ').replace(/^CA\./, 'CA.');
-    const url = environment.geoserver.owsUrl;
-    const filter = exactMatch
-      ? `etiquetado_ext = '${normalizedQuery}'`
-      : `etiquetado_ext ILIKE '%${normalizedQuery}%'`;
-    let params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${environment.geoserver.workspacePrefix}vw_tg_via`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('cql_filter', filter);
-    if (propertiesOnly) {
-      params = params.set('propertyName', 'etiquetado_ext');
-    }
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        if (!response?.features) return [];
-        if (propertiesOnly) return [...new Set(response.features.map(f => f.properties['etiquetado_ext']))];
-        return response.features;
-      })
-    );
-  }
-  /**
-   * Resuelve la geometría de una vía a partir de los códigos que devuelve el
-   * API `listar-vias`.
-   *
-   * El API entrega `codviaequ` (ej. 'L271170') y `codvia` (ej. '1170'); estos
-   * corresponden a los campos `codi_via` ('L271170') y `codi_via2` ('1170') del
-   * WFS `vw_tg_via`, que es donde están los segmentos dibujados de la vía. Por
-   * eso la búsqueda por dirección consulta primero el API (fuente de verdad de
-   * los nombres) y luego usa estos códigos para resaltar la vía en la gráfica.
-   *
-   * @param vias Vías devueltas por el servicio de vías.
-   * @returns Observable con los features de la vía (varios segmentos), o `null`
-   *   si ninguna de las vías indicadas tiene geometría en la cartografía.
-   */
-  buscarGeometriaPorCodigosVia(vias: ViaApi[]): Observable<GeoJSONFeature[] | null> {
-    const codigos = Array.from(new Set(
-      (vias ?? [])
-        .flatMap(via => [String(via.codviaequ ?? '').trim(), String(via.codvia ?? '').trim()])
-        .filter(codigo => !!codigo)
-    ));
-    if (codigos.length === 0) return of(null);
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    // Buscamos en ambos campos (codi_via con el prefijo 'L' y codi_via2 sin él)
-    // para no depender de cuál de los dos códigos trae completos cada registro.
-    const filtros = ['codi_via', 'codi_via2']
-      .map(campo => codigos.map(codigo => `${campo} = '${codigo}'`).join(' OR '))
-      .filter(filtro => filtro.length > 0)
-      .map(filtro => `(${filtro})`)
-      .join(' OR ');
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_via`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('maxFeatures', '9999')
-      .set('cql_filter', filtros);
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        if (!response?.features?.length) return null;
-        // Un mismo segmento puede venir duplicado por coincidir en ambos campos;
-        // lo eliminamos por identificador de feature para no dibujar dos veces.
-        const unicos = new Map<string, GeoJSONFeature>();
-        for (const feature of response.features) {
-          unicos.set(String(feature.id ?? unicos.size), feature);
-        }
-        return Array.from(unicos.values());
-      })
-    );
-  }
-  /**
-   * ENFOQUE A: Busca vías que intersectan una geometría usando un filtro WFS en el servidor.
-   * @param geometry La geometría GeoJSON (en EPSG:32718) con la que se buscará la intersección.
-   * @returns Un Observable con la colección de features GeoJSON encontradas.
-   */
-  findIntersectingViasWFS(geometry: GeoJSONGeometry): Observable<WfsResponse | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    // Convertimos la geometría GeoJSON a formato WKT para usarla en el filtro CQL
-    const format = new GeoJSON();
-    const olGeometry = format.readGeometry(geometry);
-    const wktWriter = new WKT();
-    const wktGeometry = wktWriter.writeGeometry(olGeometry);
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}:vw_tg_via`) // Usamos la capa de vías
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718') // Pedimos los resultados en la misma proyección de los datos
-      .set('cql_filter', `INTERSECTS(geometry, ${wktGeometry})`); // El filtro espacial
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => {
-        // Devuelve la colección completa o null si no hay resultados
-        return response?.features?.length > 0 ? response : null;
-      })
-    );
-  }
-  /**
-   * Busca propiedades por DNI o nombre del ciudadano consultando un servicio WFS.
-   * @param searchType Si la búsqueda es por 'dni' o 'nombre'.
-   * @param query El valor del DNI o el nombre a buscar.
-   * @returns Un Observable con un array de features encontrados.
-   */
-  searchPropertiesByCitizen(searchType: 'dni' | 'nombre', query: string): Observable<GeoJSONFeature[] | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    // El typeName y el cql_filter deben ajustarse al servicio real que se implemente en GeoServer.
-    // Este es un ejemplo hipotético.
-    const filterProperty = searchType === 'dni' ? 'numero_documento' : 'nombre_propietario';
-    const cqlFilter = `${filterProperty} ILIKE '%${query.trim()}%'`;
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}vw_tg_lote_propietarios`) // Vista hipotética que une lotes y propietarios
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:4326')
-      .set('cql_filter', cqlFilter);
-    return this.http.get<WfsResponse>(url, { params }).pipe(map(response => response?.features ?? null));
-  }
-  /**
-   * Consulta la capa de "Conformidad de Obra" (view_conformidadobra) para el
-   * dashboard del servicio tem_conforobra. Solicita únicamente los campos
-   * necesarios para el conteo: `txttipobra` (medición) y `codanoconformidad`
-   * (clasificación), ambos de tipo texto.
-   * @returns Observable con los features encontrados (o null si no hay resultados).
-   */
-  getConformidadObraData(): Observable<GeoJSONFeature[] | null> {
-    const url = environment.geoserver.owsUrl;
-    const workspacePrefix = environment.geoserver.workspacePrefix;
-    const params = new HttpParams()
-      .set('service', 'WFS')
-      .set('version', '1.1.0')
-      .set('request', 'GetFeature')
-      .set('typeName', `${workspacePrefix}view_conformidadobra`)
-      .set('outputFormat', 'application/json')
-      .set('srsName', 'EPSG:32718')
-      .set('maxFeatures', '99999')
-      .set('propertyName', 'txttipobra,codanoconformidad');
-    return this.http.get<WfsResponse>(url, { params }).pipe(
-      map(response => response?.features ?? null)
-    );
-  }
-  /**
-   * Configura la capa de resaltado para las geometrías encontradas del lote.
-   */
+  /** Configura la capa que resalta geometrías encontradas. */
   private setupHighlightLayer(): void {
     const map = this._map();
     if (!map) return;
@@ -2899,85 +1392,6 @@ export class MapService {
   }
 
   /** Configura la capa cyan con la geometría y etiqueta del área calculada. */
-  private setupAreaLoteLayer(): void {
-    const map = this._map();
-    if (!map) return;
-    this.areaLoteLayer = new VectorLayer({
-      source: new VectorSource(),
-      style: feature => {
-        if (feature.get('areaLabel')) {
-          return new Style({
-            text: new Text({
-              text: feature.get('areaLabel') as string,
-              font: 'bold 13px Helvetica, Arial, sans-serif',
-              fill: new Fill({ color: '#003b49' }),
-              stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.95)', width: 4 }),
-              backgroundFill: new Fill({ color: 'rgba(224, 251, 255, 0.92)' }),
-              backgroundStroke: new Stroke({ color: '#00a9bd', width: 1 }),
-              padding: [4, 6, 4, 6],
-              overflow: true,
-            }),
-          });
-        }
-        return new Style({
-          stroke: new Stroke({ color: '#00bcd4', width: 3 }),
-          fill: new Fill({ color: 'rgba(0, 229, 255, 0.32)' }),
-        });
-      },
-      zIndex: 1002,
-    });
-    map.addLayer(this.areaLoteLayer);
-  }
-
-  /**
-   * Configura la capa dedicada al lote seleccionado para impresión:
-   * borde rojo grueso (con halo blanco para contraste sobre ortofotos)
-   * y etiquetas eventuales con la medida en metros de cada arista.
-   * Se dibuja sobre la capa de resaltado de búsquedas (zIndex superior).
-   */
-  private setupLoteSeleccionLayer(): void {
-    const map = this._map();
-    if (!map) return;
-    this.loteSeleccionLayer = new VectorLayer({
-      source: new VectorSource(),
-      // Estilo según el tipo de geometría:
-      // - Puntos: etiquetas de texto con la medida de cada arista del lote.
-      // - Polígonos: línea roja gruesa + relleno rojo muy tenue.
-      style: feature => {
-        // Features sin geometría válida nunca deben dibujarse
-        if (!feature?.getGeometry()) return [];
-        const geometryType = feature.getGeometry()!.getType();
-        if (geometryType === 'Point') {
-          return new Style({
-            text: new Text({
-              text: (feature.get('etiqueta') as string) ?? '',
-              font: 'bold 11px Helvetica, Arial, sans-serif',
-              fill: new Fill({ color: '#b71c1c' }),
-              stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.9)', width: 3 }),
-              overflow: true,
-            }),
-          });
-        }
-        return [
-          // Halo blanco bajo la línea roja para que destaque sobre cualquier fondo
-          new Style({ stroke: new Stroke({ color: 'rgba(255, 255, 255, 0.85)', width: 9 }) }),
-          new Style({
-            stroke: new Stroke({ color: '#e00b0b', width: 5 }),
-            fill: new Fill({ color: 'rgba(224, 11, 11, 0.07)' }),
-          }),
-        ];
-      },
-      zIndex: 1001,
-    });
-    map.addLayer(this.loteSeleccionLayer);
-  }
-
-  /** Limpia el resaltado rojo y las medidas eventuales del lote seleccionado. */
-  private limpiarResaltadoLoteSeleccionado(): void {
-    this.loteSeleccionLayer?.getSource()?.clear();
-  }
-
-  /** Capa de cuadrícula UTM-18S (eventual: visible solo durante la captura del plano) */
   private cuadriculaUtm?: VectorLayer<any>;
 
   /** Opciones de espaciado (orientadas al papel) de la última activación */
@@ -3166,159 +1580,6 @@ export class MapService {
     }
   }
 
-  /**
-   * Resalta el lote seleccionado con una línea roja gruesa y estampa sobre
-   * el mapa la medida (distancia en metros) de cada arista real de su
-   * polígono. Las etiquetas son eventuales: permanecen solo mientras el
-   * lote siga seleccionado y quedan incluidas en la captura del PDF/impresión.
-   *
-   * Importante: el GetFeatureInfo se solicita en la proyección de la vista
-   * (EPSG:3857), así que las coordenadas del feature llegan en ese SRS; se
-   * detecta el SRS real (miembro `crs` del GeoJSON o la vista) y las medidas
-   * se calculan siempre sobre coordenadas UTM 18S (metros verdaderos).
-   * @param feature Feature GeoJSON del lote devuelto por GetFeatureInfo.
-   */
-  resaltarLoteSeleccionado(feature: GeoJSONFeature | null): void {
-    const map = this._map();
-    if (!map || !feature) return;
-    // Por defecto asumimos el SRS en que se solicitó el GetFeatureInfo: la vista
-    this.aplicarResaltadoLote(feature, map.getView().getProjection()?.getCode());
-  }
-
-  /**
-   * Red de seguridad para la generación del PDF/impresión: si hay un lote
-   * seleccionado pero su resaltado rojo no está dibujado (p. ej. porque el
-   * GetFeatureInfo no devolvió geometría), lo recupera vía WFS (siempre en
-   * EPSG:32718) y lo dibuja antes de capturar el mapa.
-   */
-  asegurarResaltadoLoteSeleccionado(): void {
-    const codigo = this.loteSeleccionadoCodigo();
-    const capaSinDibujo = !this.loteSeleccionLayer?.getSource()?.getFeatures().length;
-    if (!codigo || !capaSinDibujo) return;
-    this.searchLoteByCodigoCatastral(codigo).subscribe({
-      next: feature => {
-        if (feature && this.loteSeleccionadoCodigo()) {
-          this.aplicarResaltadoLote(feature, 'EPSG:32718');
-        }
-      },
-      error: err => console.error('No se pudo recuperar la geometría del lote:', err),
-    });
-  }
-
-  /**
-   * Dibuja el polígono del lote (línea roja gruesa) y sus medidas por arista.
-   * @param feature Feature GeoJSON del lote.
-   * @param srsPorDefecto SRS asumido cuando el GeoJSON no declara `crs`.
-   */
-  private aplicarResaltadoLote(feature: GeoJSONFeature, srsPorDefecto?: string): void {
-    const map = this._map();
-    if (!map) return;
-    if (!feature?.geometry) {
-      // Sin geometría (respuesta incompleta): la recuperamos vía WFS en UTM 18S
-      const codigo = feature?.properties?.['id_lote'] ?? this.loteSeleccionadoCodigo();
-      if (codigo) {
-        this.searchLoteByCodigoCatastral(String(codigo)).subscribe({
-          next: f => { if (f) this.aplicarResaltadoLote(f, 'EPSG:32718'); },
-          error: err => console.error('No se pudo resaltar el lote seleccionado:', err),
-        });
-      }
-      return;
-    }
-    this.limpiarResaltadoLoteSeleccionado();
-
-    const source = this.loteSeleccionLayer?.getSource();
-    const proyeccionVista = map.getView().getProjection();
-    if (!source || !proyeccionVista) return;
-
-    try {
-      const formato = new GeoJSON();
-      const srsOrigen = this.detectarSrsOrigen(feature)
-        ?? srsPorDefecto
-        ?? proyeccionVista.getCode();
-
-      // Geometría reproyectada a la vista del mapa (para dibujar)
-      const geometria = formato.readGeometry(feature.geometry, {
-        dataProjection: srsOrigen,
-        featureProjection: proyeccionVista,
-      });
-      if (!geometria) return;
-      source.addFeature(new Feature({ geometry: geometria }));
-    } catch (err) {
-      console.error('No se pudo resaltar el lote seleccionado:', err);
-    }
-  }
-
-  /** Extrae el código EPSG declarado en el miembro `crs` del GeoJSON (si existe). */
-  private detectarSrsOrigen(feature: GeoJSONFeature): string | undefined {
-    const nombre = feature.crs?.properties?.name?.trim() ?? '';
-    const coincidencia = /(\d{4,5})$/.exec(nombre);
-    return coincidencia ? `EPSG:${coincidencia[1]}` : undefined;
-  }
-
-  /**
-   * Calcula las aristas reales de un conjunto de anillos de polígono y su
-   * longitud en metros (coordenadas UTM). Los vértices casi colineales se
-   * fusionan para que cada etiqueta corresponda a un lado verdadero del
-   * lote y no a segmentos intermedios de la digitalización.
-   */
-  private calcularMedidasDeAnillos(anillos: number[][][]): { punto: number[]; texto: string }[] {
-    const umbralAnguloRad = (8 * Math.PI) / 180;
-    const medidas: { punto: number[]; texto: string }[] = [];
-
-    anillos.forEach(anillo => {
-      // Eliminamos vértices consecutivos duplicados
-      const limpio: number[][] = [];
-      for (const coord of anillo) {
-        const previa = limpio[limpio.length - 1];
-        if (!previa || Math.hypot(coord[0] - previa[0], coord[1] - previa[1]) > 1e-4) {
-          limpio.push([coord[0], coord[1]]);
-        }
-      }
-      // Eliminamos el punto de cierre duplicado
-      if (limpio.length > 2) {
-        const primera = limpio[0];
-        const ultima = limpio[limpio.length - 1];
-        if (Math.hypot(primera[0] - ultima[0], primera[1] - ultima[1]) < 1e-4) limpio.pop();
-      }
-      if (limpio.length < 3) return;
-
-      // Esquinas: vértices donde la dirección cambia más que el umbral
-      const total = limpio.length;
-      const esquinas: number[][] = [];
-      for (let i = 0; i < total; i++) {
-        const anterior = limpio[(i - 1 + total) % total];
-        const actual = limpio[i];
-        const siguiente = limpio[(i + 1) % total];
-        const v1x = actual[0] - anterior[0];
-        const v1y = actual[1] - anterior[1];
-        const v2x = siguiente[0] - actual[0];
-        const v2y = siguiente[1] - actual[1];
-        const angulo = Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
-        if (Math.abs(angulo) >= umbralAnguloRad) esquinas.push(actual);
-      }
-      // Fallback: sin esquinas claras (polígono curvo) usamos todos los vértices
-      const referencia = esquinas.length >= 3 ? esquinas : limpio;
-
-      // Medimos cada arista entre esquinas consecutivas
-      for (let i = 0; i < referencia.length; i++) {
-        const a = referencia[i];
-        const b = referencia[(i + 1) % referencia.length];
-        const distancia = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        if (distancia < 0.05) continue; // Aristas despreciables
-        medidas.push({
-          punto: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2],
-          texto: `${distancia.toFixed(2).replace('.', ',')} m`,
-        });
-      }
-    });
-
-    return medidas;
-  }
-  /**
-   * Desplaza el centro del mapa para compensar la apertura o cierre del sidebar.
-   * @param sidebarOpen `true` si el sidebar se está abriendo, `false` si se está cerrando.
-   * @param sidebarWidth Ancho en píxeles del sidebar.
-   */
   panMapForSidebar(sidebarOpen: boolean, sidebarWidth: number): void {
     const map = this._map();
     if (!map) return;
@@ -3369,108 +1630,4 @@ export class MapService {
     return target;
   }
 
-  /**
-   * Genera y descarga un PDF del mapa utilizando el servicio de impresión de GeoServer.
-   * @param options Opciones de impresión como formato, resolución y decoraciones.
-   */
-  async printMap(options: {
-    format: 'A4' | 'A3' | 'A2';
-    resolution: 72 | 150 | 300;
-    includeGrid: boolean;
-    includeFrame: boolean;
-  }): Promise<void> {
-    const map = this._map();
-    if (!map) {
-      throw new Error('El mapa no está inicializado.');
-    }
-
-    const view = map.getView();
-    const projection = view.getProjection()?.getCode() ?? 'EPSG:3857';
-    const extent = view.calculateExtent(map.getSize());
-    const center = getCenter(extent);
-
-    // Construye la lista de capas visibles para la impresión.
-    const layers: ({ type: 'WMS', layers: any[], baseURL: string, format: string } | { type: 'XYZ' })[] = [];
-    map.getLayers().forEach((layer: BaseLayer) => {
-      // Usamos 'instanceof Layer' para asegurar que la capa tiene el método getSource()
-      if (layer.getVisible() && layer instanceof Layer) {
-        const source = layer.getSource();
-        if (source instanceof ImageWMS) {
-          const url = source.getUrl();
-          if (!url) {
-            return;
-          }
-
-          const params = source.getParams();
-          layers.push({
-            type: 'WMS',
-            layers: [params.LAYERS],
-            baseURL: url,
-            format: 'image/png',
-          });
-        } else if (source instanceof XYZ) {
-          // El módulo de impresión de GeoServer puede no soportar XYZ directamente.
-          // Una alternativa es usar un WMS equivalente o una capa base soportada.
-          // Aquí asumimos que el servicio de impresión tiene una capa base configurada.
-        }
-      }
-    });
-
-    // Define las decoraciones basadas en las opciones del usuario.
-    const decorations = [];
-    if (options.includeFrame) {
-      decorations.push({
-        type: 'mapgrid',
-        label: true, // Muestra las coordenadas
-      });
-    }
-    if (options.includeGrid) {
-      decorations.push({
-        type: 'grid',
-        numberOfLines: [5, 5],
-        style: {
-          stroke: 'black',
-          strokeWidth: 0.5,
-          strokeDashstyle: 'dot',
-        },
-      });
-    }
-
-    // Cuerpo de la solicitud para el servicio de impresión de GeoServer.
-    const printSpec = {
-      layout: options.format,
-      srs: projection,
-      units: 'm',
-      dpi: options.resolution,
-      layers: layers,
-      pages: [{
-        center: center,
-        scale: map.getView().getResolution()! * 72 * 39.37, // Aproximación de escala
-        decorations: decorations,
-      }],
-    };
-
-    // URL del servicio de impresión (ajustar según tu configuración)
-    const printUrl = `${environment.geoserver.serverImpresionLocal}/pdf/print.pdf`;
-
-    const response = await fetch(printUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(printSpec),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error del servidor de impresión: ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `mapa-san-isidro-${new Date().toISOString().slice(0, 10)}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
-  }
 }

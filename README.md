@@ -39,15 +39,16 @@ src/environments/
 
 ### Ambientes disponibles
 
-| Archivo | Ambiente | Portal / API base | GeoServer |
-|---|---|---|---|
-| `environment.ts` | **Desarrollo** | Definido en el archivo de entorno | `http://localhost:8080/geoserver` |
-| `environment.qa.ts` | **QA** | Definido en el archivo de entorno | Definido en el archivo de entorno |
-| `environment.prod.ts` | **Producción** | Definido en el archivo de entorno | Definido en el archivo de entorno |
+| Archivo | Ambiente | Servicios cartográficos |
+|---|---|---|
+| `environment.ts` | **Desarrollo** | ArcGIS REST y servidor de ortofotos |
+| `environment.qa.ts` | **QA** | ArcGIS REST y servidor de ortofotos |
+| `environment.prod.ts` | **Producción** | ArcGIS REST y servidor de ortofotos |
 
 Los tres archivos se generan con la fábrica `crearEnvironment()` de
 `src/environments/environment.model.ts`, que centraliza toda la configuración
-(GeoServer, DataGIS, TUSNE, APIs WSGEOVISOR, Observatorio Urbano, etc.).
+(DataGIS, TUSNE, APIs WSGEOVISOR, Observatorio Urbano, etc.). El mapa consume
+ArcGIS REST y teselas XYZ de ortofotos; GeoServer ya no forma parte del visor.
 Si algún servidor interno cambia por ambiente, se pasa como override:
 
 ```ts
@@ -55,7 +56,7 @@ export const environment = crearEnvironment({
   production: true,
   ambiente: 'Producción',
   // overrides opcionales de servidores internos:
-  // geoserverUrl, ortofotoServerUrl, dataGisServerUrl, tusneServerUrl
+  // ortofotoServerUrl, dataGisServerUrl, tusneServerUrl
 });
 ```
 
@@ -148,20 +149,8 @@ graph TB
     MAPA[MAPA]
   end
 
-  subgraph "Bases de Datos PostgreSQL"
-    DB1[(Base de datos geográfica)]
-  end
-
-  subgraph "Bases de Datos ArcGIS"
-    DB2[(Servicios geográficos)]
-  end
-  
-  subgraph "Servidor de Mapas"
-    GEOSERVER_PROD[GeoServer 3.0 - Produccion]
-  end
-
-  subgraph "Servidor de Mapas"
-    GEOSERVER_DEV[GeoServer 3.0 - Desarrollo]
+  subgraph "Servicios cartográficos"
+    ARCGIS[ArcGIS REST]
   end
 
   subgraph "Servicios Ortofotos"
@@ -182,15 +171,9 @@ graph TB
   FRONT --> AUTH
   FRONT --> MAPA
   AUTH --> SEGURIDAD
-  MAPA --> GEOSERVER_PROD
-  MAPA --> GEOSERVER_DEV
+  MAPA --> ARCGIS
   MAPA --> ORTOFOTOS
   MAPA --> INTER
-  DB1 --> DB2
-  
-  GEOSERVER_PROD -- "PostgreSQL" --> DB1
-  GEOSERVER_DEV -- "PostgreSQL" --> DB1
-  
 
   %% =========================
   %% ESTILOS
@@ -201,7 +184,7 @@ graph TB
   classDef external fill:#fafafa,stroke:#a1a1aa,stroke-width:1px,color:#3f3f46;
 
   class FRONT front;
-  class AUTH,MAPA,GEOSERVER_PROD,GEOSERVER_DEV,ORTOFOTOS,SEGURIDAD service;
+  class AUTH,MAPA,ARCGIS,ORTOFOTOS,SEGURIDAD service;
   class INTER external;
   class DB1 db;
   class DB2 db;
@@ -212,6 +195,5 @@ graph TB
 
 [Local](http://localhost:4200/)
 
-Producción: URL institucional configurada para el PNVR.
-
-La URL de producción de GeoServer se define en el archivo de entorno correspondiente.
+Producción: URL institucional configurada para el PNVR. Las capas del mapa se
+consumen desde ArcGIS REST y el servidor de ortofotos.

@@ -162,8 +162,7 @@ describe('ApisService', () => {
     });
 
     it('acepta un solo carácter como búsqueda de vías', async () => {
-      // A diferencia del WFS (que exige 3 caracteres), el API responde bien con
-      // uno: por eso las coincidencias se muestran desde la primera tecla.
+      // El API responde desde un carácter para mostrar coincidencias al escribir.
       const promesa = firstValueFrom(service.listarVias('A'));
       const peticion = httpMock.expectOne(porUrl(relativa(GEOVISOR_ENDPOINTS.listarVias)));
 

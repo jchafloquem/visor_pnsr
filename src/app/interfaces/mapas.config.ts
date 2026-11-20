@@ -1,6 +1,4 @@
 /** Coordenadas iniciales del centro del mapa (longitud, latitud) */
-import { environment } from '../../environments/environment';
-
 export const INITIAL_CENTER = [-75.0152, -9.19];
 /** Nivel de zoom inicial del mapa */
 export const INITIAL_ZOOM = 6;
@@ -15,8 +13,6 @@ export const MAP_MAX_ZOOM = 30;
 export const GOOGLE_SATELLITE_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
 /** URL de teselas del ArcGIS REST World Topographic Map */
 export const ARCGIS_WORLD_TOPO_TILES_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-/** URL del servidor WMS de INEI para departamentos (sigue el GeoServer del ambiente activo) */
-export const TRAMA_WMS_URL = environment.geoserver.wmsUrl;
 /** Duración de las animaciones del mapa en milisegundos */
 export const ANIMATION_DURATION = 1000;
 /** Nivel de zoom al que se acerca el mapa al obtener la ubicación del usuario */
@@ -48,13 +44,13 @@ export const SAN_ISIDRO_EXTENT = [275224.08, 8660213.79, 281557.72, 8663299.55];
 export const TERMS_ZOOM_DISTRICTO = 14;
 /**
  * Convención de apilado (zIndex) de las capas del visor, de menor a mayor:
- * - `0 – 15`: capas WMS temáticas y ortofotos (las imágenes aéreas usan 5).
+ * - `0 – 15`: capas temáticas y ortofotos (las imágenes aéreas usan 5).
  * - `998`: cuadrícula UTM-18S de la captura de planos.
  * - `1000`: resaltado de geometrías de búsqueda.
  * - `1001`: lote seleccionado para impresión (borde rojo).
  * - `1002`: geometrías creadas por el usuario (herramientas de dibujo y
  *   marcador del buscador de coordenadas). Deben quedar SIEMPRE por encima de
- *   las imágenes aéreas y de las capas WMS, para que no queden ocultas al
+ *   las imágenes aéreas y las capas temáticas, para que no queden ocultas al
  *   activar una ortofoto.
  */
 export const ZINDEX_GEOMETRIAS_USUARIO = 1002;

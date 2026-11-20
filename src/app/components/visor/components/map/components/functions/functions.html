@@ -80,13 +80,6 @@
             class="w-10 h-10 flex items-center justify-center bg-white backdrop-blur-md text-primary rounded-xl shadow-lg border border-white/20 hover:bg-secondary hover:text-white hover:scale-105 transition-all active:scale-95 cursor-pointer">
       <i class="bi bi-bounding-box-circles text-xl"></i>
     </button>
-            <button id="btn-area-lote" (click)="toggleMedicionAreaLote()"
-                [class.bg-secondary]="areaLoteActiva()"
-                [attr.aria-pressed]="areaLoteActiva()"
-                [title]="areaLoteActiva() ? 'Cancelar cálculo de área por lote' : 'Calcular área del lote con un clic'"
-                class="w-10 h-10 flex items-center justify-center bg-white backdrop-blur-md text-primary rounded-xl shadow-lg border border-white/20 hover:bg-secondary hover:text-white hover:scale-105 transition-all active:scale-95 cursor-pointer">
-          <i class="bi bi-calculator text-xl"></i>
-        </button>
             <button id="btn-poligono" (click)="dibujarPoligono()" title="Dibujar Polígono (Enter o ✓ para finalizar)"
                 class="w-10 h-10 flex items-center justify-center bg-white backdrop-blur-md text-primary rounded-xl shadow-lg border border-white/20 hover:bg-secondary hover:text-white hover:scale-105 transition-all active:scale-95 cursor-pointer">
       <i class="bi bi-pentagon text-xl"></i>
@@ -103,20 +96,6 @@
             class="w-10 h-10 flex items-center justify-center bg-red-500 backdrop-blur-md text-white rounded-xl shadow-lg border border-white/20 hover:bg-red-600 hover:scale-105 transition-all active:scale-95 cursor-pointer">
       <i class="bi bi-trash-fill text-xl"></i>
     </button>
-  </div>
-  }
-  @if (areaLoteCargando() || areaLoteError() || (areaLoteActiva() && !areaLoteResultado())) {
-  <div class="fixed right-28 top-1/2 -translate-y-1/2 z-50 w-64 rounded-xl border border-blue-100 bg-white/95 p-3 shadow-xl backdrop-blur-md">
-    @if (areaLoteCargando()) {
-      <div class="flex items-center gap-2 text-xs font-medium text-gray-600">
-        <app-spinner size="h-4 w-4" color="text-primary"></app-spinner>
-        <span>Calculando el área del lote…</span>
-      </div>
-    } @else if (areaLoteError()) {
-      <p class="text-xs font-medium text-red-600">{{ areaLoteError() }}</p>
-    } @else {
-      <p class="text-xs font-medium text-gray-600">Haz clic sobre un lote catastral para calcular su área.</p>
-    }
   </div>
   }
   <div class="hidden md:block">

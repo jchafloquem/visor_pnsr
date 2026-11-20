@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import {
   HttpClient,
-  HttpContext,
   HttpParams,
   provideHttpClient,
   withInterceptors,
@@ -12,7 +11,7 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
-import { SIN_AUDITORIA, auditoriaInterceptor } from '../interceptor/auditoria.interceptor';
+import { auditoriaInterceptor } from '../interceptor/auditoria.interceptor';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
 import { fijarIpDePruebas } from './ip-equipo.service';
 
@@ -20,8 +19,6 @@ import { fijarIpDePruebas } from './ip-equipo.service';
 const URL_AUDITORIA = `${environment.seguridadApiUrl}/auditoria/registrar`;
 /** Clave de `sessionStorage` donde `AuthService` persiste la sesión. */
 const CLAVE_SESION = 'gmsi_sesion_geovisor';
-/** GeoServer de desarrollo, tal y como lo resuelve el proxy de `ng serve`. */
-const URL_GEOSERVER = '/geoserver/ows';
 /** IP con la que estas pruebas ven el campo `vchequipo` de cada evento. */
 const IP_PRUEBA = '192.168.0.50';
 
@@ -247,8 +244,7 @@ describe('AuditoriaService', () => {
 });
 
 /**
- * El interceptor audita automáticamente las consultas del visor: las del API
- * del Geovisor y las de los servicios cartográficos de GeoServer (WMS / WFS).
+ * El interceptor audita automáticamente las consultas del API del Geovisor.
  */
 describe('auditoriaInterceptor', () => {
   let service: AuditoriaService;
@@ -360,29 +356,6 @@ describe('auditoriaInterceptor', () => {
     expect(auditoriaPemitida()['codigoMensaje']).toBe('ERR-RED');
   });
 
-  it('NO audita el autocompletado, solo la búsqueda definitiva', () => {
-    // El usuario va escribiendo el nombre del parque: el `debounceTime` lanza una
-    // consulta por cada pausa de 300 ms. Esas son texto a medio teclear, no
-    // búsquedas reales, y no deben llenar la tabla de auditoría.
-    http
-      .get(environment.geoserver.owsUrl, {
-        params: {
-          service: 'WFS',
-          request: 'GetFeature',
-          typeName: 'WEB_GIS:vw_tg_area_rec_nombres',
-        },
-        context: new HttpContext().set(SIN_AUDITORIA, true),
-      })
-      .subscribe();
-
-    httpMock
-      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
-      .flush({ features: [] });
-
-    // Ni una sola auditoría por la sugerencia.
-    httpMock.expectNone(URL_AUDITORIA);
-  });
-
   it('NO audita la llamada de login: la emite AuthService con el usuario ya guardado', () => {
     // El login se audita en `AuthService.iniciarSesion` (opción SESION), que se
     // ejecuta DESPUÉS de `guardarSesion()` y por tanto ya conoce el usuario.
@@ -406,61 +379,11 @@ describe('auditoriaInterceptor', () => {
     http.get('/DataGIS_WGS84/LotePublico.asp?codigo_i=31').subscribe();
 
     httpMock.expectOne((r) => r.url.includes('LotePublico')).flush('ok');
-    // Ni una sola auditoría: el interceptor cubre `/WSGEOVISOR/api/` y el OWS de
-    // GeoServer, que son los dos backends que consulta el visor.
-    // Las teselas WMS NO pasan por HttpClient (las pide OpenLayers con el
-    // `Image` del navegador) y se auditan en `MapService.addWmsLayer`.
+    // Ni una sola auditoría: los servicios externos al API no se registran aquí.
     httpMock.expectNone(URL_AUDITORIA);
   });
 
-  // --- Búsquedas cartográficas contra GeoServer (WFS por OWS) --------------
-  // La búsqueda por código catastral, por parque, por habilitación urbana y por
-  // manzana/lote NO va al API del WSGEOVISOR: consulta el OWS de GeoServer con
-  // un `GetFeature` y un filtro CQL. Como `MapService` las lanza por
-  // `HttpClient`, las captura este interceptor.
 
-  it('registra la búsqueda por código catastral (WFS GetFeature)', () => {
-    http
-      .get(environment.geoserver.owsUrl, {
-        params: {
-          service: 'WFS',
-          version: '1.1.0',
-          request: 'GetFeature',
-          typeName: 'WEB_GIS:vw_tg_lote',
-          outputFormat: 'application/json',
-          cql_filter: "id_lote = '3112065002'",
-        },
-      })
-      .subscribe();
-
-    httpMock
-      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
-      .flush({ features: [] });
-
-    const cuerpo = auditoriaPemitida();
-    expect(cuerpo['opcion']).toBe(AUDITORIA_OPCIONES.CONSULTA_GEOSERVER);
-    expect(cuerpo['conexionNombre']).toBe('GEOSERVER');
-    // La capa y el filtro son lo que identifica qué se buscó.
-    expect(cuerpo['mensaje']).toContain('vw_tg_lote');
-    expect(cuerpo['mensaje']).toContain('3112065002');
-  });
-
-  it('registra la búsqueda por parque (WFS) y un fallo de GeoServer', () => {
-    http
-      .get(environment.geoserver.owsUrl, {
-        params: { service: 'WFS', request: 'GetFeature', typeName: 'WEB_GIS:parques' },
-      })
-      .subscribe({ error: () => undefined });
-
-    httpMock
-      .expectOne((r) => r.url.startsWith(environment.geoserver.owsUrl))
-      .flush('error', { status: 500, statusText: 'Server Error' });
-
-    const cuerpo = auditoriaPemitida();
-    expect(cuerpo['opcion']).toBe(AUDITORIA_OPCIONES.CONSULTA_GEOSERVER);
-    expect(cuerpo['codigoMensaje']).toBe('ERR-500');
-    expect(cuerpo['mensaje']).toContain('parques');
-  });
 });
 
 /**

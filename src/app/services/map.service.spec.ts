@@ -1,39 +1,29 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideHttpClient, withXhr } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { vi } from 'vitest';
-import Polygon from 'ol/geom/Polygon';
-import MultiPolygon from 'ol/geom/MultiPolygon';
-import Point from 'ol/geom/Point';
 
-import { environment } from '../../environments/environment';
 import { ApisService } from './apis.service';
 import { AuthService } from './auth.service';
 import { MapService } from './map.service';
 import type { Section } from '../interfaces/geoLayers';
 
 /**
- * Pruebas del estado del visor (señales, panel de capas y consultas WFS).
+ * Pruebas del estado del visor (señales, panel de capas y servicios del mapa).
  *
- * `MapService` concentra el estado del visor en `signal`s y delega las
- * consultas de cartografía en WFS/GeoServer. Aquí se fija ese contrato:
+ * `MapService` concentra el estado del visor en `signal`s. Aquí se fija ese contrato:
  *  - el panel de capas oculta secciones, subsecciones y capas con
  *    `requiresAuth` cuando no hay sesión, sin alterar el estado interno
  *    (las capas existen siempre en el mapa);
  *  - alternar una sección/capa actualiza `sections` y sincroniza la leyenda;
  *  - la leyenda se abre y se cierra sola según las capas con simbología;
  *  - el aviso de términos se dispara al entrar al distrito y se rearma al salir;
- *  - `searchVias` exige 3 caracteres, normaliza "CA" -> "CA." y filtra el WFS;
  *  - las búsquedas del Geovisor se delegan en `ApisService` (endpoint único).
  *
  * `ApisService` y `AuthService` se sustituyen por dobles: aquí importa la
  * frontera del servicio, no el HTTP (cubierto en `apis.service.spec.ts`).
  */
-
-/** Coincidencia por URL (ignora el query string de los WFS). */
-const porUrl = (url: string) => (req: { url: string }) => req.url === url;
 
 /** Doble de `ApisService`: devuelve observables prefabricados. */
 class ApisServiceDoble {
@@ -53,7 +43,6 @@ class AuthServiceDoble {
 
 describe('MapService', () => {
   let service: MapService;
-  let httpMock: HttpTestingController;
   let apis: ApisServiceDoble;
   let auth: AuthServiceDoble;
 
@@ -64,22 +53,14 @@ describe('MapService', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
         { provide: ApisService, useValue: apis },
         { provide: AuthService, useValue: auth },
       ],
     });
     service = TestBed.inject(MapService);
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => {
-    try {
-      httpMock.verify();
-    } finally {
-      TestBed.resetTestingModule();
-    }
-  });
+  afterEach(() => TestBed.resetTestingModule());
 
   /**
    * Sección de prueba: una subsección pública con dos capas (una restringida)
@@ -250,169 +231,6 @@ describe('MapService', () => {
     });
   });
 
-  describe('selección de lote para impresión', () => {
-    it('activa y cancela el modo pick', () => {
-      service.activarPickLote();
-      expect(service.pickLoteActivo()).toBe(true);
-
-      service.cancelarPickLote();
-      expect(service.pickLoteActivo()).toBe(false);
-    });
-
-    describe('cálculo de área por lote', () => {
-      it('activa y cancela el modo de selección de área', () => {
-        service.activarMedicionAreaLote();
-        expect(service.areaLoteActivo()).toBe(true);
-
-        service.cancelarMedicionAreaLote();
-        expect(service.areaLoteActivo()).toBe(false);
-        expect(service.areaLoteCargando()).toBe(false);
-      });
-
-      it('desactiva el modo de impresión al activar el cálculo de área', () => {
-        service.activarPickLote();
-
-        service.activarMedicionAreaLote();
-
-        expect(service.pickLoteActivo()).toBe(false);
-        expect(service.areaLoteActivo()).toBe(true);
-      });
-
-      it('limpia los resultados de área sin desactivar el modo de selección', () => {
-        service.activarMedicionAreaLote();
-        service.areaLoteCargando.set(true);
-        service.areaLoteResultado.set({ codigo: 'LOTE-1', areaM2: 100 });
-        service.areaLoteError.set('Error anterior');
-
-        service.limpiarAreasLotes();
-
-        expect(service.areaLoteActivo()).toBe(true);
-        expect(service.areaLoteCargando()).toBe(false);
-        expect(service.areaLoteResultado()).toBeNull();
-        expect(service.areaLoteError()).toBeNull();
-      });
-
-      it('limpia el popup hover al activar la selección del lote', () => {
-        service.loteHoverDatos.set({
-          codlote: 'LOTE-1',
-          txtcuc: '',
-          txtmzaurbano: '',
-          txtloteurbano: '',
-          lotecodcatant: '',
-          codlotecatastral: '',
-          txtdirecprincipal: '',
-        });
-        service.loteHoverPosicion.set({ x: 20, y: 30 });
-
-        service.activarMedicionAreaLote();
-
-        expect(service.loteHoverDatos()).toBeNull();
-        expect(service.loteHoverPosicion()).toBeNull();
-      });
-    });
-
-    describe('geometría de lote para cálculo de área', () => {
-      it('calcula el área en metros cuadrados para polígonos y multipolígonos UTM', () => {
-        const poligono = new Polygon([
-          [
-            [0, 0],
-            [10, 0],
-            [10, 10],
-            [0, 10],
-            [0, 0],
-          ],
-        ]);
-        const multipoligono = new MultiPolygon([
-          [
-            [
-              [0, 0],
-              [10, 0],
-              [10, 10],
-              [0, 10],
-              [0, 0],
-            ],
-          ],
-          [
-            [
-              [20, 0],
-              [30, 0],
-              [30, 10],
-              [20, 10],
-              [20, 0],
-            ],
-          ],
-        ]);
-
-        expect(service['calcularAreaGeometriaLote'](poligono)).toBe(100);
-        expect(service['calcularAreaGeometriaLote'](multipoligono)).toBe(200);
-      });
-
-      it('ubica la etiqueta del área dentro del polígono más grande del lote', () => {
-        const multipoligono = new MultiPolygon([
-          [
-            [
-              [20, 0],
-              [25, 0],
-              [25, 5],
-              [20, 5],
-              [20, 0],
-            ],
-          ],
-          [
-            [
-              [0, 0],
-              [10, 0],
-              [10, 10],
-              [0, 10],
-              [0, 0],
-            ],
-          ],
-        ]);
-
-        const punto = service['obtenerPuntoEtiquetaAreaLote'](multipoligono);
-
-        expect(punto).toBeInstanceOf(Point);
-        expect(punto!.getCoordinates()[0]).toBeGreaterThan(0);
-        expect(punto!.getCoordinates()[0]).toBeLessThan(10);
-        expect(punto!.getCoordinates()[1]).toBeGreaterThan(0);
-        expect(punto!.getCoordinates()[1]).toBeLessThan(10);
-      });
-
-      it('genera la etiqueta del área en metros cuadrados y hectáreas', () => {
-        const etiqueta = service['formatearEtiquetaAreaLote'](12345.67);
-
-        expect(etiqueta).toContain('Área: ');
-        expect(etiqueta).toContain('m²\n');
-        expect(etiqueta).toContain(' ha');
-      });
-
-      it('solicita la geometría del lote en EPSG:32718 para calcular el área en metros cuadrados', async () => {
-        const promesa = firstValueFrom(service.searchLoteByCodigoCatastral('3112065002'));
-        const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-        expect(peticion.request.params.get('srsName')).toBe('EPSG:32718');
-
-        peticion.flush({
-          features: [
-            {
-              geometry: { type: 'Polygon', coordinates: [] },
-              properties: { id_lote: '3112065002' },
-            },
-          ],
-        });
-        await expect(promesa).resolves.toMatchObject({ properties: { id_lote: '3112065002' } });
-      });
-    });
-
-    it('limpiar la selección borra el código del lote', () => {
-      service.loteSeleccionadoCodigo.set('LOTE-1');
-
-      service.limpiarLoteSeleccionado();
-
-      expect(service.loteSeleccionadoCodigo()).toBeNull();
-    });
-  });
-
   describe('herramientas del sidebar', () => {
     it('activa una herramienta y la desactiva al volver a pulsarla', () => {
       service.toggleSidebarTool('layers');
@@ -459,88 +277,6 @@ describe('MapService', () => {
 
       service.cambiarMapaBase('blanco');
       expect(service.baseLayerType()).toBe('blanco');
-    });
-  });
-
-  describe('búsqueda de vías en el WFS', () => {
-    it('no consulta el WFS con menos de 3 caracteres', async () => {
-      // El WFS es costoso y solo tiene vías con geometría: con 1-2 letras el
-      // autocompletado se resuelve contra el API del Geovisor, no contra él.
-      await expect(firstValueFrom(service.searchVias('CA', false, false))).resolves.toEqual([]);
-      httpMock.expectNone(() => true);
-    });
-
-    it('filtra por coincidencia parcial y devuelve las features', async () => {
-      const promesa = firstValueFrom(service.searchVias('av circun', false, false));
-      const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-      expect(peticion.request.params.get('typeName')).toBe(
-        `${environment.geoserver.workspacePrefix}vw_tg_via`,
-      );
-      expect(peticion.request.params.get('cql_filter')).toBe("etiquetado_ext ILIKE '%AV CIRCUN%'");
-
-      peticion.flush({ features: [{ properties: { etiquetado_ext: 'AV. CIRCUNVALACION' } }] });
-      await expect(promesa).resolves.toHaveLength(1);
-    });
-
-    it('usa coincidencia exacta cuando se busca la vía exacta', async () => {
-      const promesa = firstValueFrom(service.searchVias('AV. PRINCIPADO', true, false));
-      const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-      expect(peticion.request.params.get('cql_filter')).toBe("etiquetado_ext = 'AV. PRINCIPADO'");
-
-      peticion.flush({ features: [] });
-      await expect(promesa).resolves.toEqual([]);
-    });
-
-    it('normaliza "CA " a "CA. " para que el autocompletado y la búsqueda coincidan', async () => {
-      const promesa = firstValueFrom(service.searchVias('CA Prin', true, false));
-      const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-      expect(peticion.request.params.get('cql_filter')).toBe("etiquetado_ext = 'CA. PRIN'");
-
-      peticion.flush({ features: [] });
-      await expect(promesa).resolves.toEqual([]);
-    });
-
-    it('devuelve los nombres sin repetidos cuando se piden solo propiedades', async () => {
-      const promesa = firstValueFrom(service.searchVias('av prin', false, true));
-      const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-      expect(peticion.request.params.get('propertyName')).toBe('etiquetado_ext');
-
-      // El WFS devuelve un feature por segmento de vía: el mismo nombre se
-      // repite y el autocompletado debe mostrarlo una sola vez.
-      peticion.flush({
-        features: [
-          { properties: { etiquetado_ext: 'AV. PRINCIPADO' } },
-          { properties: { etiquetado_ext: 'AV. PRINCIPADO' } },
-        ],
-      });
-
-      await expect(promesa).resolves.toEqual(['AV. PRINCIPADO']);
-    });
-  });
-
-  describe('datos de conformidad de obra', () => {
-    it('consulta la vista del GeoServer y devuelve sus features', async () => {
-      const promesa = firstValueFrom(service.getConformidadObraData());
-      const peticion = httpMock.expectOne(porUrl(environment.geoserver.owsUrl));
-
-      expect(peticion.request.params.get('typeName')).toBe(
-        `${environment.geoserver.workspacePrefix}view_conformidadobra`,
-      );
-      expect(peticion.request.params.get('srsName')).toBe('EPSG:32718');
-
-      peticion.flush({ features: [{ properties: { txttipobra: 'OBRA NUEVA' } }] });
-      await expect(promesa).resolves.toHaveLength(1);
-    });
-
-    it('devuelve `null` si la respuesta no trae features', async () => {
-      const promesa = firstValueFrom(service.getConformidadObraData());
-      httpMock.expectOne(porUrl(environment.geoserver.owsUrl)).flush({});
-
-      await expect(promesa).resolves.toBeNull();
     });
   });
 

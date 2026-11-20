@@ -36,9 +36,9 @@ describe('Leyenda', () => {
  */
 describe('Leyenda · capas compuestas', () => {
   const URL_POLIGONOS =
-    'http://servidor/geoserver/WEB_GIS/wms?REQUEST=GetLegendGraphic&LAYER=WEB_GIS:vw_nor_zonificacion_poligono';
+    'https://maps.example.test/legend/poligonos.png';
   const URL_LIMITES =
-    'http://servidor/geoserver/WEB_GIS/wms?REQUEST=GetLegendGraphic&LAYER=WEB_GIS:vw_nor_zonificacion_limites';
+    'https://maps.example.test/legend/limites.png';
 
   /** Panel de capas con la zonificación compuesta activa y su lista de leyendas. */
   const panelConZonificacion = (cambios: Partial<LayerItem> = {}): Section[] => [

@@ -81,6 +81,7 @@ describe('ControlCapas', () => {
     },
   ]);
   const setLayerVisibility = vi.fn();
+  const setLayerOpacity = vi.fn();
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -91,6 +92,7 @@ describe('ControlCapas', () => {
           useValue: {
             panelSections: sections,
             setLayerVisibility,
+            setLayerOpacity,
           },
         },
       ],
@@ -130,5 +132,19 @@ describe('ControlCapas', () => {
     checkbox.dispatchEvent(new Event('change'));
 
     expect(setLayerVisibility).toHaveBeenCalledWith('limitesPeru', 'limites-peru', false);
+  });
+
+  it('updates layer opacity from its range control', () => {
+    const opacity: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[aria-label="Opacidad de Con acceso a agua"]'
+    );
+    opacity.value = '45';
+    opacity.dispatchEvent(new Event('input'));
+
+    expect(setLayerOpacity).toHaveBeenCalledWith(
+      'viviendasRurales',
+      'viviendas-rurales-agua-con-acceso',
+      0.45
+    );
   });
 });
