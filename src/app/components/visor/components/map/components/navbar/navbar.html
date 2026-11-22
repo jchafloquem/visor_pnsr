@@ -3,10 +3,13 @@
   <!-- Logo y título -->
   <div class="navbar-brand -ml-5.75 mr-auto flex shrink-0 items-center justify-start">
     <!-- Logo principal (visible en desktop) -->
-    <img src="/assets/images/pnsr_logo.png" alt="Logo PNSR" class="h-14 w-auto shrink-0 object-contain hidden sm:block">
+    <img src="/assets/images/pnsr_logo.png" alt="Logo PNSR" class="navbar-logo-desktop h-12 w-auto shrink-0 object-contain hidden sm:block">
     <!-- Logo para mobile (visible en celulares) -->
-    <img src="/assets/images/spinner.png" alt="Logo PNSR móvil" class="h-14 w-auto shrink-0 object-contain rounded sm:hidden">
+    <img src="/assets/images/spinner.png" alt="Logo PNSR móvil" class="h-10 w-auto shrink-0 object-contain rounded sm:hidden">
   </div>
+  <h1 class="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-lg font-bold tracking-tight text-black pointer-events-none sm:text-xl">
+    Visor (SSCPI)
+  </h1>
   <!-- Lado Derecho: Botón de Acceso -->
   <div class="navbar-actions flex-1 flex justify-end items-center gap-2">
     <button id="btn-auth" (click)="onLoginClick()"

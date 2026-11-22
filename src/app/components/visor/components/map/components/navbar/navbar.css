@@ -1,3 +1,7 @@
+:host .navbar-logo-desktop {
+  max-width: calc(50vw - 4.5rem);
+}
+
 @media (max-width: 640px) {
   :host .navbar-brand {
     margin-left: 2rem;
