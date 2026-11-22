@@ -90,7 +90,7 @@
   }
 
   :host > div.fixed {
-    top: 3.5rem;
+    top: 4rem;
     right: auto;
     bottom: 0;
     left: 0;
@@ -147,13 +147,13 @@
   }
 
   :host .panel-flotante {
-    top: 3.5rem;
+    top: 4rem;
     right: auto;
     bottom: 0.5rem;
     left: 3.5rem;
     width: calc((100vw - 4rem) * 0.8);
     height: auto;
-    max-height: calc(100dvh - 4rem - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
     transform-origin: top left;
   }
 
@@ -162,7 +162,7 @@
   }
 
   :host > div.fixed.left-\[60px\] {
-    top: 3.5rem;
+    top: 4rem;
     right: 0.5rem;
     bottom: 0.5rem;
     left: 3.5rem;
@@ -171,7 +171,7 @@
 
   :host > div.fixed.left-\[60px\] > div {
     width: min(16rem, calc((100vw - 4rem) * 0.8));
-    max-height: calc(100dvh - 4rem - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   }
 }
 
@@ -194,14 +194,14 @@
   :host > div.fixed,
   :host .panel-flotante,
   :host > div.fixed.left-\[60px\] {
-    top: 3.75rem;
+    top: 4rem;
   }
 
   :host .panel-flotante {
-    max-height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   }
 
   :host > div.fixed.left-\[60px\] > div {
-    max-height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
   }
 }
