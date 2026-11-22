@@ -99,3 +99,10 @@
     gap: 0.25rem;
   }
 }
+
+/* Hide coordinate info component on mobile phones */
+@media (max-width: 640px) {
+  :host {
+    display: none;
+  }
+}

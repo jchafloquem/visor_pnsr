@@ -80,6 +80,7 @@
 @media (max-width: 1023px) {
   .custom-overview {
     right: 0.75rem !important;
+    display: none !important;
   }
 
   .custom-overview:not(.ol-collapsed) .ol-overviewmap-map {

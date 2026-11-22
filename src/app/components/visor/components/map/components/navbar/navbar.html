@@ -2,7 +2,10 @@
   class="navbar-shell fixed z-10 top-0 left-0 w-full h-16 bg-white backdrop-blur-md text-gray-800 flex items-center justify-between px-6 border-b border-gray-200 shadow-sm">
   <!-- Logo y título -->
   <div class="navbar-brand -ml-5.75 mr-auto flex shrink-0 items-center justify-start">
-    <img src="/assets/images/pnsr_logo.png" alt="Logo PNSR" class="h-14 w-auto shrink-0 object-contain">
+    <!-- Logo principal (visible en desktop) -->
+    <img src="/assets/images/pnsr_logo.png" alt="Logo PNSR" class="h-14 w-auto shrink-0 object-contain hidden sm:block">
+    <!-- Logo para mobile (visible en celulares) -->
+    <img src="/assets/images/spinner.png" alt="Logo PNSR móvil" class="h-14 w-auto shrink-0 object-contain rounded sm:hidden">
   </div>
   <!-- Lado Derecho: Botón de Acceso -->
   <div class="navbar-actions flex-1 flex justify-end items-center gap-2">
