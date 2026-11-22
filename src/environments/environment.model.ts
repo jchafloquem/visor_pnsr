@@ -22,7 +22,6 @@ export interface ParametrosEnvironment {
    * registra con otro código.
    */
   codigoSistema?: string;
-  ortofotoServerUrl?: string;
   dataGisServerUrl?: string;
   tusneServerUrl?: string;
 }
@@ -64,9 +63,6 @@ export function crearEnvironment(cfg: ParametrosEnvironment) {
     // Se abre en una pestaña nueva cuando el usuario confirma el cierre de sesión
     // o sale del geovisor.
     encuestaSalidaUrl: 'https://forms.gle/zadpPzpAR6h8Ud2P7',
-
-    // --- CONFIGURACIÓN DEL SERVIDOR DE ORTOFOTOS ---
-    ortofotoServerUrl: cfg.ortofotoServerUrl ?? 'http://192.168.40.58:8082',
 
     // --- CONFIGURACIÓN DEL SERVIDOR DE DATOS CATASTRALES (DataGIS) ---
     // Centraliza las URLs de los servidores internos para no exponerlas

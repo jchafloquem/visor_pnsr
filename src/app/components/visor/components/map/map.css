@@ -24,19 +24,16 @@
 
 .map-ready-content {
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 650ms ease, transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: opacity 650ms ease;
 }
 
 .map-ready-content-visible {
   opacity: 1;
-  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .map-ready-content {
     transition: none;
-    transform: none;
   }
 }
 

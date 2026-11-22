@@ -73,7 +73,7 @@
    El tooltip de medición se crea con `document.createElement('div')` en
    `services/draw.service.ts` (clase `ol-measure-tooltip`), por lo que NO hereda
    los estilos encapsulados de ningún componente: se declara aquí, de forma global.
-   Negrita + sombra para que la medida se lea sobre las ortofotos y capas temáticas.
+   Negrita + sombra para que la medida se lea sobre los mapas y las capas temáticas.
    ============================================ */
 .ol-measure-tooltip {
   font-family: Arial, Helvetica, sans-serif;

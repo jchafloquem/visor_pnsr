@@ -1,7 +1,12 @@
-import { LAYER_PANEL_SECTIONS } from './controlCapasConfig';
+import {
+  COEN_FEN_2027_LAYER_GROUPS,
+  LAYER_PANEL_SECTIONS,
+  ORTOFOTOS_LAYER_CONFIGS,
+  PERU_LIMITS_LAYER_CONFIGS,
+  PERU_LIMITS_PANEL_ITEMS,
+  VIVIENDAS_RURALES_LAYER_CONFIGS,
+} from './controlCapasConfig';
 import type { LayerItem, SubSection } from './geoLayers';
-import { ORTOFOTO_YEARS } from './ortofotos';
-import { VIVIENDAS_RURALES_LAYER_CONFIGS } from './controlCapasConfig';
 
 /**
  * `controlCapasConfig.ts` declara la estructura completa del panel de capas del
@@ -13,7 +18,7 @@ import { VIVIENDAS_RURALES_LAYER_CONFIGS } from './controlCapasConfig';
  *     de modo que cada entrada solo declara aquello que se desvía.
  *  2. La política de acceso para las secciones del panel disponibles.
  *  3. La coherencia entre el panel y las capas que aún tienen fuente activa:
- *     ArcGIS REST y ortofotos XYZ.
+ *     ArcGIS REST.
  */
 
 /** Capas directas y de subsecciones de todas las secciones del panel. */
@@ -39,7 +44,7 @@ describe('controlCapasConfig · valores por defecto', () => {
 
   it('mantiene visibles por defecto las capas ArcGIS disponibles', () => {
     expect(capasDelPanel().filter(l => l.visible).map(l => l.id)).toEqual([
-      'limites-peru',
+      ...PERU_LIMITS_LAYER_CONFIGS.map(layer => layer.itemId),
       ...VIVIENDAS_RURALES_LAYER_CONFIGS.map(layer => layer.itemId),
     ]);
   });
@@ -72,7 +77,8 @@ describe('controlCapasConfig · estructura del panel', () => {
     expect(LAYER_PANEL_SECTIONS.map(s => s.id)).toEqual([
       'limitesPeru',
       'viviendasRurales',
-      'imaAereas',
+      'coenFen2027',
+      'ortofotos',
     ]);
   });
 
@@ -92,20 +98,71 @@ describe('controlCapasConfig · estructura del panel', () => {
   });
 });
 describe('controlCapasConfig · coherencia con los servicios del mapa', () => {
-  const ortofotos = (): LayerItem[] => capasDelPanel().filter(l => l.id.startsWith('ortofoto_'));
-
-  it('solo publica capas ArcGIS REST y ortofotos XYZ', () => {
+  it('solo publica capas ArcGIS REST con fuente activa', () => {
     const idsArcGis = new Set([
-      'limites-peru',
+      ...PERU_LIMITS_LAYER_CONFIGS.map(layer => layer.itemId),
       ...VIVIENDAS_RURALES_LAYER_CONFIGS.map(layer => layer.itemId),
+      ...COEN_FEN_2027_LAYER_GROUPS.flatMap(group => group.layers.map(layer => layer.itemId)),
+      ...ORTOFOTOS_LAYER_CONFIGS.map(layer => layer.itemId),
     ]);
-    expect(capasDelPanel().every(layer => idsArcGis.has(layer.id) || layer.id.startsWith('ortofoto_')))
-      .toBe(true);
-    expect(capasDelPanel().some(layer => layer.id === 'limites-peru')).toBe(true);
+    expect(capasDelPanel().every(layer => idsArcGis.has(layer.id))).toBe(true);
+    expect(PERU_LIMITS_LAYER_CONFIGS).toHaveLength(12);
     expect(capasDelPanel().filter(layer => idsArcGis.has(layer.id))).toHaveLength(
       idsArcGis.size
     );
-    expect(ortofotos()).toHaveLength(ORTOFOTO_YEARS.length);
+  });
+
+  it('representa las subcapas del MapServer de límites en su jerarquía publicada', () => {
+    const section = LAYER_PANEL_SECTIONS.find(item => item.id === 'limitesPeru');
+    const groups = section?.items.filter((item): item is SubSection => 'layers' in item);
+
+    expect(PERU_LIMITS_LAYER_CONFIGS.map(layer => layer.arcgisLayerId)).toEqual([
+      0, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13,
+    ]);
+    expect(groups?.map(group => group.title)).toEqual(['VÍAS', 'HIDROGRAFÍA']);
+    expect(groups?.map(group => group.layers.map(layer => layer.label))).toEqual([
+      ['Vías Vecinales', 'Vías Departamentales', 'Vías Nacionales', 'Vía Férrea'],
+      ['Ríos Principales', 'Ríos', 'Quebradas'],
+    ]);
+    expect(PERU_LIMITS_PANEL_ITEMS.filter(item => item.type === 'layer')).toHaveLength(5);
+  });
+
+  it('representa FEN 2027 con sección, grupos y subcapas hoja del MapServer', () => {
+    const section = LAYER_PANEL_SECTIONS.find(item => item.id === 'coenFen2027');
+    const groups = section?.items.filter((item): item is SubSection => 'layers' in item);
+
+    expect(section?.title).toBe('FEN2027');
+    expect(groups?.map(group => group.title)).toEqual([
+      'COMISIÓN FEN',
+      'CALLAO',
+      'CENEPRED',
+      'INDECI',
+      'Vivienda',
+      'ANA',
+    ]);
+    expect(groups?.map(group => group.layers.length)).toEqual([2, 2, 1, 1, 2, 2]);
+    expect(COEN_FEN_2027_LAYER_GROUPS.flatMap(group =>
+      group.layers.map(layer => layer.arcgisLayerId)
+    )).toEqual([
+      59, 60, 56, 55, 52, 31, 51, 22, 24, 25,
+    ]);
+    expect(groups?.flatMap(group => group.layers.map(layer => layer.id))).toEqual(
+      COEN_FEN_2027_LAYER_GROUPS.flatMap(group => group.layers.map(layer => layer.itemId))
+    );
+  });
+
+  it('representa las ortofotos IDEP como capas disponibles en una sección pública', () => {
+    const section = LAYER_PANEL_SECTIONS.find(item => item.id === 'ortofotos');
+
+    expect(section?.title).toBe('ORTOFOTOS');
+    expect(section?.requiresAuth).toBeUndefined();
+    expect(section?.items.map(item => item.id)).toEqual(
+      ORTOFOTOS_LAYER_CONFIGS.map(layer => layer.itemId)
+    );
+    expect(section?.items).toHaveLength(21);
+    expect(section?.items.every(item => item.type === 'layer' && !item.visible)).toBe(true);
+    expect(ORTOFOTOS_LAYER_CONFIGS.find(layer => layer.itemId === 'ortofoto-casma')?.subLayerId)
+      .toBe(0);
   });
 
   it('no repite ids entre las capas disponibles', () => {

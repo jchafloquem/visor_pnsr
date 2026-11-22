@@ -1,55 +1,93 @@
+<ng-template #layerControl let-layer let-sectionId="sectionId">
+  <div class="flex flex-col gap-1 py-2 transition-colors hover:text-primary">
+    <label
+      class="flex cursor-pointer items-center gap-2"
+      [class.cursor-not-allowed]="layer.disabled"
+      [class.opacity-50]="layer.disabled"
+    >
+      <input
+        type="checkbox"
+        class="h-4 w-4 accent-primary"
+        [checked]="layer.visible"
+        [disabled]="layer.disabled"
+        [attr.aria-label]="layer.label"
+        (change)="onLayerVisibilityChange(sectionId, layer.id, $event)"
+      />
+      <span class="text-m text-textPrimary">{{ layer.label }}</span>
+    </label>
+    <div class="opacity-control" [class.opacity-control--disabled]="layer.disabled">
+      <div class="opacity-control__header">
+        <span class="opacity-control__label">Opacidad</span>
+        <span class="opacity-control__value">
+        {{ getOpacityPercent(layer) | number: '1.0-0' }}%
+        </span>
+      </div>
+      <input
+        type="range"
+        [min]="0"
+        [max]="100"
+        [value]="getOpacityPercent(layer)"
+        [style.--opacity-value]="getOpacityPercent(layer) + '%'"
+        [disabled]="layer.disabled"
+        [attr.aria-label]="'Opacidad de ' + layer.label"
+        (input)="setLayerOpacityFromEvent(sectionId, layer.id, $event)"
+        class="opacity-control__slider"
+        title="Opacidad de la capa"
+      />
+    </div>
+  </div>
+</ng-template>
+
 <div class="h-full p-2">
-  @if (layerGroups().length > 0) {
+  @if (sections().length > 0) {
     <div class="space-y-2">
-      @for (layerGroup of layerGroups(); track layerGroup.id) {
+      @for (section of sections(); track section.id) {
         <details
-          name="layer-groups"
+          name="layer-sections"
           class="!mx-0 !my-2 !rounded-xl !border !border-slate-100 !px-4 !shadow-sm"
-          [open]="layerGroup.expanded"
+          [attr.data-section-id]="section.id"
+          [open]="section.expanded"
         >
           <summary class="flex cursor-pointer items-center justify-between gap-2 py-3">
-            <span class="!text-m !font-bold">{{ layerGroup.title }}</span>
+            <span class="!text-m !font-bold">{{ section.title }}</span>
             <span
               class="grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 text-sm font-bold text-secondary"
             >
-              {{ layerGroup.layers.length }}
+              {{ getLayerCount(section) }}
             </span>
           </summary>
           <div class="flex flex-col divide-y divide-slate-100 !px-0 !pb-2">
-            @for (layer of layerGroup.layers; track layer.id) {
-              <div class="flex flex-col gap-1 py-2 transition-colors hover:text-primary">
-                <label
-                  class="flex cursor-pointer items-center gap-2"
-                  [class.cursor-not-allowed]="layer.disabled"
-                  [class.opacity-50]="layer.disabled"
+            @for (item of section.items; track item.id) {
+              @if (item.type === 'subsection') {
+                <details
+                  [attr.name]="'layer-groups-' + section.id"
+                  class="!mx-0 !my-2 !rounded-lg !border !border-slate-100 !px-3"
+                  [attr.data-subsection-id]="item.id"
+                  [open]="item.expanded"
                 >
-                  <input
-                    type="checkbox"
-                    class="h-4 w-4 accent-primary"
-                    [checked]="layer.visible"
-                    [disabled]="layer.disabled"
-                    [attr.aria-label]="layer.label"
-                    (change)="onLayerVisibilityChange(layerGroup.sectionId, layer.id, $event)"
-                  />
-                  <span class="text-m text-textPrimary">{{ layer.label }}</span>
-                </label>
-                <div class="flex items-center gap-2 pl-8">
-                  <span class="w-10 text-right text-xs text-textDefault">
-                    {{ getOpacityPercent(layer) | number: '1.0-0' }}%
-                  </span>
-                  <input
-                    type="range"
-                    [min]="0"
-                    [max]="100"
-                    [value]="getOpacityPercent(layer)"
-                    [disabled]="layer.disabled"
-                    [attr.aria-label]="'Opacidad de ' + layer.label"
-                    (input)="setLayerOpacityFromEvent(layerGroup.sectionId, layer.id, $event)"
-                    class="flex-1 accent-primary"
-                    title="Opacidad de la capa"
-                  />
-                </div>
-              </div>
+                  <summary class="flex cursor-pointer items-center justify-between gap-2 py-2">
+                    <span class="text-sm font-semibold">{{ item.title }}</span>
+                    <span
+                      class="grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 text-xs font-bold text-secondary"
+                    >
+                      {{ item.layers.length }}
+                    </span>
+                  </summary>
+                  <div class="divide-y divide-slate-100">
+                    @for (layer of item.layers; track layer.id) {
+                      <ng-container
+                        [ngTemplateOutlet]="layerControl"
+                        [ngTemplateOutletContext]="{ $implicit: layer, sectionId: section.id }"
+                      ></ng-container>
+                    }
+                  </div>
+                </details>
+              } @else {
+                <ng-container
+                  [ngTemplateOutlet]="layerControl"
+                  [ngTemplateOutletContext]="{ $implicit: item, sectionId: section.id }"
+                ></ng-container>
+              }
             }
           </div>
         </details>

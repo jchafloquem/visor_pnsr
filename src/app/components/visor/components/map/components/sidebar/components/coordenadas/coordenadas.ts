@@ -70,7 +70,7 @@ export class UbicacionCoordenadas implements OnInit, OnDestroy {
     this.sourceTemporal = new VectorSource();
     this.capaTemporal = new VectorLayer({
       source: this.sourceTemporal,
-      // Por encima de ortofotos y capas temáticas: el marcador del punto
+      // Por encima de las capas temáticas: el marcador del punto
       // buscado no debe quedar oculto cuando hay una imagen aérea activa.
       zIndex: ZINDEX_GEOMETRIAS_USUARIO,
       style: this.estiloPunto(),

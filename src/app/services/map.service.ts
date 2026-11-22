@@ -3,18 +3,21 @@ import { DrawMeasureService } from './draw.service';
 import { AuthService } from './auth.service';
 import {
   ArcGISRestService,
+  COEN_FEN_2027_MAPSERVER_URL,
+  IDEP_IMAGENES_MAPSERVER_URL,
   PERU_LIMITS_MAPSERVER_URL,
   VIVIENDAS_RURALES_COARSE_RESOLUTION,
 } from './arcgis-rest.service';
 import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
-import { environment } from '../../environments/environment';
 import { easeOut } from 'ol/easing';
 import { defaults as defaultInteractions } from 'ol/interaction';
 import type { Coordinate } from 'ol/coordinate';
 
-import { ORTOFOTO_YEARS } from '../interfaces/ortofotos';
 import {
+  COEN_FEN_2027_LAYER_GROUPS,
   LAYER_PANEL_SECTIONS,
+  ORTOFOTOS_LAYER_CONFIGS,
+  PERU_LIMITS_LAYER_CONFIGS,
   VIVIENDAS_RURALES_LAYER_CONFIGS,
 } from '../interfaces/controlCapasConfig';
 import {
@@ -100,16 +103,6 @@ export class MapService {
   /** Capa para resaltar geometrías de búsqueda */
   private highlightLayer: VectorLayer<any> | undefined;
   /**
-   * Configuración centralizada para las capas de ortofotos.
-   * Esta será la única fuente de verdad para generar tanto los
-   * controles en el panel de capas como las capas XYZ en el mapa.
-   */
-  private readonly ortofotoLayerConfigs = [
-    // Generamos dinámicamente la configuración a partir de la lista de años importada.
-    // Esto facilita la adición de nuevos años de ortofotos.
-    ...ORTOFOTO_YEARS.map(year => ({ year, zIndex: 5 }))
-  ] as const;
-  /**
    * Signal que gestiona las secciones y capas del visor.
    */
   sections = signal<Section[]>(LAYER_PANEL_SECTIONS);
@@ -118,7 +111,7 @@ export class MapService {
    * marcados con `requiresAuth` (capas, subsecciones o secciones completas)
    * solo aparecen cuando el usuario está autenticado.
    * El estado interno (`sections`) conserva SIEMPRE todas las capas para no
-   * alterar la lógica del mapa (olLayer, leyenda, clics, ortofotos, etc.).
+   * alterar la lógica del mapa (olLayer, leyenda, clics, etc.).
    */
   readonly panelSections = computed<Section[]>(() => {
     const isAuthed = this.authService.isAuthenticated();
@@ -344,8 +337,9 @@ export class MapService {
     });
     this._map.set(olMap);
     olMap.getViewport().style.cursor = 'pointer';
-    this.setupOrtofotoLayers();
-    this.setupPeruLimitsLayer();
+    this.setupPeruLimitsLayers();
+    this.setupCoenFen2027Layers();
+    this.setupOrtofotosLayers();
     this.setupViviendasRuralesLayers();
     this.handleMapResizing(olMap);
     this.setupHighlightLayer();
@@ -471,48 +465,112 @@ export class MapService {
     this.satelliteLayer = this.createBaseLayer(satelliteSource, 'Satélite', 'satellite');
     this.streetsLayer = this.createBaseLayer(streetsSource, 'Calles', 'streets');
   }
-  /** Configura la carga inicial de ortofotos. */
-  private setupOrtofotoLayers(): void {
-    this.ortofotoLayerConfigs.forEach(config => {
-      this.addXyzLayer({
-        id: `ortofoto_${config.year}`,
-        url: `${environment.ortofotoServerUrl}/${config.year}/{z}/{x}/{y}.png`,
-        maxZoom: 22,
-        zIndex: config.zIndex
-      });
-    });
-  }
-  /** Agrega el MapServer REST de límites nacionales al panel de capas. */
-  private setupPeruLimitsLayer(): void {
+  /** Agrega individualmente las subcapas publicadas en el MapServer de límites nacionales. */
+  private setupPeruLimitsLayers(): void {
     const map = this._map();
     if (!map) return;
 
-    const layer = this.arcgisRestService.createMapServerLayer(PERU_LIMITS_MAPSERVER_URL, {
-      title: 'Límites del Perú',
-      zIndex: 24,
-    });
-    layer.set('id', 'limites-peru');
-    map.addLayer(layer);
-    this.updateLayerInSectionsSignal('limites-peru', layer);
+    const itemIdByArcgisLayerId = new Map<number, string>();
+    for (const config of PERU_LIMITS_LAYER_CONFIGS) {
+      itemIdByArcgisLayerId.set(config.arcgisLayerId, config.itemId);
+      const layer = this.arcgisRestService.createMapServerLayer(PERU_LIMITS_MAPSERVER_URL, {
+        title: config.label,
+        zIndex: 24,
+        subLayerId: config.arcgisLayerId,
+        visible: true,
+      });
+      layer.set('id', config.itemId);
+      map.addLayer(layer);
+      this.updateLayerInSectionsSignal(config.itemId, layer);
+    }
 
     this.arcgisRestService.getMapServerLegend(PERU_LIMITS_MAPSERVER_URL).subscribe({
       next: response => {
-        const legendEntries = (response.layers ?? []).flatMap(serviceLayer =>
-          (serviceLayer.legend ?? [])
+        let legendCount = 0;
+        for (const serviceLayer of response.layers ?? []) {
+          if (serviceLayer.layerId === undefined) continue;
+          const itemId = itemIdByArcgisLayerId.get(serviceLayer.layerId);
+          if (!itemId) continue;
+
+          const legendEntries = (serviceLayer.legend ?? [])
             .filter(entry => Boolean(entry.imageData && entry.contentType?.startsWith('image/')))
             .map(entry => ({
               label: entry.label?.trim() || serviceLayer.layerName,
               url: `data:${entry.contentType};base64,${entry.imageData}`,
-            }))
-        );
-        if (legendEntries.length === 0) {
-          console.warn('El MapServer de límites del Perú no publicó simbología para la leyenda.');
-          return;
+            }));
+          if (legendEntries.length === 0) continue;
+
+          legendCount += legendEntries.length;
+          this.updateLayerProperties(itemId, { legendEntries });
         }
-        this.updateLayerProperties('limites-peru', { legendEntries });
+        if (legendCount === 0) {
+          console.warn('El MapServer de límites del Perú no publicó simbología para la leyenda.');
+        }
       },
       error: error => console.error('No se pudo cargar la leyenda del MapServer de límites del Perú.', error),
     });
+  }
+  /** Agrega las subcapas publicadas en el grupo FEN2027 de CENEPRED. */
+  private setupCoenFen2027Layers(): void {
+    const map = this._map();
+    if (!map) return;
+
+    const itemIdByArcgisLayerId = new Map<number, string>();
+    for (const group of COEN_FEN_2027_LAYER_GROUPS) {
+      for (const config of group.layers) {
+        itemIdByArcgisLayerId.set(config.arcgisLayerId, config.itemId);
+        const layer = this.arcgisRestService.createMapServerLayer(COEN_FEN_2027_MAPSERVER_URL, {
+          title: config.label,
+          zIndex: 30,
+          subLayerId: config.arcgisLayerId,
+          visible: false,
+        });
+        layer.set('id', config.itemId);
+        map.addLayer(layer);
+        this.updateLayerInSectionsSignal(config.itemId, layer);
+      }
+    }
+
+    this.arcgisRestService.getMapServerLegend(COEN_FEN_2027_MAPSERVER_URL).subscribe({
+      next: response => {
+        for (const serviceLayer of response.layers ?? []) {
+          if (serviceLayer.layerId === undefined) continue;
+          const itemId = itemIdByArcgisLayerId.get(serviceLayer.layerId);
+          if (!itemId) continue;
+
+          const legendEntries = (serviceLayer.legend ?? [])
+            .filter(entry => Boolean(entry.imageData && entry.contentType?.startsWith('image/')))
+            .map(entry => ({
+              label: entry.label?.trim() || serviceLayer.layerName,
+              url: `data:${entry.contentType};base64,${entry.imageData}`,
+            }));
+          if (legendEntries.length === 0) continue;
+
+          const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
+          this.updateLayerProperties(itemId, { legendEntries });
+          this.sincronizarLeyendaConCapas(simbologiaAntes);
+        }
+      },
+      error: error => console.error('No se pudo cargar la leyenda del servicio COEN FEN 2027.', error),
+    });
+  }
+  /** Agrega las ortofotos publicadas por IDEP en su carpeta IMAGENES. */
+  private setupOrtofotosLayers(): void {
+    const map = this._map();
+    if (!map) return;
+
+    for (const config of ORTOFOTOS_LAYER_CONFIGS) {
+      const serviceUrl = `${IDEP_IMAGENES_MAPSERVER_URL}/${encodeURIComponent(config.serviceName)}/MapServer`;
+      const layer = this.arcgisRestService.createMapServerLayer(serviceUrl, {
+        title: config.label,
+        zIndex: 35,
+        ...(config.subLayerId === undefined ? {} : { subLayerId: config.subLayerId }),
+        visible: false,
+      });
+      layer.set('id', config.itemId);
+      map.addLayer(layer);
+      this.updateLayerInSectionsSignal(config.itemId, layer);
+    }
   }
   /** Agrega las capas de viviendas rurales, consultando solo el área visible. */
   private setupViviendasRuralesLayers(): void {
@@ -558,9 +616,9 @@ export class MapService {
       });
     });
   }
-  /** Marca el mapa disponible después de dibujar el primer frame, sin esperar a todas las capas. */
+  /** Muestra el mapa cuando terminaron de cargar las capas del viewport inicial. */
   private handleInitialRender(olMap: OlMap): void {
-    olMap.once('postrender', () => this.isReady.set(true));
+    olMap.once('rendercomplete', () => this.isReady.set(true));
   }
   /**
    * Método auxiliar para estandarizar la creación de capas base.
@@ -573,29 +631,6 @@ export class MapService {
       preload: 0, // 0 es el valor por defecto y el más eficiente para el arranque
       visible: this.baseLayerType() === type
     });
-  }
-  /**
-   * Método para agregar capas XYZ al mapa.
-   * @private
-   */
-  private addXyzLayer(options: { id: string, url: string, maxZoom?: number, zIndex?: number }): void {
-    const map = this._map();
-    if (!map) return;
-    const xyzSource = new XYZ({
-      url: options.url,
-      crossOrigin: 'anonymous',
-      maxZoom: options.maxZoom,
-      interpolate: true,
-      tileLoadFunction: this.tileLoadFunction
-    });
-    const layer = new TileLayer({
-      source: xyzSource,
-      properties: { id: options.id },
-      zIndex: options.zIndex,
-      visible: false // Por defecto no visible
-    });
-    map.addLayer(layer);
-    this.updateLayerInSectionsSignal(options.id, layer);
   }
   /**
    * Actualiza el `signal` `sections` para asociar una capa de OpenLayers (olLayer)
@@ -620,8 +655,7 @@ export class MapService {
         const updatedLayers = this.updateLayersInSubSection(item.layers, layerId, olLayer);
         return { ...item, layers: updatedLayers };
       }
-      // Capas directas de la sección (sin subsección): también deben poder
-      // recibir su instancia de capa XYZ (p. ej. las ortofotos de 'imaAereas').
+      // Capas directas de la sección (sin subsección).
       if (item.type === 'layer' && item.id === layerId) {
         return { ...item, olLayer };
       }
@@ -1049,53 +1083,14 @@ export class MapService {
       sec.id === sectionId ? { ...sec, expanded: !sec.expanded } : sec
     ));
   }
-  /**
-   * Alterna la visibilidad de una capa. Para las ortofotos, se comporta como
-   * un grupo de radio-buttons, asegurando que solo una esté visible a la vez.
-   * @param sectionId ID de la sección principal (ej: 'imaAereas').
-   * @param layerId ID de la capa a cambiar (ej: 'ortofoto_2024').
-   */
+  /** Alterna la visibilidad de una capa del panel. */
   toggleLayerVisibility(sectionId: string, layerId: string) {
     // Se guarda cuántas simbologías había activas para saber si esta acción
     // acaba de encender leyenda y mostrar la ventana automáticamente.
     const simbologiaAntes = capasConSimbologiaVisible(this.panelSections()).length;
-    // Lógica especial para ortofotos: solo una puede estar activa a la vez.
-    if (layerId.startsWith('ortofoto_')) {
-      this.sections.update(currentSections => {
-        // Localizamos la capa clicada esté donde esté (capa directa o dentro de una subsección).
-        const clicked = currentSections
-          .flatMap(sec => sec.items)
-          .flatMap(item => ('layers' in item ? item.layers : item.type === 'layer' ? [item] : []))
-          .find(l => l.id === layerId);
-        // Si ya estaba visible, se apaga (comportamiento de radio-button).
-        const isTurningOn = !clicked?.visible;
-        if (clicked && clicked.visible !== isTurningOn) {
-          this.registrarCambioVisibilidad(clicked, isTurningOn);
-        }
-
-        // Apaga todas las ortofotos y deja encendida únicamente la clicada.
-        const radioUpdate = (l: LayerItem): LayerItem =>
-          l.id.startsWith('ortofoto_') ? { ...l, visible: l.id === layerId ? isTurningOn : false } : l;
-
-        return currentSections.map(sec => ({
-          ...sec,
-          items: sec.items.map(item => {
-            if ('layers' in item) {
-              // Subsección que contiene ortofotos: aplicamos el radio a sus capas.
-              if (!item.layers.some(l => l.id.startsWith('ortofoto_'))) return item;
-              return { ...item, layers: item.layers.map(radioUpdate) };
-            }
-            // Capa directa de la sección.
-            return item.type === 'layer' && item.id.startsWith('ortofoto_') ? radioUpdate(item) : item;
-          }),
-        }));
-      });
-    } else {
-      // Lógica original para el resto de las capas.
-      const clicked = this.findLayerItem(sectionId, layerId);
-      if (clicked) this.registrarCambioVisibilidad(clicked, !clicked.visible);
-      this.updateLayerProperties(layerId, (layer) => ({ visible: !layer.visible }));
-    }
+    const clicked = this.findLayerItem(sectionId, layerId);
+    if (clicked) this.registrarCambioVisibilidad(clicked, !clicked.visible);
+    this.updateLayerProperties(layerId, (layer) => ({ visible: !layer.visible }));
     // La leyenda aparece sola al encender una capa con simbología (y se oculta
     // al apagar la última): ver `sincronizarLeyendaConCapas`.
     this.sincronizarLeyendaConCapas(simbologiaAntes);

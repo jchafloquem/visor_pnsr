@@ -41,14 +41,20 @@ src/environments/
 
 | Archivo | Ambiente | Servicios cartográficos |
 |---|---|---|
-| `environment.ts` | **Desarrollo** | ArcGIS REST y servidor de ortofotos |
-| `environment.qa.ts` | **QA** | ArcGIS REST y servidor de ortofotos |
-| `environment.prod.ts` | **Producción** | ArcGIS REST y servidor de ortofotos |
+| `environment.ts` | **Desarrollo** | ArcGIS REST y mapas base |
+| `environment.qa.ts` | **QA** | ArcGIS REST y mapas base |
+| `environment.prod.ts` | **Producción** | ArcGIS REST y mapas base |
 
 Los tres archivos se generan con la fábrica `crearEnvironment()` de
 `src/environments/environment.model.ts`, que centraliza toda la configuración
 (DataGIS, TUSNE, APIs WSGEOVISOR, Observatorio Urbano, etc.). El mapa consume
-ArcGIS REST y teselas XYZ de ortofotos; GeoServer ya no forma parte del visor.
+ArcGIS REST y los servicios de mapas base; GeoServer ya no forma parte del visor.
+El panel de capas incorpora el servicio COEN FEN 2027 de CENEPRED respetando su
+jerarquía publicada: FEN 2027, grupos temáticos y subcapas individuales.
+El servicio de límites del Perú expone sus 12 subcapas, organizadas en vías,
+hidrografía, límites administrativos y centros poblados.
+También incluye las ortofotos publicadas por IDEP en `IMAGENES`, agrupadas en el
+árbol `ORTOFOTOS`.
 Si algún servidor interno cambia por ambiente, se pasa como override:
 
 ```ts
@@ -56,9 +62,25 @@ export const environment = crearEnvironment({
   production: true,
   ambiente: 'Producción',
   // overrides opcionales de servidores internos:
-  // ortofotoServerUrl, dataGisServerUrl, tusneServerUrl
+  // dataGisServerUrl, tusneServerUrl
 });
 ```
+
+### Publicación de prueba en Netlify
+
+El proyecto incluye `netlify.toml` y `public/_redirects`. Para desplegarlo:
+
+1. Importa el repositorio en Netlify y deja que detecte `netlify.toml`.
+2. `npm run build:netlify` genera un build optimizado con la configuración de
+   QA; Netlify publica `dist/visor_pnsr/browser`.
+3. Las rutas de Angular se sirven mediante el fallback SPA de `_redirects`, y
+   `/WSGEOVISOR/*` se proxifica al backend de pruebas
+   (`https://test.munisanisidro.gob.pe`).
+
+La previsualización no reemplaza el acceso a la red institucional: los servicios
+DataGIS y TUSNE configurados con IP privadas (`192.168.x.x`) no son accesibles
+desde Netlify. Para probar esas funciones se necesita publicar esos servicios
+mediante un backend accesible o conectarse a una red/VPN con acceso apropiado.
 
 ### Comandos por ambiente
 
@@ -153,10 +175,6 @@ graph TB
     ARCGIS[ArcGIS REST]
   end
 
-  subgraph "Servicios Ortofotos"
-    ORTOFOTOS[tiles_static_app]
-  end
-
   subgraph "Interoperatibilidad"
     INTER[Servicios interoperables]
   end
@@ -172,7 +190,6 @@ graph TB
   FRONT --> MAPA
   AUTH --> SEGURIDAD
   MAPA --> ARCGIS
-  MAPA --> ORTOFOTOS
   MAPA --> INTER
 
   %% =========================
@@ -184,7 +201,7 @@ graph TB
   classDef external fill:#fafafa,stroke:#a1a1aa,stroke-width:1px,color:#3f3f46;
 
   class FRONT front;
-  class AUTH,MAPA,ARCGIS,ORTOFOTOS,SEGURIDAD service;
+  class AUTH,MAPA,ARCGIS,SEGURIDAD service;
   class INTER external;
   class DB1 db;
   class DB2 db;
@@ -196,4 +213,4 @@ graph TB
 [Local](http://localhost:4200/)
 
 Producción: URL institucional configurada para el PNVR. Las capas del mapa se
-consumen desde ArcGIS REST y el servidor de ortofotos.
+consumen desde ArcGIS REST y los servicios de mapas base.

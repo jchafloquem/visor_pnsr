@@ -1,66 +1,61 @@
 import {
-  Component,
-  Input,
-  ElementRef,
-  ViewChild,
-  OnDestroy,
   AfterViewInit,
   ChangeDetectionStrategy,
+  Component,
+  inject,
+  Input,
+  OnDestroy,
+  ViewEncapsulation,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   OlMap,
   OverviewMap,
-  View,
   TileLayer,
-  XYZ,
+  View,
 } from '../../../../../../modules/openlayers.module';
-import { GOOGLE_SATELLITE_URL } from '../../../../../../interfaces/mapas.config';
+import { ARCGIS_WORLD_TOPO_TILES_URL } from '../../../../../../interfaces/mapas.config';
+import { ArcGISRestService } from '../../../../../../services/arcgis-rest.service';
+import type { ObjectEvent } from 'ol/Object';
 
 /**
  * Componente para integrar el control OverviewMap de OpenLayers.
- * Muestra un pequeño mapa de contexto que indica la extensión actual del mapa principal.
+ * Muestra un mapa de contexto que indica la extensión actual del mapa principal.
  */
 @Component({
   selector: 'app-overview-map',
   standalone: true,
-  imports: [CommonModule],
   templateUrl: './overview-map.html',
   changeDetection: ChangeDetectionStrategy.Eager,
+  encapsulation: ViewEncapsulation.None,
   styleUrl: './overview-map.css',
 })
 export class OverviewMapComponent implements OnDestroy, AfterViewInit {
-  /**
-   * La instancia del mapa principal de OpenLayers a la que se adjuntará el control OverviewMap.
-   * Es un input requerido.
-   */
   @Input({ required: true }) mainMap!: OlMap;
-  /**
-   * Referencia al elemento HTML donde se renderizará el mapa de vista general.
-   */
-  @ViewChild('overviewMapContainer') overviewMapContainer!: ElementRef;
 
   private overviewMapControl?: OverviewMap;
-  /**
-   * Se ejecuta después de que la vista del componente ha sido inicializada.
-   */
+  private toggleButton?: HTMLButtonElement;
+  private resizeFrame?: number;
+  private syncFrame?: number;
+  private readonly arcgisRestService = inject(ArcGISRestService);
+
+  private readonly onToggleButtonClick = (): void => {
+    this.scheduleOverviewMapResize();
+  };
+
+  private readonly onMainViewPropertyChange = (event: ObjectEvent): void => {
+    if (event.key !== 'center' && event.key !== 'resolution') return;
+    this.scheduleOverviewViewSync();
+  };
+
   ngAfterViewInit(): void {
     this.initOverviewMap();
   }
 
-  /**
-   * Inicializa el control OverviewMap y lo añade al mapa principal.
-   * Utiliza la capa satelital para el mapa de vista general.
-   */
   private initOverviewMap(): void {
-    if (!this.mainMap || !this.overviewMapContainer) return;
-
+    const mainView = this.mainMap.getView();
     const overviewTileLayer = new TileLayer({
-      source: new XYZ({
-        url: GOOGLE_SATELLITE_URL,
-        crossOrigin: 'anonymous',
+      source: this.arcgisRestService.createTileSource(ARCGIS_WORLD_TOPO_TILES_URL, {
         maxZoom: 19,
-        interpolate: true,
       }),
     });
 
@@ -68,51 +63,103 @@ export class OverviewMapComponent implements OnDestroy, AfterViewInit {
       className: 'ol-overviewmap custom-overview',
       layers: [overviewTileLayer],
       view: new View({
-        projection: this.mainMap.getView().getProjection(),
-        center: this.mainMap.getView().getCenter(),
-        zoom: (this.mainMap.getView().getZoom() || 0) - 4,
+        projection: mainView.getProjection(),
+        center: mainView.getCenter(),
+        zoom: Math.max(0, (mainView.getZoom() ?? 4) - 4),
       }),
-      target: this.overviewMapContainer.nativeElement,
       collapsible: true,
       collapsed: false,
       label: '−',
-      collapseLabel: '⤢',
+      collapseLabel: '⌖',
+      tipLabel: 'Mapa de contexto',
     });
 
     this.overviewMapControl = control;
-
-    // Escuchador para cambios de estado (Colapsar/Expandir)
-    control.on('propertychange' as any, (event: any) => {
-      if (event.key === 'collapsed') {
-        const ovMap = control.getOverviewMap();
-        if (ovMap) {
-          setTimeout(() => {
-            ovMap.updateSize();
-            ovMap.getView().changed();
-          }, 350); // Tiempo suficiente para la transición CSS
-        }
-      }
-    });
-
+    mainView.on('change:center', this.onMainViewPropertyChange);
+    mainView.on('change:resolution', this.onMainViewPropertyChange);
     this.mainMap.addControl(control);
 
-    // --- SOLUCIÓN PARA EL MAPA PERDIDO AL INICIO ---
-    // Forzamos el tamaño inmediatamente después de agregarlo
-    const internalMap = control.getOverviewMap();
-    if (internalMap) {
-      internalMap.updateSize();
-      setTimeout(() => {
-        internalMap.updateSize();
-      }, 100);
+    this.toggleButton =
+      this.mainMap.getTargetElement()?.querySelector<HTMLButtonElement>('.custom-overview button') ??
+      undefined;
+    if (!this.toggleButton) {
+      this.mainMap.removeControl(control);
+      mainView.un('change:center', this.onMainViewPropertyChange);
+      mainView.un('change:resolution', this.onMainViewPropertyChange);
+      this.overviewMapControl = undefined;
+      throw new Error('No se pudo crear el botón del mapa de contexto.');
     }
+
+    this.toggleButton.addEventListener('click', this.onToggleButtonClick);
+    this.updateToggleButton();
+    this.scheduleOverviewMapResize();
+    this.syncOverviewView();
   }
 
-  /**
-   * Limpia el control OverviewMap cuando el componente es destruido para evitar fugas de memoria.
-   */
-  ngOnDestroy(): void {
-    if (this.mainMap && this.overviewMapControl) {
-      this.mainMap.removeControl(this.overviewMapControl);
+  private syncOverviewView(): void {
+    const overviewMap = this.overviewMapControl?.getOverviewMap();
+    if (!overviewMap) return;
+
+    const mainView = this.mainMap.getView();
+    const overviewView = overviewMap.getView();
+    const center = mainView.getCenter();
+    const zoom = mainView.getZoom();
+
+    if (center) overviewView.setCenter(center);
+    if (zoom !== undefined) overviewView.setZoom(Math.max(0, zoom - 4));
+  }
+
+  private scheduleOverviewViewSync(): void {
+    if (this.syncFrame !== undefined) {
+      cancelAnimationFrame(this.syncFrame);
     }
+
+    this.syncFrame = requestAnimationFrame(() => {
+      this.syncFrame = undefined;
+      this.syncOverviewView();
+    });
+  }
+
+  private updateToggleButton(): void {
+    if (!this.toggleButton || !this.overviewMapControl) return;
+
+    const collapsed = this.overviewMapControl.getCollapsed();
+    const label = collapsed ? 'Expandir mapa de contexto' : 'Contraer mapa de contexto';
+    this.toggleButton.setAttribute('aria-label', label);
+    this.toggleButton.setAttribute('aria-expanded', String(!collapsed));
+    this.toggleButton.title = label;
+  }
+
+  private scheduleOverviewMapResize(): void {
+    if (this.resizeFrame !== undefined) {
+      cancelAnimationFrame(this.resizeFrame);
+    }
+
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resizeFrame = undefined;
+      this.updateToggleButton();
+      const overviewMap = this.overviewMapControl?.getOverviewMap();
+      if (!overviewMap) return;
+
+      overviewMap.updateSize();
+      overviewMap.getView().changed();
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.resizeFrame !== undefined) {
+      cancelAnimationFrame(this.resizeFrame);
+    }
+    if (this.syncFrame !== undefined) {
+      cancelAnimationFrame(this.syncFrame);
+    }
+    if (!this.overviewMapControl) return;
+
+    this.toggleButton?.removeEventListener('click', this.onToggleButtonClick);
+    const mainView = this.mainMap.getView();
+    mainView.un('change:center', this.onMainViewPropertyChange);
+    mainView.un('change:resolution', this.onMainViewPropertyChange);
+    this.mainMap.removeControl(this.overviewMapControl);
+    this.overviewMapControl = undefined;
   }
 }

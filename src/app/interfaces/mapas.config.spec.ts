@@ -101,7 +101,7 @@ describe('mapas.config · animación y apilado', () => {
   });
 
   it('apila las geometrías del usuario por encima de todo lo demás', () => {
-    // Por encima de los mapas base, las ortofotos, la cuadrícula UTM (998) y los
+    // Por encima de los mapas base, la cuadrícula UTM (998) y los
     // resaltados de búsqueda e impresión, para que nunca queden ocultas.
     expect(ZINDEX_GEOMETRIAS_USUARIO).toBeGreaterThan(1001);
     expect(ZINDEX_GEOMETRIAS_USUARIO).toBeLessThanOrEqual(1002);

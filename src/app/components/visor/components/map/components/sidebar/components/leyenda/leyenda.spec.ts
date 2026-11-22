@@ -158,8 +158,8 @@ describe('Leyenda · capas compuestas', () => {
         items: [
           {
             type: 'layer',
-            id: 'limites-peru',
-            label: 'Límites del Perú',
+            id: 'limites-departamentos',
+            label: 'Departamentos',
             visible: true,
             opacity: 1,
             showInLegend: true,

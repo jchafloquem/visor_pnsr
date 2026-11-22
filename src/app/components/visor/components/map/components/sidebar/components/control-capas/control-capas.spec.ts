@@ -4,6 +4,10 @@ import { signal } from '@angular/core';
 import { ControlCapas } from './control-capas';
 import { MapService } from '../../../../../../../../services/map.service';
 import { Section } from '../../../../../../../../interfaces/geoLayers';
+import {
+  LAYER_PANEL_SECTIONS,
+  PERU_LIMITS_LAYER_CONFIGS,
+} from '../../../../../../../../interfaces/controlCapasConfig';
 
 describe('ControlCapas', () => {
   let component: ControlCapas;
@@ -64,21 +68,8 @@ describe('ControlCapas', () => {
         },
       ],
     },
-    {
-      id: 'limitesPeru',
-      title: 'LÍMITES DEL PERÚ',
-      expanded: false,
-      items: [
-        {
-          type: 'layer',
-          id: 'limites-peru',
-          label: 'Límites del Perú',
-          visible: true,
-          opacity: 1,
-          showInLegend: true,
-        },
-      ],
-    },
+    ...LAYER_PANEL_SECTIONS.filter(section => section.id === 'limitesPeru'),
+    ...LAYER_PANEL_SECTIONS.filter(section => section.id === 'coenFen2027'),
   ]);
   const setLayerVisibility = vi.fn();
   const setLayerOpacity = vi.fn();
@@ -102,12 +93,17 @@ describe('ControlCapas', () => {
     fixture.detectChanges();
   });
 
-  it('renders the available rural and Peru limits layer controls', () => {
+  it('renders section, group and sublayer controls for the published FEN hierarchy', () => {
     expect(component).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('ACCESO A AGUA');
     expect(fixture.nativeElement.textContent).toContain('ACCESO A ALCANTARILLADO');
     expect(fixture.nativeElement.textContent).toContain('LÍMITES DEL PERÚ');
-    expect(fixture.nativeElement.querySelectorAll('input[type="checkbox"]').length).toBe(5);
+    expect(fixture.nativeElement.textContent).toContain('FEN2027');
+    const fenSection = fixture.nativeElement.querySelector('[data-section-id="coenFen2027"]');
+    const anaGroup = fenSection?.querySelector('[data-subsection-id="ana"]');
+    expect(anaGroup?.querySelector('input[aria-label="Puntos críticos 2027"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('input[type="checkbox"]').length)
+      .toBe(14 + PERU_LIMITS_LAYER_CONFIGS.length);
   });
 
   it('updates the layer visibility from its checkbox', () => {
@@ -126,12 +122,12 @@ describe('ControlCapas', () => {
 
   it('updates Peru limits visibility from its checkbox', () => {
     const checkbox: HTMLInputElement = fixture.nativeElement.querySelector(
-      'input[aria-label="Límites del Perú"]'
+      'input[aria-label="Departamentos"]'
     );
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change'));
 
-    expect(setLayerVisibility).toHaveBeenCalledWith('limitesPeru', 'limites-peru', false);
+    expect(setLayerVisibility).toHaveBeenCalledWith('limitesPeru', 'limites-departamentos', false);
   });
 
   it('updates layer opacity from its range control', () => {

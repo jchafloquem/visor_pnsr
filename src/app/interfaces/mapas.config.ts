@@ -4,9 +4,9 @@ export const INITIAL_CENTER = [-75.0152, -9.19];
 export const INITIAL_ZOOM = 6;
 /**
  * Nivel de zoom máximo permitido al hacer scroll o zoom-in.
- * Por encima del `maxZoom` nativo de cada fuente de teselas (ortofotos: 22,
- * mapas base: 19) OpenLayers amplía ("overzoom") la tesela disponible con
- * interpolación, por lo que subir este valor no genera peticiones 404.
+ * Por encima del `maxZoom` nativo de los mapas base (19), OpenLayers amplía
+ * ("overzoom") la tesela disponible con interpolación, así que este límite no
+ * genera peticiones 404.
  */
 export const MAP_MAX_ZOOM = 30;
 /** URL del servicio de mapas satelitales de Google */
@@ -44,13 +44,12 @@ export const SAN_ISIDRO_EXTENT = [275224.08, 8660213.79, 281557.72, 8663299.55];
 export const TERMS_ZOOM_DISTRICTO = 14;
 /**
  * Convención de apilado (zIndex) de las capas del visor, de menor a mayor:
- * - `0 – 15`: capas temáticas y ortofotos (las imágenes aéreas usan 5).
+ * - `0 – 15`: capas temáticas.
  * - `998`: cuadrícula UTM-18S de la captura de planos.
  * - `1000`: resaltado de geometrías de búsqueda.
  * - `1001`: lote seleccionado para impresión (borde rojo).
  * - `1002`: geometrías creadas por el usuario (herramientas de dibujo y
  *   marcador del buscador de coordenadas). Deben quedar SIEMPRE por encima de
- *   las imágenes aéreas y las capas temáticas, para que no queden ocultas al
- *   activar una ortofoto.
+ *   las capas temáticas.
  */
 export const ZINDEX_GEOMETRIAS_USUARIO = 1002;

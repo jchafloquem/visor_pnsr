@@ -17,6 +17,10 @@ export const VIVIENDAS_RURALES_FEATURE_SERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/OGEI/Viviendas_Rurales/FeatureServer';
 export const PERU_LIMITS_MAPSERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/Limites_Peru/MapServer';
+export const COEN_FEN_2027_MAPSERVER_URL =
+  'https://sigrid.cenepred.gob.pe/arcgis/rest/services/sectores/COEN_FEN_2027/MapServer';
+export const IDEP_IMAGENES_MAPSERVER_URL =
+  'https://www.idep.gob.pe/geoportal/rest/services/IMAGENES';
 export const VIVIENDAS_RURALES_COARSE_RESOLUTION = 1200;
 
 export interface ArcGISRestError {
@@ -35,6 +39,7 @@ export interface ArcGISServiceMetadata {
 
 export interface ArcGISMapServerLegendResponse {
   layers?: Array<{
+    layerId?: number;
     layerName: string;
     legend?: Array<{
       label?: string;
@@ -80,6 +85,8 @@ export interface ViviendasRuralesLayerOptions {
 export interface ArcGISMapServerLayerOptions {
   title: string;
   zIndex: number;
+  subLayerId?: number;
+  visible?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -286,8 +293,12 @@ export class ArcGISRestService {
     serviceUrl: string,
     options: ArcGISMapServerLayerOptions
   ): ImageLayer<ImageArcGISRest> {
+    const params = options.subLayerId === undefined
+      ? undefined
+      : { LAYERS: `show:${options.subLayerId}` };
     const source = new ImageArcGISRest({
       url: this.normalizeUrl(serviceUrl),
+      params,
       crossOrigin: 'anonymous',
     });
 
@@ -295,7 +306,7 @@ export class ArcGISRestService {
       source,
       properties: { title: options.title },
       zIndex: options.zIndex,
-      visible: true,
+      visible: options.visible ?? true,
     });
   }
 

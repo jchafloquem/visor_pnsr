@@ -3,14 +3,6 @@ import { CommonModule } from '@angular/common';
 import { MapService } from '../../../../../../../../services/map.service';
 import { LayerItem, Section } from '../../../../../../../../interfaces/geoLayers';
 
-interface LayerGroup {
-  id: string;
-  title: string;
-  sectionId: string;
-  expanded: boolean;
-  layers: LayerItem[];
-}
-
 @Component({
   selector: 'app-control-capas',
   standalone: true,
@@ -21,9 +13,14 @@ interface LayerGroup {
 export class ControlCapas {
   private readonly mapService = inject(MapService);
 
-  readonly layerGroups = computed(() =>
-    this.mapService.panelSections().flatMap(section => this.toLayerGroups(section))
-  );
+  readonly sections = computed(() => this.mapService.panelSections());
+
+  getLayerCount(section: Section): number {
+    return section.items.reduce(
+      (count, item) => count + (item.type === 'subsection' ? item.layers.length : 1),
+      0
+    );
+  }
 
   onLayerVisibilityChange(sectionId: string, layerId: string, event: Event): void {
     const target = event.target;
@@ -52,34 +49,4 @@ export class ControlCapas {
     this.mapService.setLayerOpacity(sectionId, layerId, Math.min(100, Math.max(0, percent)) / 100);
   }
 
-  private toLayerGroups(section: Section): LayerGroup[] {
-    const groups: LayerGroup[] = [];
-    const standaloneLayers: LayerItem[] = [];
-
-    for (const item of section.items) {
-      if (item.type === 'subsection') {
-        groups.push({
-          id: `${section.id}:${item.id}`,
-          title: item.title,
-          sectionId: section.id,
-          expanded: item.expanded,
-          layers: item.layers,
-        });
-      } else {
-        standaloneLayers.push(item);
-      }
-    }
-
-    if (standaloneLayers.length > 0) {
-      groups.push({
-        id: section.id,
-        title: section.title,
-        sectionId: section.id,
-        expanded: section.expanded,
-        layers: standaloneLayers,
-      });
-    }
-
-    return groups;
-  }
 }

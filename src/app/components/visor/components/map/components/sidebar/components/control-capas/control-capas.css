@@ -1,3 +1,108 @@
 :host {
   display: block;
 }
+
+.opacity-control {
+  margin: 0.35rem 0 0 2rem;
+  padding: 0.5rem 0.65rem 0.6rem;
+  border: 1px solid #e8edf3;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.opacity-control:focus-within {
+  border-color: #f3a5ac;
+  background: #fff;
+}
+
+.opacity-control__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.opacity-control__label {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.opacity-control__value {
+  min-width: 2.5rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.opacity-control__slider {
+  display: block;
+  width: 100%;
+  height: 0.35rem;
+  margin: 0.35rem 0;
+  appearance: none;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #df1021 0%,
+    #df1021 var(--opacity-value),
+    #dce3ec var(--opacity-value),
+    #dce3ec 100%
+  );
+  cursor: pointer;
+}
+
+.opacity-control__slider::-webkit-slider-thumb {
+  width: 0.9rem;
+  height: 0.9rem;
+  appearance: none;
+  border: 2px solid #df1021;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 20%);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.opacity-control__slider::-moz-range-thumb {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 2px solid #df1021;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 20%);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.opacity-control__slider:focus-visible {
+  outline: 2px solid #df1021;
+  outline-offset: 4px;
+}
+
+.opacity-control__slider:focus-visible::-webkit-slider-thumb,
+.opacity-control__slider:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgb(223 16 33 / 12%);
+  transform: scale(1.08);
+}
+
+.opacity-control__slider:focus-visible::-moz-range-thumb,
+.opacity-control__slider:hover::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgb(223 16 33 / 12%);
+  transform: scale(1.08);
+}
+
+.opacity-control--disabled {
+  opacity: 0.55;
+}
+
+.opacity-control--disabled .opacity-control__slider {
+  cursor: not-allowed;
+}

@@ -216,4 +216,14 @@ describe('ArcGISRestService', () => {
     expect(layer.getZIndex()).toBe(24);
     expect(layer.getVisible()).toBe(true);
   });
+
+  it('creates a hidden MapServer layer limited to the requested sublayer', () => {
+    const layer = service.createMapServerLayer(
+      'https://gis.example.test/MapServer',
+      { title: 'Puntos críticos 2027', zIndex: 30, subLayerId: 25, visible: false }
+    );
+
+    expect(layer.getSource()?.getParams().LAYERS).toBe('show:25');
+    expect(layer.getVisible()).toBe(false);
+  });
 });
