@@ -12,6 +12,7 @@ import { AUDITORIA_OPCIONES, AuditoriaService } from './auditoria.service';
 import { easeOut } from 'ol/easing';
 import { defaults as defaultInteractions } from 'ol/interaction';
 import type { Coordinate } from 'ol/coordinate';
+import EsriJSON, { type EsriJSONGeometry } from 'ol/format/EsriJSON';
 
 import {
   COEN_FEN_2027_LAYER_GROUPS,
@@ -484,6 +485,10 @@ export class MapService {
       this.updateLayerInSectionsSignal(config.itemId, layer);
     }
 
+    this.arcgisRestService.getPeruAdministrativeCatalog().subscribe({
+      error: error => console.error('No se pudo precargar el catálogo de límites geográficos.', error),
+    });
+
     this.arcgisRestService.getMapServerLegend(PERU_LIMITS_MAPSERVER_URL).subscribe({
       next: response => {
         let legendCount = 0;
@@ -921,6 +926,13 @@ export class MapService {
   clearHighlightLayer(): void {
     this.highlightLayer?.getSource()?.clear();
   }
+  /** Retira solo el resaltado amarillo de la búsqueda administrativa. */
+  clearAdministrativeSearchHighlight(): void {
+    const source = this.highlightLayer?.getSource();
+    source?.getFeatures()
+      .filter((feature: Feature) => feature.get('highlightKind') === 'administrative-search')
+      .forEach((feature: Feature) => source.removeFeature(feature));
+  }
   /**
    * Remueve una capa del mapa definitivamente basándose en su ID.
    */
@@ -1269,6 +1281,33 @@ export class MapService {
     this.highlightLayer?.getSource()?.addFeature(featureToHighlight);
 
   }
+  /** Encuadra y resalta una geometría devuelta por ArcGIS REST. */
+  fitToEsriGeometry(
+    geometry: EsriJSONGeometry,
+    sourceProjection: 'EPSG:4326' | 'EPSG:3857' = 'EPSG:3857'
+  ): boolean {
+    const map = this._map();
+    if (!map || !geometry) return false;
+
+    const view = map.getView();
+    const geometryEnVista = new EsriJSON().readGeometry(geometry, {
+      dataProjection: sourceProjection,
+      featureProjection: view.getProjection(),
+    });
+    const extent = geometryEnVista.getExtent();
+    if (isEmpty(extent) || !extent.every(Number.isFinite)) return false;
+
+    this.clearAdministrativeSearchHighlight();
+    const feature = new Feature({ geometry: geometryEnVista });
+    feature.set('highlightKind', 'administrative-search');
+    this.highlightLayer?.getSource()?.addFeature(feature);
+
+    view.fit(extent, {
+      duration: ANIMATION_DURATION,
+      padding: [60, 60, 60, 60],
+    });
+    return true;
+  }
   /**
    * Encuadra en el mapa TODA la extensión de un área encontrada (por ejemplo un
    * parque o área recreacional compuesto por uno o varios polígonos) y resalta
@@ -1352,6 +1391,20 @@ export class MapService {
       //   para que la vía encontrada destaque claramente sobre la cartografía.
       // - Polígonos (lotes, habilitaciones): borde y relleno azules.
       style: feature => {
+        if (feature.get('highlightKind') === 'administrative-search') {
+          return [
+            new Style({
+              stroke: new Stroke({ color: 'rgba(255, 214, 0, 0.65)', width: 15 }),
+            }),
+            new Style({
+              stroke: new Stroke({ color: '#3b2f00', width: 8 }),
+            }),
+            new Style({
+              stroke: new Stroke({ color: '#fff200', width: 4 }),
+              fill: new Fill({ color: 'rgba(255, 230, 0, 0.28)' }),
+            }),
+          ];
+        }
         const geometryType = feature.getGeometry()?.getType();
         if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
           return [

@@ -13,7 +13,7 @@
         [attr.aria-label]="layer.label"
         (change)="onLayerVisibilityChange(sectionId, layer.id, $event)"
       />
-      <span class="text-sm text-textPrimary">{{ layer.label }}</span>
+      <span class="control-capas__layer-label text-textPrimary">{{ layer.label }}</span>
     </label>
     <div class="opacity-control" [class.opacity-control--disabled]="layer.disabled">
       <div class="opacity-control__header">
@@ -49,9 +49,9 @@
           [open]="section.expanded"
         >
           <summary class="flex cursor-pointer items-center justify-between gap-2 py-3">
-            <span class="!text-sm !font-bold">{{ section.title }}</span>
+            <span class="control-capas__section-title !font-bold">{{ section.title }}</span>
             <span
-              class="grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 text-sm font-bold text-secondary"
+              class="control-capas__section-count grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 font-bold text-secondary"
             >
               {{ getLayerCount(section) }}
             </span>
@@ -66,9 +66,9 @@
                   [open]="item.expanded"
                 >
                   <summary class="flex cursor-pointer items-center justify-between gap-2 py-2">
-                    <span class="text-xs font-semibold">{{ item.title }}</span>
+                    <span class="control-capas__subsection-title font-semibold">{{ item.title }}</span>
                     <span
-                      class="grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 text-xs font-bold text-secondary"
+                      class="control-capas__subsection-count grid h-5 min-w-5 place-items-center rounded-full bg-secondary/10 px-1.5 font-bold text-secondary"
                     >
                       {{ item.layers.length }}
                     </span>
@@ -95,8 +95,8 @@
     </div>
   } @else {
     <div class="mt-8 text-center">
-      <p class="mt-1 text-sm font-semibold text-slate-600">No hay capas disponibles</p>
-      <p class="text-xs text-slate-400">Las capas se cargarán automáticamente al iniciar el mapa.</p>
+      <p class="control-capas__empty-title mt-1 font-semibold text-slate-600">No hay capas disponibles</p>
+      <p class="control-capas__empty-message text-slate-400">Las capas se cargarán automáticamente al iniciar el mapa.</p>
     </div>
   }
 </div>

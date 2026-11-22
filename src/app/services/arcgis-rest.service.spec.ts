@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   ArcGISRestService,
+  PERU_LIMITS_MAPSERVER_URL,
   VIVIENDAS_RURALES_FEATURE_SERVER_URL,
 } from './arcgis-rest.service';
 
@@ -79,6 +80,80 @@ describe('ArcGISRestService', () => {
     await expect(result).resolves.toMatchObject({
       features: [{ attributes: { OBJECTID: 5 } }],
     });
+  });
+
+  it('queries the geometry of a selected administrative area', async () => {
+    const result = firstValueFrom(service.queryFeatures<{ id_dist: string }>(
+      'https://gis.example.test/MapServer',
+      8,
+      {
+        where: "id_dist = '150101'",
+        outFields: ['OBJECTID'],
+        returnGeometry: true,
+        outSR: 3857,
+      }
+    ));
+    const request = httpMock.expectOne(req =>
+      req.url === 'https://gis.example.test/MapServer/8/query'
+    );
+
+    expect(request.request.params.get('where')).toBe("id_dist = '150101'");
+    expect(request.request.params.get('outFields')).toBe('OBJECTID');
+    expect(request.request.params.get('returnGeometry')).toBe('true');
+    expect(request.request.params.get('outSR')).toBe('3857');
+    request.flush({
+      features: [{
+        attributes: { id_dist: '150101' },
+        geometry: {
+          rings: [[[1, 2], [3, 2], [3, 4], [1, 4], [1, 2]]],
+          spatialReference: { wkid: 3857 },
+        },
+      }],
+    });
+
+    await expect(result).resolves.toMatchObject({
+      features: [{
+        geometry: { rings: [[[1, 2], [3, 2], [3, 4], [1, 4], [1, 2]]] },
+      }],
+    });
+  });
+
+  it('preloads and caches all administrative options in parallel', async () => {
+    const first = firstValueFrom(service.getPeruAdministrativeCatalog());
+    const second = firstValueFrom(service.getPeruAdministrativeCatalog());
+    const requests = httpMock.match(req =>
+      req.url.startsWith(`${PERU_LIMITS_MAPSERVER_URL}/`) &&
+      req.url.endsWith('/query')
+    );
+
+    expect(requests).toHaveLength(3);
+    const byLayerId = new Map(requests.map(request => [
+      Number(request.request.url.split('/').slice(-2, -1)[0]),
+      request,
+    ]));
+    expect(byLayerId.get(6)?.request.params.get('outFields')).toBe('id_dpto,nom_dep');
+    expect(byLayerId.get(7)?.request.params.get('outFields')).toBe('id_prov,nom_prov,id_dep');
+    expect(byLayerId.get(8)?.request.params.get('outFields')).toBe('id_dist,nom_dist,id_prov');
+
+    byLayerId.get(6)!.flush({
+      features: [{ attributes: { id_dpto: '15', nom_dep: 'LIMA' } }],
+    });
+    byLayerId.get(7)!.flush({
+      features: [{ attributes: { id_prov: '1501', nom_prov: 'LIMA', id_dep: '15' } }],
+    });
+    byLayerId.get(8)!.flush({
+      features: [{ attributes: { id_dist: '150101', nom_dist: 'LIMA', id_prov: '1501' } }],
+    });
+
+    const expected = {
+      departments: [{ code: '15', name: 'LIMA' }],
+      provinces: [{ code: '1501', name: 'LIMA', parentCode: '15' }],
+      districts: [{ code: '150101', name: 'LIMA', parentCode: '1501' }],
+    };
+    await expect(first).resolves.toEqual(expected);
+    await expect(second).resolves.toEqual(expected);
+    await expect(firstValueFrom(service.getPeruAdministrativeCatalog())).resolves.toEqual(expected);
+    httpMock.expectNone(req => req.url.endsWith('/query'));
   });
 
   it('creates a Viviendas Rurales layer that requests features by visible extent', async () => {

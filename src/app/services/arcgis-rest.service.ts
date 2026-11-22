@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import EsriJSON from 'ol/format/EsriJSON';
+import type { EsriJSONGeometry } from 'ol/format/EsriJSON';
 import type Feature from 'ol/Feature';
 import type Geometry from 'ol/geom/Geometry';
 import { bbox } from 'ol/loadingstrategy';
@@ -11,7 +12,8 @@ import ImageArcGISRest from 'ol/source/ImageArcGISRest';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import VectorSource from 'ol/source/Vector';
 import XYZ, { type Options as XYZOptions } from 'ol/source/XYZ';
-import { Observable, firstValueFrom, map } from 'rxjs';
+import { Observable, catchError, firstValueFrom, forkJoin, map, shareReplay, throwError } from 'rxjs';
+import { PERU_ADMINISTRATIVE_LAYER_IDS } from '../interfaces/controlCapasConfig';
 
 export const VIVIENDAS_RURALES_FEATURE_SERVER_URL =
   'https://portalgis.vivienda.gob.pe/servergis/rest/services/OGEI/Viviendas_Rurales/FeatureServer';
@@ -53,7 +55,7 @@ export interface ArcGISMapServerLegendResponse {
 export interface ArcGISFeatureSet<T> {
   features?: Array<{
     attributes: T;
-    geometry?: Record<string, unknown>;
+    geometry?: EsriJSONGeometry;
   }>;
   objectIdFieldName?: string;
   fields?: Array<{ name: string; type: string; alias?: string }>;
@@ -76,6 +78,18 @@ export interface ArcGISQueryOptions {
   spatialRel?: string;
 }
 
+export interface PeruAdministrativeOption {
+  code: string;
+  name: string;
+  parentCode?: string;
+}
+
+export interface PeruAdministrativeCatalog {
+  departments: PeruAdministrativeOption[];
+  provinces: PeruAdministrativeOption[];
+  districts: PeruAdministrativeOption[];
+}
+
 export interface ViviendasRuralesLayerOptions {
   title: string;
   color: string;
@@ -92,6 +106,57 @@ export interface ArcGISMapServerLayerOptions {
 @Injectable({ providedIn: 'root' })
 export class ArcGISRestService {
   private readonly http = inject(HttpClient);
+  private peruAdministrativeCatalog$?: Observable<PeruAdministrativeCatalog>;
+
+  getPeruAdministrativeCatalog(): Observable<PeruAdministrativeCatalog> {
+    if (this.peruAdministrativeCatalog$) return this.peruAdministrativeCatalog$;
+
+    const catalog$ = forkJoin({
+      departments: this.queryFeatures<Record<string, unknown>>(
+        PERU_LIMITS_MAPSERVER_URL,
+        PERU_ADMINISTRATIVE_LAYER_IDS.departments,
+        {
+          outFields: ['id_dpto', 'nom_dep'],
+          returnGeometry: false,
+          resultRecordCount: 100,
+          orderByFields: 'nom_dep ASC',
+        }
+      ),
+      provinces: this.queryFeatures<Record<string, unknown>>(
+        PERU_LIMITS_MAPSERVER_URL,
+        PERU_ADMINISTRATIVE_LAYER_IDS.provinces,
+        {
+          outFields: ['id_prov', 'nom_prov', 'id_dep'],
+          returnGeometry: false,
+          resultRecordCount: 2000,
+          orderByFields: 'nom_prov ASC',
+        }
+      ),
+      districts: this.queryFeatures<Record<string, unknown>>(
+        PERU_LIMITS_MAPSERVER_URL,
+        PERU_ADMINISTRATIVE_LAYER_IDS.districts,
+        {
+          outFields: ['id_dist', 'nom_dist', 'id_prov'],
+          returnGeometry: false,
+          resultRecordCount: 2000,
+          orderByFields: 'nom_dist ASC',
+        }
+      ),
+    }).pipe(
+      map(({ departments, provinces, districts }) => ({
+        departments: this.toAdministrativeOptions(departments.features, 'id_dpto', 'nom_dep'),
+        provinces: this.toAdministrativeOptions(provinces.features, 'id_prov', 'nom_prov', 'id_dep'),
+        districts: this.toAdministrativeOptions(districts.features, 'id_dist', 'nom_dist', 'id_prov'),
+      })),
+      catchError(error => {
+        this.peruAdministrativeCatalog$ = undefined;
+        return throwError(() => error);
+      }),
+      shareReplay({ bufferSize: 1, refCount: false })
+    );
+    this.peruAdministrativeCatalog$ = catalog$;
+    return catalog$;
+  }
 
   getServiceMetadata(url: string): Observable<ArcGISServiceMetadata> {
     const serviceUrl = this.normalizeUrl(url);
@@ -171,6 +236,24 @@ export class ArcGISRestService {
     return this.http.get<ArcGISFeatureSet<T>>(url, { params }).pipe(
       map(response => this.assertSuccess(response))
     );
+  }
+
+  private toAdministrativeOptions(
+    features: ArcGISFeatureSet<Record<string, unknown>>['features'],
+    codeField: string,
+    nameField: string,
+    parentField?: string
+  ): PeruAdministrativeOption[] {
+    return (features ?? [])
+      .map(({ attributes }) => {
+        const code = String(attributes[codeField] ?? '').trim();
+        const name = String(attributes[nameField] ?? '').trim();
+        const parentCode = parentField
+          ? String(attributes[parentField] ?? '').trim()
+          : undefined;
+        return { code, name, ...(parentCode ? { parentCode } : {}) };
+      })
+      .filter(option => option.code && option.name);
   }
 
   createViviendasRuralesLayer(

@@ -74,6 +74,12 @@ type PeruLimitsPanelItemConfig =
   | { type: 'layer'; layer: PeruLimitsLayerConfig }
   | { type: 'group'; id: string; title: string; layers: PeruLimitsLayerConfig[] };
 
+export const PERU_ADMINISTRATIVE_LAYER_IDS = {
+  departments: 6,
+  provinces: 7,
+  districts: 8,
+} as const;
+
 export const PERU_LIMITS_PANEL_ITEMS: readonly PeruLimitsPanelItemConfig[] = [
   {
     type: 'layer',
@@ -92,15 +98,27 @@ export const PERU_LIMITS_PANEL_ITEMS: readonly PeruLimitsPanelItemConfig[] = [
   },
   {
     type: 'layer',
-    layer: { arcgisLayerId: 6, itemId: 'limites-departamentos', label: 'Departamentos' },
+    layer: {
+      arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.departments,
+      itemId: 'limites-departamentos',
+      label: 'Departamentos',
+    },
   },
   {
     type: 'layer',
-    layer: { arcgisLayerId: 7, itemId: 'limites-provincias', label: 'Provincias' },
+    layer: {
+      arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.provinces,
+      itemId: 'limites-provincias',
+      label: 'Provincias',
+    },
   },
   {
     type: 'layer',
-    layer: { arcgisLayerId: 8, itemId: 'limites-distritos', label: 'Distritos' },
+    layer: {
+      arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.districts,
+      itemId: 'limites-distritos',
+      label: 'Distritos',
+    },
   },
   {
     type: 'group',

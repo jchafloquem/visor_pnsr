@@ -48,5 +48,4 @@ export class ControlCapas {
 
     this.mapService.setLayerOpacity(sectionId, layerId, Math.min(100, Math.max(0, percent)) / 100);
   }
-
 }

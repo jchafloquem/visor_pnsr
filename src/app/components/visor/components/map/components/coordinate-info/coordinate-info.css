@@ -2,6 +2,12 @@
   display: contents;
 }
 
+.coordinate-info-panel {
+  border: 2px solid #fff;
+  outline: 2px solid rgb(15 23 42 / 85%);
+  outline-offset: 1px;
+}
+
 @media (max-width: 640px), (orientation: landscape) and (max-height: 500px) {
   .coordinate-info-container {
     right: 0.625rem;
@@ -17,7 +23,7 @@
     padding: 0.625rem 0.75rem;
     scale: 1;
     box-sizing: border-box;
-    border-color: rgb(255 255 255 / 25%);
+    border-color: rgb(255 255 255 / 90%);
     border-radius: 0.875rem;
     background-color: rgb(30 41 59 / 94%);
     box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
