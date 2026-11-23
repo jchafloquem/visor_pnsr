@@ -478,7 +478,7 @@ export class MapService {
         title: config.label,
         zIndex: 24,
         subLayerId: config.arcgisLayerId,
-        visible: true,
+        visible: config.visible ?? false,
       });
       layer.set('id', config.itemId);
       map.addLayer(layer);

@@ -2,6 +2,7 @@ import {
   COEN_FEN_2027_LAYER_GROUPS,
   LAYER_PANEL_SECTIONS,
   ORTOFOTOS_LAYER_CONFIGS,
+  PERU_ADMINISTRATIVE_LAYER_IDS,
   PERU_LIMITS_LAYER_CONFIGS,
   PERU_LIMITS_PANEL_ITEMS,
   VIVIENDAS_RURALES_LAYER_CONFIGS,
@@ -42,11 +43,22 @@ describe('controlCapasConfig · valores por defecto', () => {
     }
   });
 
-  it('mantiene visibles por defecto las capas ArcGIS disponibles', () => {
+  it('inicia con visibles solo los límites políticos', () => {
     expect(capasDelPanel().filter(l => l.visible).map(l => l.id)).toEqual([
-      ...PERU_LIMITS_LAYER_CONFIGS.map(layer => layer.itemId),
-      ...VIVIENDAS_RURALES_LAYER_CONFIGS.map(layer => layer.itemId),
+      'limites-departamentos',
+      'limites-provincias',
+      'limites-distritos',
     ]);
+    expect(PERU_LIMITS_LAYER_CONFIGS
+      .filter(layer => layer.visible)
+      .map(layer => layer.arcgisLayerId)).toEqual([
+      PERU_ADMINISTRATIVE_LAYER_IDS.departments,
+      PERU_ADMINISTRATIVE_LAYER_IDS.provinces,
+      PERU_ADMINISTRATIVE_LAYER_IDS.districts,
+    ]);
+    expect(VIVIENDAS_RURALES_LAYER_CONFIGS.every(layer =>
+      !capasDelPanel().find(item => item.id === layer.itemId)?.visible
+    )).toBe(true);
   });
 
   it('ninguna capa del panel tiene el identificador vacío', () => {

@@ -68,6 +68,7 @@ export interface PeruLimitsLayerConfig {
   arcgisLayerId: number;
   itemId: string;
   label: string;
+  visible?: boolean;
 }
 
 type PeruLimitsPanelItemConfig =
@@ -102,6 +103,7 @@ export const PERU_LIMITS_PANEL_ITEMS: readonly PeruLimitsPanelItemConfig[] = [
       arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.departments,
       itemId: 'limites-departamentos',
       label: 'Departamentos',
+      visible: true,
     },
   },
   {
@@ -110,6 +112,7 @@ export const PERU_LIMITS_PANEL_ITEMS: readonly PeruLimitsPanelItemConfig[] = [
       arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.provinces,
       itemId: 'limites-provincias',
       label: 'Provincias',
+      visible: true,
     },
   },
   {
@@ -118,6 +121,7 @@ export const PERU_LIMITS_PANEL_ITEMS: readonly PeruLimitsPanelItemConfig[] = [
       arcgisLayerId: PERU_ADMINISTRATIVE_LAYER_IDS.districts,
       itemId: 'limites-distritos',
       label: 'Distritos',
+      visible: true,
     },
   },
   {
@@ -263,7 +267,6 @@ const capasViviendasRurales = (group: 'agua' | 'alcantarillado'): LayerItem[] =>
   VIVIENDAS_RURALES_LAYER_CONFIGS
     .filter(layer => layer.group === group)
     .map(layer => capa(layer.itemId, layer.label, {
-      visible: true,
       showInLegend: true,
       legendColor: layer.color,
     }));
@@ -319,10 +322,13 @@ const PANEL_BASE: Section[] = [
         ? subseccion(
           item.id,
           item.title,
-          item.layers.map(layer => capa(layer.itemId, layer.label, { visible: true, showInLegend: true })),
+          item.layers.map(layer => capa(layer.itemId, layer.label, { showInLegend: true })),
           true
         )
-        : capa(item.layer.itemId, item.layer.label, { visible: true, showInLegend: true })
+        : capa(item.layer.itemId, item.layer.label, {
+          visible: item.layer.visible ?? false,
+          showInLegend: true,
+        })
     ),
   },
   {
